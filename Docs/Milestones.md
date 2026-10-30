@@ -31,3 +31,18 @@ Manual checks, pending user verification:
 - Check capture placeholders for minimized and protected windows when later panels are enabled.
 
 Public integration contracts are in ModelIntegration.md and ServiceIntegration.md. No replacement Dock has been enabled yet.
+
+## M2: Window switcher
+
+Added the dedicated-thread event tap, Cmd+Tab session decoder, reusable nonactivating SwiftUI window grid, cached thumbnail cards, functional traffic lights, MRU selection, quick switching, arrows, mouse commit, W/M/H/Q, independent scope settings and shared theme/material providers. Permission loss and Pause stop the tap and dismiss the panel. Mouse/empty-list dismissal explicitly ends tap session ownership while preserving consumed key-ups. Added selection and tap lifecycle tests. All 36 tests, debug build and installed release build pass without warnings. Launch requested from the stable installation path. On-screen latency, capture and hotkey interception remain unverified.
+
+Manual checks, pending user verification:
+- Tap Cmd+Tab and release before 120 ms, then hold it to show the grid.
+- Verify one tile per window and index one initially selected.
+- Cycle with Tab, Shift+Tab and arrow keys across partial rows.
+- Press Escape, then test mouse hover and click commit.
+- Exercise W/M/H/Q and each traffic-light action.
+- Close or rename a selected window while the panel is open.
+- Change current/all desktop and mouse/all display preferences through saved settings until M6 UI arrives.
+- Revoke a permission or Pause during appearance delay and verify interception stops.
+- Test protected/minimized thumbnails and appearance under light/dark mode.
