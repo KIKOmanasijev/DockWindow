@@ -150,3 +150,18 @@ Manual checks:
 - Compare icon sharpness at small and large settings on Retina and non-Retina displays.
 - Move the Dock between mixed-scale displays and check icons rerender sharply.
 - Open Option+Tab with window and windowless cards, check smaller headers/thumbnails, selection and scrolling.
+
+## Follow-up: layout, resize grip and focus updates
+
+Constrained switcher cards before scaling and clipped their bounds to prevent long titles from expanding into adjacent grid cells. Corrected column fitting to include panel padding. Added a cursor and tooltip resize grip at the divider, with an inward-edge fallback when no divider exists. Inward dragging enlarges the Dock and outward dragging shrinks it, with persistent 16 to 128 point icon sizing. Resize owns its mouse sequence and suppresses icon clicks and hover previews. Escape cancellation restores the starting size.
+
+Workspace activation publishes frontmost state before inventory enumeration. Focus-only AX queries and desktop topology use separate coalesced queues, and merging prevents slow inventory replies from undoing newer focus/Space events. The Dock consumes the supplied published snapshot synchronously. The 1.5-second fallback membership poll is unchanged. Unchanged permission polls no longer emit UI reconciliation. The menu bar uses a monochrome template paw, with permission status inside its menu and tooltip.
+
+All 87 tests pass. Live latency, long-title rendering and pointer interactions remain manual checks. The GitHub repository was created private under KIKOmanasijev/DockWindow at the user's request, superseding the original no-push instruction.
+
+Manual checks:
+- Open the switcher with long titles and windowless apps, and verify cards and click targets stay separated.
+- Resize from the divider or fallback grip at bottom, left and right, then reopen the app to check persistence.
+- Cancel resizing and ensure no app was focused, pinned app moved or hover panel left open.
+- Switch rapidly between apps, windows and desktops and check the Dock updates promptly without reverting.
+- Check the monochrome paw on light and dark menu bars, then open its menu for permission status.

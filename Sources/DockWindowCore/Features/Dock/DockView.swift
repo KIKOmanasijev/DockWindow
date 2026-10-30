@@ -31,8 +31,13 @@ import QuartzCore
     private var insertion = 0
     private var dropID: String?
     private var geometry = DockLayout(kinds: [], bounds: .zero, position: .bottom, baseSize: 48, maximumSize: 96)
-    var isDragging: Bool { dragged != nil }
-    var ownsMouseSequence: Bool { pressed != nil || dragged != nil }
+    private var resizeSession: DockResizeSession?
+    private var resizeMouseDown = false
+    private var resizeHandle = CGRect.zero
+    private let resizeGrip = CALayer()
+    private var cancelMonitor: Any?
+    var isDragging: Bool { dragged != nil || resizeMouseDown }
+    var ownsMouseSequence: Bool { pressed != nil || isDragging }
     func iconFrame(for id: String) -> CGRect? {
         guard let index = items.firstIndex(where: { $0.id == id }), geometry.iconFrames.indices.contains(index) else { return nil }
         return geometry.iconFrames[index]
@@ -54,13 +59,15 @@ import QuartzCore
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func layout() { super.layout(); render() }
     func stopTracking() {
+        finishResize(cancelled: true)
+        resizeMouseDown = false
         pointer = nil
         longPress?.cancel(); longPress = nil; pressed = nil
         hoverID = nil; onHover?(nil, .zero); render()
         for icon in layers.values { icon.removeAllAnimations(); icon.imageLayer.removeAllAnimations(); icon.dots.removeAllAnimations() }
     }
     func track(_ point: CGPoint?) {
-        guard pointer != point else { return }
+        guard !resizeMouseDown, pointer != point else { return }
         pointer = point
         if point == nil { hoverID = nil; onHover?(nil, .zero) }
         render()
@@ -71,7 +78,11 @@ import QuartzCore
         geometry = DockLayout(kinds: kinds, bounds: bounds, position: settings.dockPosition, baseSize: settings.iconSize,
                               maximumSize: settings.iconSize,
                               pointer: dragged == nil ? pointer : nil)
-        let duration = pointer == nil && !Theme.reducesMotion(settings) ? 0.12 : 0
+        let duration = pointer == nil && !isDragging && !Theme.reducesMotion(settings) ? 0.12 : 0
+        resizeHandle = geometry.resizeHandle(kinds: kinds)
+        removeAllToolTips()
+        if !resizeHandle.isEmpty { addToolTip(resizeHandle, owner: self, userData: nil) }
+        window?.invalidateCursorRects(for: self)
         CATransaction.begin(); CATransaction.setDisableActions(duration == 0); CATransaction.setAnimationDuration(duration)
         background.frame = geometry.background
         let style = "\(settings.panelMaterial.rawValue):\(settings.theme.rawValue):\(settings.iconSize)"
@@ -116,8 +127,19 @@ import QuartzCore
                         position: settings.dockPosition, scale: window?.backingScaleFactor ?? 2, reduceMotion: Theme.reducesMotion(settings))
             icon.bounce(position: settings.dockPosition, enabled: launching.contains(item.id) && settings.bounceOnLaunch && !Theme.reducesMotion(settings))
         }
+        if resizeGrip.superlayer == nil { layer?.addSublayer(resizeGrip) }
+        let hasSeparator = kinds.contains(.separator)
+        let vertical = hasSeparator ? settings.dockPosition == .bottom : settings.dockPosition != .bottom
+        resizeGrip.frame = CGRect(x: resizeHandle.midX - (vertical ? 1.5 : min(24, resizeHandle.width) / 2),
+                                  y: resizeHandle.midY - (vertical ? min(24, resizeHandle.height) / 2 : 1.5),
+                                  width: vertical ? 3 : min(24, resizeHandle.width),
+                                  height: vertical ? min(24, resizeHandle.height) : 3)
+        resizeGrip.cornerRadius = 1.5
+        resizeGrip.isHidden = resizeHandle.isEmpty
+        let handleHovered = pointer.map { resizeHandle.contains($0) } ?? false
+        resizeGrip.backgroundColor = NSColor.labelColor.withAlphaComponent(handleHovered || resizeSession != nil ? 0.65 : 0.3).cgColor
         CATransaction.commit()
-        let hovered = pointer.flatMap { geometry.hitTest($0, kinds: kinds) }
+        let hovered = !resizeMouseDown ? pointer.flatMap { resizeHandle.contains($0) ? nil : geometry.hitTest($0, kinds: kinds) } : nil
         let item = hovered.map { items[$0] }
         if item?.id != hoverID {
             hoverID = item?.id
@@ -141,7 +163,21 @@ import QuartzCore
     }
     private func item(at point: CGPoint) -> DockItem? { geometry.hitTest(point, kinds: items.map(\.kind)).map { items[$0] } }
     override func mouseDown(with event: NSEvent) {
-        pressPoint = convert(event.locationInWindow, from: nil); pressed = item(at: pressPoint)
+        pressPoint = convert(event.locationInWindow, from: nil)
+        if resizeHandle.contains(pressPoint) {
+            longPress?.cancel(); longPress = nil; pressed = nil
+            resizeMouseDown = true
+            resizeSession = DockResizeSession(size: settings.iconSize, origin: NSEvent.mouseLocation, position: settings.dockPosition)
+            pointer = nil; hoverID = nil; onHover?(nil, .zero)
+            cancelMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+                guard event.keyCode == 53, let self, self.resizeSession != nil else { return event }
+                self.finishResize(cancelled: true)
+                return nil
+            }
+            resizeCursor.set(); render()
+            return
+        }
+        pressed = item(at: pressPoint)
         longPress?.cancel()
         if let pressed {
             longPress = Task { [weak self] in
@@ -152,6 +188,11 @@ import QuartzCore
         }
     }
     override func mouseUp(with event: NSEvent) {
+        if resizeMouseDown {
+            finishResize(cancelled: false)
+            resizeMouseDown = false; render()
+            return
+        }
         longPress?.cancel()
         if let pressed, item(at: convert(event.locationInWindow, from: nil))?.id == pressed.id { onClick?(pressed) }
         pressed = nil
@@ -160,6 +201,12 @@ import QuartzCore
         if let item = item(at: convert(event.locationInWindow, from: nil)) { onMenu?(item, event) }
     }
     override func mouseDragged(with event: NSEvent) {
+        if let resizeSession {
+            settings.iconSize = resizeSession.size(at: NSEvent.mouseLocation)
+            resizeCursor.set(); render()
+            return
+        }
+        if resizeMouseDown { return }
         longPress?.cancel()
         let point = convert(event.locationInWindow, from: nil)
         guard let pressed, pressed.kind == .application, pressed.id != DockCompositionPolicy.finderBundleIdentifier,
@@ -201,7 +248,33 @@ import QuartzCore
         return target?.kind == .trash || target?.app?.bundleURL != nil || target?.pinnedApp != nil ? .copy : []
     }
     override func draggingExited(_ sender: NSDraggingInfo?) { dropID = nil; render() }
-    deinit { longPress?.cancel() }
+    private var resizeCursor: NSCursor {
+        settings.dockPosition == .bottom ? .resizeUpDown : .resizeLeftRight
+    }
+    override func resetCursorRects() {
+        super.resetCursorRects()
+        if !resizeHandle.isEmpty { addCursorRect(resizeHandle, cursor: resizeCursor) }
+    }
+    @objc func view(_ view: NSView, stringForToolTip tag: NSView.ToolTipTag, point: NSPoint, userData data: UnsafeMutableRawPointer?) -> String {
+        "Drag to resize Dock. Press Escape to cancel."
+    }
+    override func cancelOperation(_ sender: Any?) { finishResize(cancelled: true) }
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if newWindow == nil { finishResize(cancelled: true); resizeMouseDown = false }
+        super.viewWillMove(toWindow: newWindow)
+    }
+    private func finishResize(cancelled: Bool) {
+        guard let session = resizeSession else { return }
+        settings.iconSize = session.end(at: NSEvent.mouseLocation, cancelled: cancelled)
+        resizeSession = nil
+        if let cancelMonitor { NSEvent.removeMonitor(cancelMonitor); self.cancelMonitor = nil }
+        pressed = nil; pointer = nil; hoverID = nil
+        onHover?(nil, .zero); NSCursor.arrow.set(); render()
+    }
+    deinit {
+        longPress?.cancel()
+        if let cancelMonitor { NSEvent.removeMonitor(cancelMonitor) }
+    }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         if sender.draggingPasteboard.string(forType: Self.itemType) != nil { return dragged != nil }
         guard let target = item(at: convert(sender.draggingLocation, from: nil)),

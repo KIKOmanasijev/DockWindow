@@ -31,13 +31,18 @@ import SwiftUI
                         Button("Dismiss", action: presentation.dismiss).buttonStyle(.bordered)
                     }.padding(24)
                 }
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(presentation.tileSize.width), spacing: 12), count: presentation.columns), spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(presentation.tileSize.width), spacing: SwitcherTileMetrics.spacing), count: presentation.columns), spacing: SwitcherTileMetrics.spacing) {
                     ForEach(presentation.session.items, id: \.tileID) { item in
-                        tile(item).fixedSize().scaleEffect(SwitcherTileMetrics.scale)
+                        tile(item)
+                            .frame(width: SwitcherTileMetrics.unscaledSize(thumbnail: presentation.thumbnailSize).width,
+                                   height: SwitcherTileMetrics.unscaledSize(thumbnail: presentation.thumbnailSize).height)
+                            .clipped()
+                            .scaleEffect(SwitcherTileMetrics.scale)
                             .frame(width: presentation.tileSize.width, height: presentation.tileSize.height)
+                            .contentShape(Rectangle())
                             .id(item.tileID)
                     }
-                }.padding(20)
+                }.padding(SwitcherTileMetrics.padding)
             }
             .onChange(of: presentation.session.selectedID) { _, value in
                 guard let value else { return }
@@ -68,10 +73,11 @@ import SwiftUI
         case .windowlessApp(let app):
             Button { presentation.activate(item.tileID) } label: {
                 VStack(spacing: 8) {
-                    WindowTitlePill(app: app, title: "No Open Windows").frame(height: 40)
+                    WindowTitlePill(app: app, title: "No Open Windows")
+                        .frame(width: presentation.thumbnailSize.width, height: 40)
                     VStack(spacing: 12) {
                         Image(nsImage: app.icon).resizable().scaledToFit().frame(width: 80, height: 80)
-                        Text("No Open Windows").font(.callout).italic().foregroundStyle(.secondary)
+                        Text("No Open Windows").font(.callout).italic().foregroundStyle(.secondary).lineLimit(1)
                     }.frame(width: presentation.thumbnailSize.width, height: presentation.thumbnailSize.height)
                 }.padding(8)
                     .background(presentation.session.selectedID == item.tileID ? Theme.selection(settings) : Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16))

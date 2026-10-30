@@ -53,7 +53,7 @@ import Combine
     /// Call only after the coordinator has enabled the native Dock mitigation and permission gates.
     public func start() {
         guard !started else { return }; started = true; lifecycleGeneration &+= 1
-        tracker.$snapshot.receive(on: RunLoop.main).sink { [weak self] _ in self?.reload() }.store(in: &subscriptions)
+        tracker.$snapshot.sink { [weak self] snapshot in self?.reload(snapshot: snapshot) }.store(in: &subscriptions)
         settings.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.reload() }.store(in: &subscriptions)
         pins.$apps.receive(on: RunLoop.main).sink { [weak self] _ in self?.reload() }.store(in: &subscriptions)
         let mask: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .leftMouseUp, .flagsChanged, .scrollWheel]
@@ -106,15 +106,18 @@ import Combine
         // The first screen is the menu-bar/primary display. NSScreen.main follows key-window focus.
         return NSScreen.screens.first
     }
-    private var spaces: Set<UInt64> {
+    private var spaces: Set<UInt64> { currentSpaces(snapshot: tracker.snapshot) }
+    private func currentSpaces(snapshot: WindowSnapshot) -> Set<UInt64> {
         let displayID = screen.flatMap { screen -> String? in
             guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber,
                   let uuid = CGDisplayCreateUUIDFromDisplayID(number.uint32Value)?.takeRetainedValue() else { return nil }
             return CFUUIDCreateString(nil, uuid) as String
         }
-        return SpacePolicy.currentSpaceIDs(snapshot: tracker.snapshot, displayID: displayID, separateSpaces: NSScreen.screensHaveSeparateSpaces)
+        return SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: displayID, separateSpaces: NSScreen.screensHaveSeparateSpaces)
     }
-    private func reload() {
+    private func reload(snapshot incoming: WindowSnapshot? = nil) {
+        // @Published delivers before the property changes. Render its supplied value synchronously.
+        let snapshot = incoming ?? tracker.snapshot
         guard started else { return }
         guard settings.useDockWindowDock, !settings.isPaused else {
             hideTask?.cancel(); hideTask = nil
@@ -130,11 +133,12 @@ import Combine
         shownFrame = DockLayout.panelFrame(screen: nextScreen.frame, position: settings.dockPosition, depth: settings.dockPosition == .bottom ? max(210, settings.iconSize + 85) : max(360, settings.iconSize + 220))
         if !settings.autohide { hidden = false; hideTask?.cancel(); hideTask = nil }
         panel.setFrame(hidden ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame, display: true)
+        let spaces = currentSpaces(snapshot: snapshot)
         let options = DockCompositionOptions(scope: settings.dockScope, currentSpaceIDs: spaces, otherDesktopApps: settings.otherDesktopApps,
                                               includeMinimized: settings.includeMinimizedInDock,
                                               showWindowlessAppsOnLastActiveDesktop: settings.showWindowlessAppsOnLastActiveDesktop, showTrash: settings.showTrash)
-        var items = DockCompositionPolicy.items(snapshot: tracker.snapshot, pinned: pins.apps, options: options)
-        let runningIDs = Set(tracker.snapshot.apps.map { $0.bundleIdentifier ?? "pid:\($0.pid)" })
+        var items = DockCompositionPolicy.items(snapshot: snapshot, pinned: pins.apps, options: options)
+        let runningIDs = Set(snapshot.apps.map { $0.bundleIdentifier ?? "pid:\($0.pid)" })
         removedRunning.formIntersection(runningIDs)
         items.removeAll { !$0.isPinned && removedRunning.contains($0.id) }
         let unpinned = items.filter { $0.kind == .application && !$0.isPinned }.sorted {
@@ -147,7 +151,7 @@ import Combine
             if let icon = item.app?.icon { view.images[item.id] = icon }
             else if let path, view.images[item.id] == nil { view.images[item.id] = NSWorkspace.shared.icon(forFile: path.path) }
             if item.kind == .trash { view.images[item.id] = NSWorkspace.shared.icon(forFile: trashURL.path) }
-            view.indicators[item.id] = DotPolicy.indicators(windows: tracker.snapshot.windows,
+            view.indicators[item.id] = DotPolicy.indicators(windows: snapshot.windows,
                 filter: WindowFilter(scope: settings.dockScope, currentSpaceIDs: spaces, includeMinimized: settings.includeMinimizedInCount, pid: item.app?.pid ?? -1),
                 style: settings.indicatorStyle, maxDots: settings.maxDots, isRunning: item.app != nil, showRunningState: settings.showRunningState)
             if let app = item.app, NSRunningApplication(processIdentifier: app.pid)?.isFinishedLaunching == true { launching.remove(item.id) }

@@ -2,7 +2,7 @@ import AppKit
 import ApplicationServices
 import Combine
 
-/// Main-actor snapshot publisher. AX state and all AX operations live on the worker queue.
+/// Main-actor snapshot publisher. AX inventory and focus reads run on independent worker queues.
 @MainActor public final class WindowTracker: ObservableObject {
     @Published public private(set) var snapshot = WindowSnapshot()
     public var allowedSubroles: Set<String> = [kAXStandardWindowSubrole, kAXDialogSubrole] {
@@ -15,8 +15,7 @@ import Combine
     private var started = false
     internal var isRunning: Bool { started }
     internal private(set) var actionCancellation = OperationCancellation()
-    private var pending: WindowSnapshot?
-    private var scheduledPublish = false
+    private var eventState = DockFocusSnapshotPolicy()
     private var generation = 0
     public init() {}
     deinit {
@@ -30,33 +29,48 @@ import Combine
         actionCancellation = OperationCancellation()
         generation += 1
         let session = generation
-        worker.start { [weak self] snapshot in
+        worker.start(publish: { [weak self] snapshot, revision, activationRevision in
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.started, self.generation == session else { return }
-                self.pending = snapshot
-                guard !self.scheduledPublish else { return }
-                self.scheduledPublish = true
-                DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(16)) { [weak self] in
-                    guard let self, self.generation == session else { return }
-                    self.scheduledPublish = false
-                    guard let next = self.pending else { return }
-                    self.pending = nil
-                    let changed = Set(next.windows.map(\.id)) != Set(self.snapshot.windows.map(\.id))
-                    self.snapshot = next
-                    if changed { self.onWindowInventoryChanged?() }
-                }
+                let previous = Set(self.snapshot.windows.map(\.id))
+                self.eventState.inventory(snapshot, revision: revision, activationRevision: activationRevision)
+                self.snapshot = self.eventState.snapshot
+                if previous != Set(self.snapshot.windows.map(\.id)) { self.onWindowInventoryChanged?() }
             }
-        }
+        }, focus: { [weak self] id, pid, date in
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.started, self.generation == session,
+                      self.eventState.focused(id: id, pid: pid, at: date) else { return }
+                self.snapshot = self.eventState.snapshot
+            }
+        }, spaces: { [weak self] state, revision, date in
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.started, self.generation == session else { return }
+                self.eventState.spaces(state.activeSpaceIDs, membership: state.membership, revision: revision, at: date)
+                self.snapshot = self.eventState.snapshot
+            }
+        })
         let center = NSWorkspace.shared.notificationCenter
         let notifications = [NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification,
             NSWorkspace.didActivateApplicationNotification, NSWorkspace.didHideApplicationNotification,
             NSWorkspace.didUnhideApplicationNotification, NSWorkspace.activeSpaceDidChangeNotification, NSWorkspace.didWakeNotification]
         for name in notifications {
-            tokens.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in
-                    guard let self else { return }
+            tokens.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
+                MainActor.assumeIsolated {
+                    guard let self, self.started else { return }
+                    if name == NSWorkspace.didActivateApplicationNotification,
+                       let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
+                        let date = Date()
+                        // Workspace already supplies the app. Publish before collecting apps or doing any AX work.
+                        let tracked = self.snapshot.apps.first { $0.pid == app.processIdentifier }
+                            ?? TrackedApp(pid: app.processIdentifier, bundleIdentifier: app.bundleIdentifier,
+                                          name: app.localizedName ?? "Application", bundleURL: app.bundleURL)
+                        self.eventState.activate(tracked, at: date, includeInInventory: app.activationPolicy == .regular)
+                        self.snapshot = self.eventState.snapshot
+                        self.worker.requestFocus(pid: app.processIdentifier, at: date)
+                    }
                     if name == NSWorkspace.activeSpaceDidChangeNotification || name == NSWorkspace.didActivateApplicationNotification {
-                        self.worker.spaceQueue.async { [weak worker = self.worker] in worker?.pollSpaces() }
+                        self.worker.requestSpaces()
                     }
                     self.refresh()
                 }
@@ -74,7 +88,7 @@ import Combine
     }
     public func stop() {
         actionCancellation.cancel()
-        started = false; generation += 1; pending = nil; scheduledPublish = false
+        started = false; generation += 1; eventState = DockFocusSnapshotPolicy()
         timer?.cancel(); timer = nil
         for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token); NotificationCenter.default.removeObserver(token) }
         tokens.removeAll(); worker.stop()
@@ -85,7 +99,7 @@ import Combine
             TrackedApp(pid: $0.processIdentifier, bundleIdentifier: $0.bundleIdentifier, name: $0.localizedName ?? "Application",
                        bundleURL: $0.bundleURL, icon: $0.icon ?? NSImage(), isHidden: $0.isHidden, isFrontmost: $0.isActive, badgeLabel: nil)
         }
-        worker.refresh(apps: apps)
+        worker.refresh(apps: apps, activationRevision: eventState.activationRevision)
     }
     /// Executes a window action off-main. The reference never escapes the worker operation.
     internal func perform(windowID: CGWindowID, ifMissing: @escaping () -> Void = {}, action: @escaping (AXUIElement) -> Void) {
@@ -117,7 +131,16 @@ private final class WindowTrackingWorker: @unchecked Sendable {
     private var lastScan: [pid_t: Date] = [:]
     private var subroles: Set<String> = [kAXStandardWindowSubrole, kAXDialogSubrole]
     private var active: [String: UInt64] = [:]
-    private var publish: ((WindowSnapshot) -> Void)?
+    private var publish: ((WindowSnapshot, UInt64, UInt64) -> Void)?
+    private var publishFocus: ((CGWindowID, pid_t, Date) -> Void)?
+    private var publishSpaces: ((SpacesService.State, UInt64, Date) -> Void)?
+    private let topologyQueue = DispatchQueue(label: "com.dockwindow.topology", qos: .userInitiated)
+    private var spaceDate = Date.distantPast
+    private let focusQueue = DispatchQueue(label: "com.dockwindow.focus", qos: .userInteractive)
+    private let focusLock = NSLock()
+    private var focusRequest: (pid: pid_t, date: Date)?
+    private var focusScheduled = false
+    private var focusSession = 0
     private var refreshPending = false
     private var badges: [String: String] = [:]
     private var focusedID: CGWindowID?
@@ -127,17 +150,28 @@ private final class WindowTrackingWorker: @unchecked Sendable {
     private var activated: [pid_t: (Date, [UInt64])] = [:]
     private let spaceLock = NSLock()
     private var polledIDs: [CGWindowID] = []
+    private var membershipQueued = false
+    private var topologyQueued = false
     private var session = 0
     private var pollingSession = 0
     private var inventoryRevision: UInt64 = 0
+    private var activationRevision: UInt64 = 0
     private var polledRevision: UInt64 = 0
-    func start(publish: @escaping (WindowSnapshot) -> Void) {
+    func start(publish: @escaping (WindowSnapshot, UInt64, UInt64) -> Void,
+               focus: @escaping (CGWindowID, pid_t, Date) -> Void,
+               spaces: @escaping (SpacesService.State, UInt64, Date) -> Void) {
         queue.async {
             self.session += 1
             self.spaceLock.lock(); self.pollingSession = self.session; self.spaceLock.unlock()
             self.publish = publish
+            self.focusLock.lock(); self.publishFocus = focus; self.focusSession = self.session; self.focusLock.unlock()
+            self.spaceLock.lock(); self.publishSpaces = spaces; self.spaceLock.unlock()
             let generation = self.session
-            self.hub = AXObserverHub { [weak self] _, notification in
+            self.hub = AXObserverHub { [weak self] pid, notification in
+                if [kAXFocusedWindowChangedNotification, kAXMainWindowChangedNotification, kAXApplicationActivatedNotification].contains(notification) {
+                    self?.requestFocus(pid: pid, at: Date())
+                    return
+                }
                 self?.queue.async { [weak self] in
                     guard let self, self.publish != nil, self.session == generation else { return }
                     self.scheduleRefresh()
@@ -147,25 +181,27 @@ private final class WindowTrackingWorker: @unchecked Sendable {
     }
     func stop() {
         queue.async {
+            self.focusLock.lock(); self.publishFocus = nil; self.focusRequest = nil; self.focusSession += 1; self.focusLock.unlock()
             self.session += 1; self.publish = nil; self.hub?.stop(); self.hub = nil
             self.windows.removeAll(); self.elements.removeAll(); self.apps.removeAll()
             self.cursors.removeAll(); self.lastScan.removeAll(); self.scanRetries.removeAll(); self.activated.removeAll(); self.focusedID = nil; self.observedPIDs.removeAll()
-            self.refreshPending = false; self.retryScheduled = false; self.active = [:]
-            self.spaceLock.lock(); self.pollingSession = self.session; self.polledIDs = []; self.spaceLock.unlock()
+            self.refreshPending = false; self.retryScheduled = false; self.active = [:]; self.spaceDate = .distantPast
+            self.spaceLock.lock(); self.pollingSession = self.session; self.polledIDs = []; self.publishSpaces = nil; self.spaceLock.unlock()
         }
     }
     func setSubroles(_ value: Set<String>) { queue.async { self.subroles = value } }
     func setBadges(_ value: [String: String]) {
         queue.async { self.badges = value; self.emit() }
     }
-    func refresh(apps: [TrackedApp]) {
+    func refresh(apps: [TrackedApp], activationRevision: UInt64) {
+        let requested = Date()
         queue.async {
             for app in apps where app.isFrontmost {
                 if !self.apps.contains(where: { $0.pid == app.pid && $0.isFrontmost }) {
-                    self.activated[app.pid] = (Date(), Array(self.active.values))
+                    self.activated[app.pid] = (requested, Array(self.active.values))
                 }
             }
-            self.apps = apps; self.scheduleRefresh()
+            self.apps = apps; self.activationRevision = activationRevision; self.scheduleRefresh()
         }
     }
     private func scheduleRefresh() {
@@ -180,11 +216,87 @@ private final class WindowTrackingWorker: @unchecked Sendable {
     func perform(windowID: CGWindowID, ifMissing: @escaping () -> Void, action: @escaping (AXUIElement) -> Void) {
         queue.async { if let element = self.elements[windowID] { action(element) } else { ifMissing() }; self.scheduleRefresh() }
     }
+    /// Coalesced focus-only reads never queue behind full inventory or remote discovery.
+    func requestFocus(pid: pid_t, at date: Date) {
+        focusLock.lock()
+        focusRequest = (pid, date)
+        guard !focusScheduled else { focusLock.unlock(); return }
+        focusScheduled = true
+        focusLock.unlock()
+        focusQueue.async { self.drainFocus() }
+    }
+    private func drainFocus() {
+        focusLock.lock()
+        let request = focusRequest; focusRequest = nil
+        let generation = focusSession
+        focusLock.unlock()
+        if let request {
+            let root = AXUIElementCreateApplication(request.pid)
+            AXUIElementSetMessagingTimeout(root, 0.05)
+            if let element = AXRead.element(root, kAXFocusedWindowAttribute) {
+                AXUIElementSetMessagingTimeout(element, 0.05)
+                if let id = AXPrivate.shared.windowID(of: element) {
+                    focusLock.lock()
+                    let callback = generation == focusSession ? publishFocus : nil
+                    focusLock.unlock()
+                    callback?(id, request.pid, request.date)
+                    queue.async {
+                        guard self.publish != nil, self.session == generation else { return }
+                        guard self.apps.contains(where: { $0.pid == request.pid && $0.isFrontmost }) else { return }
+                        if var window = self.windows[id], window.pid == request.pid {
+                            window.lastFocusedAt = max(window.lastFocusedAt, request.date)
+                            self.windows[id] = window; self.focusedID = id
+                        } else { self.scheduleRefresh() }
+                    }
+                }
+            }
+        }
+        focusLock.lock()
+        let again = focusRequest != nil
+        if !again { focusScheduled = false }
+        focusLock.unlock()
+        if again { focusQueue.async { self.drainFocus() } }
+    }
+    /// Event topology reads bypass both AX inventory and batched membership work.
+    func requestSpaces() {
+        spaceLock.lock()
+        let enqueueTopology = !topologyQueued
+        topologyQueued = true
+        spaceLock.unlock()
+        if enqueueTopology {
+            topologyQueue.async {
+                self.spaceLock.lock()
+                self.topologyQueued = false
+                let callback = self.publishSpaces; let revision = self.polledRevision
+                self.spaceLock.unlock()
+                let date = Date()
+                let state = SpacesService().read(windowIDs: [])
+                callback?(state, revision, date)
+            }
+        }
+        requestMembership()
+    }
+    private func requestMembership() {
+        spaceLock.lock()
+        guard !membershipQueued else { spaceLock.unlock(); return }
+        membershipQueued = true
+        spaceLock.unlock()
+        spaceQueue.async {
+            self.spaceLock.lock(); self.membershipQueued = false; self.spaceLock.unlock()
+            self.pollSpaces()
+        }
+    }
     func pollSpaces() {
-        spaceLock.lock(); let ids = polledIDs; let generation = pollingSession; let revision = polledRevision; spaceLock.unlock()
+        spaceLock.lock(); let ids = polledIDs; let generation = pollingSession; let revision = polledRevision; let callback = publishSpaces; spaceLock.unlock()
+        // Publish topology first, before per-window membership discovery, and bypass the AX queue.
+        let date = Date()
+        let topology = SpacesService().read(windowIDs: [])
+        callback?(topology, revision, date)
         let state = SpacesService().read(windowIDs: ids)
+        callback?(state, revision, date)
         queue.async {
-            guard self.publish != nil, self.session == generation, self.inventoryRevision == revision else { return }
+            guard self.publish != nil, self.session == generation, date >= self.spaceDate else { return }
+            self.spaceDate = date
             var changed = self.active != state.activeSpaceIDs
             self.active = state.activeSpaceIDs
             if changed {
@@ -192,7 +304,7 @@ private final class WindowTrackingWorker: @unchecked Sendable {
                     self.activated[app.pid] = (self.activated[app.pid]?.0 ?? Date(), Array(state.activeSpaceIDs.values))
                 }
             }
-            for id in ids {
+            for id in ids where self.inventoryRevision == revision {
                 guard var window = self.windows[id] else { continue }
                 let membership = state.membership[id] ?? []
                 // Retain the last known membership while minimized or when a transient query fails.
@@ -205,6 +317,7 @@ private final class WindowTrackingWorker: @unchecked Sendable {
     }
     private func enumerate() {
         guard publish != nil, AXIsProcessTrusted() else { return }
+        let scanStarted = Date()
         let info = CGWindowListCopyWindowInfo(.optionAll, kCGNullWindowID) as? [[String: Any]] ?? []
         var cg: [CGWindowID: [String: Any]] = [:]
         for item in info {
@@ -267,7 +380,7 @@ private final class WindowTrackingWorker: @unchecked Sendable {
                     isAppHidden: app.isHidden, isFullscreen: AXRead.value(element, "AXFullScreen") as? Bool ?? false,
                     lastFocusedAt: windows[id]?.lastFocusedAt ?? .distantPast, rememberedSpaceIDs: windows[id]?.rememberedSpaceIDs ?? windows[id]?.spaceIDs ?? [])
                 if app.isFrontmost && id == focused {
-                    if focusedID != id || windows[id] == nil { window.lastFocusedAt = Date() }
+                    if focusedID != id || windows[id] == nil { window.lastFocusedAt = scanStarted }
                     focusedID = id
                 }
                 nextWindows[id] = window; nextElements[id] = element
@@ -280,7 +393,7 @@ private final class WindowTrackingWorker: @unchecked Sendable {
         inventoryRevision &+= 1
         spaceLock.lock(); polledIDs = Array(windows.keys); polledRevision = inventoryRevision; spaceLock.unlock()
         emit()
-        spaceQueue.async { self.pollSpaces() }
+        requestMembership()
         if hasGaps && !retryScheduled {
             retryScheduled = true
             let generation = session
@@ -319,6 +432,6 @@ private final class WindowTrackingWorker: @unchecked Sendable {
                 updatedApps[index].lastActiveSpaceIDs = activation.1
             }
         }
-        publish?(WindowSnapshot(apps: updatedApps, windows: sorted, activeSpaceIDs: active))
+        publish?(WindowSnapshot(apps: updatedApps, windows: sorted, activeSpaceIDs: active), inventoryRevision, activationRevision)
     }
 }

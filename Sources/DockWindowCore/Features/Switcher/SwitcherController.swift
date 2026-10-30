@@ -227,7 +227,8 @@ import SwiftUI
         let width = min(max(64, settings.switcherThumbnailWidth), maxWidth - 56)
         let height = min(max(48, settings.switcherThumbnailHeight), maxHeight - 104)
         let tileSize = SwitcherTileMetrics.size(thumbnail: CGSize(width: width, height: height))
-        let columns = max(1, min(max(1, settings.switcherMaxTilesPerRow), max(1, presentation.session.items.count), Int((maxWidth - 28) / (tileSize.width + 12))))
+        let columns = SwitcherTileMetrics.columns(availableWidth: maxWidth, tileWidth: tileSize.width,
+                                                  itemCount: presentation.session.items.count, maximum: settings.switcherMaxTilesPerRow)
         let rows = max(1, (presentation.session.items.count + columns - 1) / columns)
         presentation.columns = columns
         presentation.thumbnailSize = CGSize(width: width, height: height)

@@ -40,13 +40,19 @@ import Combine
         appMenu.addItem(withTitle: "Quit DockWindow", action: #selector(quit), keyEquivalent: "q").target = self
         appMenuItem.submenu = appMenu; mainMenu.addItem(appMenuItem); NSApp.mainMenu = mainMenu
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let resourceURL = Bundle.main.resourceURL, let image = NSImage(contentsOf: resourceURL.appendingPathComponent("AppIcon.icns")) {
+        if let image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "DockWindow") {
             image.size = NSSize(width: 18, height: 18)
+            image.isTemplate = true
             item.button?.image = image
-        } else { item.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "DockWindow") }
-        item.button?.imagePosition = .imageLeading
+        }
+        item.button?.imagePosition = .imageOnly
         item.button?.setAccessibilityLabel("DockWindow")
         let menu = NSMenu()
+        let permissionStatus = NSMenuItem(title: "Checking permissions...", action: nil, keyEquivalent: "")
+        permissionStatus.identifier = NSUserInterfaceItemIdentifier("permissionStatus")
+        permissionStatus.isEnabled = false
+        menu.addItem(permissionStatus)
+        menu.addItem(.separator())
         menu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "Pause DockWindow", action: #selector(togglePause), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Restore Native Dock", action: #selector(restoreNativeDock), keyEquivalent: "").target = self
@@ -109,7 +115,10 @@ import Combine
             lastDockMode = settings.useDockWindowDock
         }
         statusItem?.isVisible = settings.showMenuBarIcon
-        statusItem?.button?.title = !permissions.hasCheckedPermissions ? " …" : permissions.isGranted ? "" : " !"
+        statusItem?.button?.title = ""
+        if let status = statusItem?.menu?.items.first(where: { $0.identifier?.rawValue == "permissionStatus" }) {
+            status.title = !permissions.hasCheckedPermissions ? "Checking permissions..." : permissions.isGranted ? "Permissions granted" : "Current process access unavailable"
+        }
         let subroles = Set(settings.allowedWindowSubroles)
         if tracker.allowedSubroles != subroles { tracker.allowedSubroles = subroles }
         DiagnosticsService.setDebugLogging(settings.debugLogging)

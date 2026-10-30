@@ -50,6 +50,19 @@ public struct DockLayout {
         case .right: background = CGRect(x: bounds.maxX - 4 - thickness, y: bounds.maxY - start - total - 8, width: thickness, height: total + 16)
         }
     }
+    /// Separator gaps are reserved for resizing. Without one, use the inward material edge.
+    public func resizeHandle(kinds: [DockItem.Kind]) -> CGRect {
+        guard !background.isEmpty else { return .zero }
+        if let index = kinds.firstIndex(of: .separator), iconFrames.indices.contains(index) {
+            let frame = iconFrames[index]
+            return position == .bottom ? frame.insetBy(dx: -3, dy: 0) : frame.insetBy(dx: 0, dy: -3)
+        }
+        switch position {
+        case .bottom: return CGRect(x: background.midX - 12, y: background.maxY - 8, width: 24, height: 6)
+        case .left: return CGRect(x: background.maxX - 8, y: background.midY - 12, width: 6, height: 24)
+        case .right: return CGRect(x: background.minX + 2, y: background.midY - 12, width: 6, height: 24)
+        }
+    }
     /// Only the visible material and icons intercept input, never their transparent bounding hull.
     public func containsInteractivePoint(_ point: CGPoint) -> Bool {
         Self.roundedContains(point, rect: background, radius: cornerRadius) || iconFrames.contains { $0.contains(point) }

@@ -62,7 +62,9 @@ import os
         if self.accessibility != accessibility { self.accessibility = accessibility }
         if self.screenRecording != screenRecording { self.screenRecording = screenRecording }
         if let adHoc { usesAdHocSigning = adHoc }
-        signingWasChecked = true; hasCheckedPermissions = true; isProbeInFlight = false
+        signingWasChecked = true
+        if !hasCheckedPermissions { hasCheckedPermissions = true }
+        isProbeInFlight = false
         if changed {
             let message = "Effective permissions: accessibility=\(accessibility), screenRecording=\(screenRecording), adHoc=\(usesAdHocSigning), pid=\(ProcessInfo.processInfo.processIdentifier), bundle=\(Bundle.main.bundlePath)"
             Log.system.info("\(message, privacy: .public)")

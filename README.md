@@ -19,9 +19,16 @@ The install script asks the running app to quit and finish native Dock restorati
 ## Use
 
 - Option+Tab opens one tile per window. Hold Option to inspect; release to focus. Shift reverses, arrows navigate, Escape cancels. The shortcut is configurable.
-- The Dock uses the current desktop by default. Pinned apps remain visible. Counts, magnification, autohide, positioning and app rules are live settings.
+- The Dock uses the current desktop by default. Pinned apps remain visible. Icons keep a fixed size on hover. Counts, icon size, autohide, positioning and app rules are live settings.
+- Drag the divider grip toward the desktop to enlarge the Dock, or toward the screen edge to shrink it. Without a divider, a small grip appears along the inward edge. The size is saved automatically.
 - Hover previews work with either DockWindow's Dock or the native Dock. Traffic lights act on the exact window.
-- Open Settings from the menu bar, app menu, or by clicking the DockWindow icon. Pause or Restore Native Dock returns the native Dock preferences.
+- Open Settings from the monochrome paw in the menu bar, app menu, or by clicking the DockWindow icon. Pause or Restore Native Dock returns the native Dock preferences.
+
+## Local signing certificate
+
+Open Keychain Access, then use **Keychain Access > Certificate Assistant > Create a Certificate...** in the macOS menu bar at the top of the screen. It is an app-menu command, not a sidebar item. Name it **DockWindow Dev**, choose **Self Signed Root** and **Code Signing**, then create it. The build script detects valid identities automatically.
+
+Apple's current [self-signed certificate guide](https://support.apple.com/guide/keychain-access/create-self-signed-certificates-kyca8916/mac) describes the menu. If you cannot locate it, Certificate Assistant is also installed on this Mac at `/System/Library/CoreServices/Certificate Assistant.app`. Never commit a signing certificate's private key or exported signing identity.
 
 ## Verification and limits
 

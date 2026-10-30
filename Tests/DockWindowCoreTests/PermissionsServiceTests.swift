@@ -3,6 +3,22 @@ import Combine
 @testable import DockWindowCore
 
 final class PermissionsServiceTests: XCTestCase {
+    func testUnchangedPermissionPollsDoNotTriggerFeatureAndUIReconciliation() async {
+        await MainActor.run {
+            var recording = false
+            let service = PermissionsService(checkAccessibility: { true }, checkScreenRecording: { recording },
+                requestAccessibility: {}, requestScreenRecording: {}, showSettings: { _ in })
+            var changes = 0
+            let subscription = service.objectWillChange.sink { changes += 1 }
+            service.refresh(); service.refresh()
+            XCTAssertEqual(changes, 0)
+            recording = true; service.refresh()
+            XCTAssertEqual(changes, 1)
+            XCTAssertTrue(service.isGranted)
+            subscription.cancel()
+        }
+    }
+
     func testSlowSystemProbeDoesNotBlockUIOrPublishMissingBeforeCompletion() async {
         let gate = DispatchSemaphore(value: 0)
         let started = expectation(description: "Background preflight starts once")
