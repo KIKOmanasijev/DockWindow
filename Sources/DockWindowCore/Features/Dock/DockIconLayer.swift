@@ -18,6 +18,7 @@ import AppKit
     required init?(coder: NSCoder) { nil }
     func update(image: NSImage?, badgeText: String?, indicators: DotIndicators, color: NSColor,
                 position: DockPosition, scale: CGFloat, reduceMotion: Bool) {
+        if reduceMotion { dots.removeAllAnimations() }
         imageLayer.frame = bounds
         if let image, image !== cachedImage {
             imageLayer.contents = image.cgImage(forProposedRect: nil, context: nil, hints: nil); cachedImage = image

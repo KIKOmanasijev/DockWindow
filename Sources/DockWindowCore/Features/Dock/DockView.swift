@@ -33,6 +33,7 @@ import QuartzCore
     private var dropID: String?
     private var geometry = DockLayout(kinds: [], bounds: .zero, position: .bottom, baseSize: 48, maximumSize: 96)
     var isDragging: Bool { dragged != nil }
+    var ownsMouseSequence: Bool { pressed != nil || dragged != nil }
     func iconFrame(for id: String) -> CGRect? {
         guard let index = items.firstIndex(where: { $0.id == id }), geometry.iconFrames.indices.contains(index) else { return nil }
         return geometry.iconFrames[index]
@@ -55,7 +56,9 @@ import QuartzCore
     override func layout() { super.layout(); render() }
     func stopTracking() {
         link?.invalidate(); link = nil; pointer = nil
-        longPress?.cancel(); longPress = nil; hoverID = nil; onHover?(nil, .zero); render()
+        longPress?.cancel(); longPress = nil; pressed = nil
+        hoverID = nil; onHover?(nil, .zero); render()
+        for icon in layers.values { icon.removeAllAnimations(); icon.imageLayer.removeAllAnimations(); icon.dots.removeAllAnimations() }
     }
     func track(_ point: CGPoint?) {
         pointer = point
@@ -64,7 +67,9 @@ import QuartzCore
                 let next = displayLink(target: self, selector: #selector(tick(_:)))
                 next.add(to: .main, forMode: .common); link = next
             }
-        } else if link != nil { stopTracking() }
+        } else if link != nil {
+            link?.invalidate(); link = nil; hoverID = nil; onHover?(nil, .zero); render()
+        }
     }
     @objc private func tick(_ link: CADisplayLink) { render() }
     func render() {
@@ -183,7 +188,8 @@ import QuartzCore
             if remove || operation == .move { onReorder?(dragged, insertion, remove) }
         }
         if operation.isEmpty { items = preDragItems }
-        preDragItems = []; dragged = nil; dropID = nil; render()
+        preDragItems = []; dragged = nil; dropID = nil
+        link?.invalidate(); link = nil; pointer = nil; render()
     }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { draggingUpdated(sender) }
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
@@ -202,6 +208,7 @@ import QuartzCore
         return target?.kind == .trash || target?.app?.bundleURL != nil || target?.pinnedApp != nil ? .copy : []
     }
     override func draggingExited(_ sender: NSDraggingInfo?) { dropID = nil; render() }
+    deinit { link?.invalidate(); longPress?.cancel() }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         if sender.draggingPasteboard.string(forType: Self.itemType) != nil { return dragged != nil }
         guard let target = item(at: convert(sender.draggingLocation, from: nil)),

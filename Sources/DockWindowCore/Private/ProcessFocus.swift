@@ -15,20 +15,13 @@ public final class ProcessFocus {
     private init() {}
     /// Fronts a specific window with mode 0x200 and sends a key-focus record to that window ID.
     /// Record fields verified against upstream CGSEvent declarations. No mouse-up is synthesized.
-    @discardableResult public func focus(pid: pid_t, windowID: CGWindowID) -> Bool {
-        guard isAvailable else { return false }
+    @discardableResult public func focus(pid: pid_t, windowID: CGWindowID, isCancelled: () -> Bool = { false }) -> Bool {
+        guard isAvailable, !isCancelled() else { return false }
         var serial = ProcessSerialNumber(highLongOfPSN: 0, lowLongOfPSN: 0)
-        guard psn?(pid, &serial) == 0, front?(&serial, windowID, 0x200) == 0 else { return false }
-        var record = [UInt8](repeating: 0, count: 256)
-        record[4] = 248
-        record[8] = 1
-        record[58] = 16
-        var identifier = windowID
-        var point = CGPoint(x: 300_000, y: 300_000)
-        withUnsafeBytes(of: &identifier) { record.replaceSubrange(60..<64, with: $0) }
-        withUnsafeBytes(of: &point) { record.replaceSubrange(32..<48, with: $0) }
+        guard psn?(pid, &serial) == 0, !isCancelled(), front?(&serial, windowID, 0x200) == 0 else { return false }
+        var record = PrivateLayouts.focusRecord(windowID: windowID)
         return record.withUnsafeMutableBufferPointer { buffer in
-            guard let address = buffer.baseAddress else { return false }
+            guard !isCancelled(), let address = buffer.baseAddress else { return false }
             return post?(&serial, address) == 0
         }
     }

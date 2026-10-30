@@ -58,10 +58,15 @@ import SwiftUI
         tracker.$snapshot.dropFirst().receive(on: RunLoop.main).sink { [weak self] _ in self?.updateSnapshot() }.store(in: &subscriptions)
         // Settings sends before persistence. Deliver on the next main-loop turn to read finished values.
         settings.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.settingsChanged() }.store(in: &subscriptions)
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.didWakeNotification, NSWorkspace.activeSpaceDidChangeNotification] {
+            NSWorkspace.shared.notificationCenter.publisher(for: name).receive(on: RunLoop.main)
+                .sink { [weak self] _ in self?.dismiss(animated: false) }.store(in: &subscriptions)
+        }
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification)
+            .receive(on: RunLoop.main).sink { [weak self] _ in self?.settingsChanged() }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .receive(on: RunLoop.main).sink { [weak self] _ in
-                guard let self, self.isActive else { return }
-                self.screen = Self.mouseScreen(); self.updateSnapshot()
+                self?.dismiss(animated: false)
             }.store(in: &subscriptions)
     }
 
@@ -96,23 +101,24 @@ import SwiftUI
     }
 
     /// Cancel delayed appearance and captures immediately. Never focuses a target.
-    public func dismiss() {
+    public func dismiss(animated: Bool = true) {
         generation &+= 1
+        openingTask?.cancel(); openingTask = nil
         appearanceTask?.cancel(); appearanceTask = nil
         refreshUpdateTask?.cancel(); refreshUpdateTask = nil
         refreshSession.stop()
         let wasActive = isActive
         isActive = false; sessionPID = nil
         hideTask?.cancel()
-        if panel.isVisible, !Theme.reducesMotion(settings) {
+        if animated, wasActive, enabled, settings.switcherEnabled, !settings.isPaused, panel.isVisible, !Theme.reducesMotion(settings) {
             presentation.revealed = false
             let token = generation
             hideTask = Task { [weak self] in
                 do { try await Task.sleep(nanoseconds: 120_000_000) } catch { return }
-                guard let self, self.generation == token else { return }
-                self.panel.orderOut(nil)
+                guard let self, !Task.isCancelled, self.generation == token else { return }
+                self.panel.orderOut(nil); self.hideTask = nil
             }
-        } else { presentation.revealed = false; panel.orderOut(nil) }
+        } else { hideTask = nil; presentation.revealed = false; panel.orderOut(nil) }
         if wasActive { onSessionEnded?() }
     }
 
@@ -157,6 +163,7 @@ import SwiftUI
         layout(); scheduleRefreshUpdate()
     }
     private func settingsChanged() {
+        if !isActive, hideTask != nil, Theme.reducesMotion(settings) { dismiss(animated: false) }
         guard enabled, settings.switcherEnabled, !settings.isPaused else { dismiss(); return }
         panel.appearance = Theme.appearance(settings.theme)
         updateSnapshot()
@@ -197,7 +204,7 @@ import SwiftUI
         }
     }
     private func showOpeningFailure(app: TrackedApp) {
-        hideTask?.cancel()
+        hideTask?.cancel(); hideTask = nil
         presentation.session.update(items: [])
         presentation.message = "Could not confirm a new \(app.name) window on this desktop. Use the app's File menu to open a window here, then try again."
         presentation.size = CGSize(width: 460, height: 160)
@@ -241,6 +248,9 @@ import SwiftUI
             self.refreshSession.update(windowIDs: self.visibleIDs.intersection(eligible), interval: self.settings.thumbnailRefreshInterval,
                                        size: self.presentation.thumbnailSize, scale: self.screen?.backingScaleFactor ?? 2)
         }
+    }
+    deinit {
+        appearanceTask?.cancel(); hideTask?.cancel(); openingTask?.cancel(); refreshUpdateTask?.cancel()
     }
     private static func mouseScreen() -> NSScreen? {
         NSScreen.screens.first { NSMouseInRect(NSEvent.mouseLocation, $0.frame, false) } ?? NSScreen.main ?? NSScreen.screens.first

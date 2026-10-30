@@ -6,10 +6,11 @@ import ApplicationServices
     private let tracker: WindowTracker
     public init(tracker: WindowTracker) { self.tracker = tracker }
     public func focus(_ window: TrackedWindow) {
+        let lifecycle = tracker.actionCancellation
         tracker.perform(windowID: window.id) { element in
             AXUIElementSetAttributeValue(element, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
             DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
+                guard let self, !lifecycle.isCancelled else { return }
                 if window.isAppHidden { NSRunningApplication(processIdentifier: window.pid)?.unhide() }
                 self.tracker.perform(windowID: window.id) { element in
                     let focused = ProcessFocus.shared.focus(pid: window.pid, windowID: window.id)
@@ -17,6 +18,7 @@ import ApplicationServices
                     AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)
                     if !focused {
                         DispatchQueue.main.async {
+                            guard !lifecycle.isCancelled else { return }
                             NSRunningApplication(processIdentifier: window.pid)?.activate(options: [])
                         }
                         Log.system.notice("Private focus unavailable or failed for window \(window.id); using activation fallback")
@@ -33,27 +35,83 @@ import ApplicationServices
     }
     /// Verifies AX focused-window identity after the focus attempt. This is evidence, not a Space-switch guarantee.
     public func focusVerified(_ window: TrackedWindow, requiringSpace space: UInt64? = nil) async -> Bool {
-        if let space {
-            let membership: [UInt64]? = await Task.detached { SkyLight.shared.spaces(containing: [window.id]) }.value
-            guard membership?.contains(space) == true || window.isMinimized && window.rememberedSpaceIDs.contains(space) else { return false }
-        }
-        focus(window)
-        try? await Task.sleep(nanoseconds: 150_000_000)
-        let isFocused: Bool = await withCheckedContinuation { continuation in
-            tracker.inspect {
-                let root = AXUIElementCreateApplication(window.pid)
-                AXUIElementSetMessagingTimeout(root, 0.25)
-                let focused = AXRead.element(root, kAXFocusedWindowAttribute).flatMap { AXPrivate.shared.windowID(of: $0) }
-                continuation.resume(returning: focused == window.id)
+        let cancellation = OperationCancellation()
+        let lifecycle = tracker.actionCancellation
+        return await withTaskCancellationHandler(operation: {
+            guard !Task.isCancelled, !lifecycle.isCancelled else { return false }
+            let target: DesktopTarget?
+            if let space {
+                guard let requested = DesktopTarget(spaceID: space, activeSpaceIDs: tracker.snapshot.activeSpaceIDs) else { return false }
+                let state = await Task.detached { SpacesService().read(windowIDs: [window.id]) }.value
+                guard !Task.isCancelled, requested.isCurrent(in: state.activeSpaceIDs),
+                      state.membership[window.id]?.contains(space) == true || window.isMinimized && window.rememberedSpaceIDs.contains(space) else { return false }
+                target = requested
+            } else { target = nil }
+            guard !Task.isCancelled, !lifecycle.isCancelled else { return false }
+            let restored: Bool = await withCheckedContinuation { continuation in
+                tracker.perform(windowID: window.id, ifMissing: { continuation.resume(returning: false) }) { element in
+                    guard !cancellation.isCancelled, !lifecycle.isCancelled else { continuation.resume(returning: false); return }
+                    if let target, !target.isCurrent(in: SpacesService().read(windowIDs: []).activeSpaceIDs) {
+                        continuation.resume(returning: false); return
+                    }
+                    guard !cancellation.isCancelled, !lifecycle.isCancelled else { continuation.resume(returning: false); return }
+                    AXUIElementSetAttributeValue(element, kAXMinimizedAttribute as CFString, kCFBooleanFalse)
+                    continuation.resume(returning: true)
+                }
             }
-        }
-        guard isFocused else { return false }
-        if let space {
-            let state = await Task.detached { SpacesService().read(windowIDs: [window.id]) }.value
-            return state.activeSpaceIDs.values.contains(space) && state.membership[window.id]?.contains(space) == true
-        }
-        return true
+            guard restored, !Task.isCancelled, !lifecycle.isCancelled else { return false }
+            if let target {
+                let state = await Task.detached { SpacesService().read(windowIDs: []).activeSpaceIDs }.value
+                guard !Task.isCancelled, target.isCurrent(in: state) else { return false }
+            }
+            guard !Task.isCancelled, !lifecycle.isCancelled else { return false }
+            if window.isAppHidden { NSRunningApplication(processIdentifier: window.pid)?.unhide() }
+            let focused: Bool? = await withCheckedContinuation { continuation in
+                tracker.perform(windowID: window.id, ifMissing: { continuation.resume(returning: nil) }) { element in
+                    guard !cancellation.isCancelled, !lifecycle.isCancelled else { continuation.resume(returning: false); return }
+                    if let target, !target.isCurrent(in: SpacesService().read(windowIDs: []).activeSpaceIDs) {
+                        continuation.resume(returning: false); return
+                    }
+                    guard !cancellation.isCancelled, !lifecycle.isCancelled else { continuation.resume(returning: false); return }
+                    let result = ProcessFocus.shared.focus(pid: window.pid, windowID: window.id, isCancelled: { cancellation.isCancelled || lifecycle.isCancelled })
+                    if !cancellation.isCancelled && !lifecycle.isCancelled {
+                        AXUIElementPerformAction(element, kAXRaiseAction as CFString)
+                    }
+                    if !cancellation.isCancelled && !lifecycle.isCancelled {
+                        AXUIElementSetAttributeValue(element, kAXMainAttribute as CFString, kCFBooleanTrue)
+                    }
+                    continuation.resume(returning: result)
+                }
+            }
+            guard let focused, !Task.isCancelled, !lifecycle.isCancelled else { return false }
+            if !focused {
+                if let target {
+                    let state = await Task.detached { SpacesService().read(windowIDs: []).activeSpaceIDs }.value
+                    guard !Task.isCancelled, target.isCurrent(in: state) else { return false }
+                }
+                guard !Task.isCancelled, !lifecycle.isCancelled else { return false }
+                NSRunningApplication(processIdentifier: window.pid)?.activate(options: [])
+            }
+            do { try await Task.sleep(nanoseconds: 150_000_000) } catch { return false }
+            guard !Task.isCancelled, !lifecycle.isCancelled else { return false }
+            let isFocused: Bool = await withCheckedContinuation { continuation in
+                tracker.inspect {
+                    guard !cancellation.isCancelled, !lifecycle.isCancelled else { continuation.resume(returning: false); return }
+                    let root = AXUIElementCreateApplication(window.pid)
+                    AXUIElementSetMessagingTimeout(root, 0.25)
+                    let focused = AXRead.element(root, kAXFocusedWindowAttribute).flatMap { AXPrivate.shared.windowID(of: $0) }
+                    continuation.resume(returning: focused == window.id)
+                }
+            }
+            guard isFocused, !Task.isCancelled, !lifecycle.isCancelled else { return false }
+            if let target {
+                let state = await Task.detached { SpacesService().read(windowIDs: [window.id]) }.value
+                return !Task.isCancelled && !lifecycle.isCancelled && target.isCurrent(in: state.activeSpaceIDs) && state.membership[window.id]?.contains(target.spaceID) == true
+            }
+            return !Task.isCancelled && !lifecycle.isCancelled
+        }, onCancel: { cancellation.cancel() })
     }
+
     public func focus(windowID: CGWindowID) { if let window = tracker.snapshot.windows.first(where: { $0.id == windowID }) { focus(window) } }
     public func close(_ window: TrackedWindow) {
         tracker.perform(windowID: window.id) { element in

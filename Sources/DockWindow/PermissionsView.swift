@@ -7,22 +7,23 @@ struct PermissionsView: View {
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
+        ScrollView {
         VStack(alignment: .leading, spacing: 18) {
             Text("Your windows, on this desktop").font(.title2.bold())
             Text("DockWindow needs both permissions before it can replace the Dock or window switcher.")
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
-                Label(permissions.accessibility ? "Accessibility granted" : "Accessibility not active", systemImage: permissions.accessibility ? "checkmark.circle.fill" : "exclamationmark.triangle")
+                Label(!permissions.hasCheckedPermissions ? "Accessibility: Checking..." : permissions.accessibility ? "Accessibility granted" : "Accessibility: Unavailable to this build", systemImage: permissions.accessibility ? "checkmark.circle.fill" : "exclamationmark.triangle")
                 Spacer()
                 Button("Open System Settings", action: permissions.openAccessibility)
             }
             HStack {
-                Label(permissions.screenRecording ? "Screen Recording granted" : "Screen Recording not active", systemImage: permissions.screenRecording ? "checkmark.circle.fill" : "exclamationmark.triangle")
+                Label(!permissions.hasCheckedPermissions ? "Screen Recording: Checking..." : permissions.screenRecording ? "Screen Recording granted" : "Screen Recording: Unavailable to this build", systemImage: permissions.screenRecording ? "checkmark.circle.fill" : "exclamationmark.triangle")
                 Spacer()
                 Button("Open System Settings", action: permissions.openScreenRecording)
             }
-            if !permissions.isGranted {
-                Text("Already enabled in System Settings? Relaunch first. If access is still inactive, remove DockWindow from the affected permission list, then add ~/Applications/DockWindow.app again. Screen Recording has its own permission list.")
+            if permissions.hasCheckedPermissions && !permissions.isGranted {
+                Text("A Settings toggle and this running build can disagree when the app signature changes. These rows show the current process checks. Relaunch after a permission change; details are recorded in the system log.")
                     .font(.callout).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             }
             if permissions.usesAdHocSigning {
@@ -36,7 +37,10 @@ struct PermissionsView: View {
             Text("Relaunch waits for DockWindow to quit and restore the native Dock before starting a fresh process.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(28)
+        }
+        .frame(minWidth: 580, minHeight: 480)
         .onReceive(timer) { _ in permissions.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in permissions.refresh() }
         .alert("Could not relaunch DockWindow", isPresented: Binding(get: { relaunchError != nil }, set: { if !$0 { relaunchError = nil } })) {

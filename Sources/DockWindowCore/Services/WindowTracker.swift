@@ -13,14 +13,21 @@ import Combine
     private var tokens: [NSObjectProtocol] = []
     private var timer: DispatchSourceTimer?
     private var started = false
+    internal var isRunning: Bool { started }
+    internal private(set) var actionCancellation = OperationCancellation()
     private var pending: WindowSnapshot?
     private var scheduledPublish = false
     private var generation = 0
     public init() {}
-    deinit { timer?.cancel(); worker.stop() }
+    deinit {
+        actionCancellation.cancel()
+        timer?.cancel(); worker.stop()
+        for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token); NotificationCenter.default.removeObserver(token) }
+    }
     public func start() {
         guard !started else { return }
         started = true
+        actionCancellation = OperationCancellation()
         generation += 1
         let session = generation
         worker.start { [weak self] snapshot in
@@ -66,6 +73,7 @@ import Combine
         refresh()
     }
     public func stop() {
+        actionCancellation.cancel()
         started = false; generation += 1; pending = nil; scheduledPublish = false
         timer?.cancel(); timer = nil
         for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token); NotificationCenter.default.removeObserver(token) }
@@ -73,15 +81,20 @@ import Combine
     }
     public func refresh() {
         guard started else { return }
-        let apps = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular && $0.processIdentifier != ProcessInfo.processInfo.processIdentifier }.map {
+        let apps = NSWorkspace.shared.runningApplications.filter { $0.activationPolicy == .regular }.map {
             TrackedApp(pid: $0.processIdentifier, bundleIdentifier: $0.bundleIdentifier, name: $0.localizedName ?? "Application",
                        bundleURL: $0.bundleURL, icon: $0.icon ?? NSImage(), isHidden: $0.isHidden, isFrontmost: $0.isActive, badgeLabel: nil)
         }
         worker.refresh(apps: apps)
     }
     /// Executes a window action off-main. The reference never escapes the worker operation.
-    internal func perform(windowID: CGWindowID, action: @escaping (AXUIElement) -> Void) {
-        worker.perform(windowID: windowID, action: action)
+    internal func perform(windowID: CGWindowID, ifMissing: @escaping () -> Void = {}, action: @escaping (AXUIElement) -> Void) {
+        guard started else { ifMissing(); return }
+        let cancellation = actionCancellation
+        worker.perform(windowID: windowID, ifMissing: ifMissing) { element in
+            guard !cancellation.isCancelled else { ifMissing(); return }
+            action(element)
+        }
     }
     internal func inspect(_ action: @escaping () -> Void) { worker.queue.async { action() } }
     public func setBadges(_ badges: [String: String]) { worker.setBadges(badges) }
@@ -115,13 +128,18 @@ private final class WindowTrackingWorker: @unchecked Sendable {
     private let spaceLock = NSLock()
     private var polledIDs: [CGWindowID] = []
     private var session = 0
+    private var pollingSession = 0
+    private var inventoryRevision: UInt64 = 0
+    private var polledRevision: UInt64 = 0
     func start(publish: @escaping (WindowSnapshot) -> Void) {
         queue.async {
             self.session += 1
+            self.spaceLock.lock(); self.pollingSession = self.session; self.spaceLock.unlock()
             self.publish = publish
+            let generation = self.session
             self.hub = AXObserverHub { [weak self] _, notification in
                 self?.queue.async { [weak self] in
-                    guard let self, self.publish != nil else { return }
+                    guard let self, self.publish != nil, self.session == generation else { return }
                     self.scheduleRefresh()
                 }
             }
@@ -132,7 +150,8 @@ private final class WindowTrackingWorker: @unchecked Sendable {
             self.session += 1; self.publish = nil; self.hub?.stop(); self.hub = nil
             self.windows.removeAll(); self.elements.removeAll(); self.apps.removeAll()
             self.cursors.removeAll(); self.lastScan.removeAll(); self.scanRetries.removeAll(); self.activated.removeAll(); self.focusedID = nil; self.observedPIDs.removeAll()
-            self.spaceLock.lock(); self.polledIDs = []; self.spaceLock.unlock()
+            self.refreshPending = false; self.retryScheduled = false; self.active = [:]
+            self.spaceLock.lock(); self.pollingSession = self.session; self.polledIDs = []; self.spaceLock.unlock()
         }
     }
     func setSubroles(_ value: Set<String>) { queue.async { self.subroles = value } }
@@ -152,16 +171,20 @@ private final class WindowTrackingWorker: @unchecked Sendable {
     private func scheduleRefresh() {
         guard !refreshPending, publish != nil else { return }
         refreshPending = true
-        queue.asyncAfter(deadline: .now() + .milliseconds(20)) { self.refreshPending = false; self.enumerate() }
+        let generation = session
+        queue.asyncAfter(deadline: .now() + .milliseconds(20)) {
+            guard self.session == generation else { return }
+            self.refreshPending = false; self.enumerate()
+        }
     }
-    func perform(windowID: CGWindowID, action: @escaping (AXUIElement) -> Void) {
-        queue.async { if let element = self.elements[windowID] { action(element) }; self.scheduleRefresh() }
+    func perform(windowID: CGWindowID, ifMissing: @escaping () -> Void, action: @escaping (AXUIElement) -> Void) {
+        queue.async { if let element = self.elements[windowID] { action(element) } else { ifMissing() }; self.scheduleRefresh() }
     }
     func pollSpaces() {
-        spaceLock.lock(); let ids = polledIDs; spaceLock.unlock()
+        spaceLock.lock(); let ids = polledIDs; let generation = pollingSession; let revision = polledRevision; spaceLock.unlock()
         let state = SpacesService().read(windowIDs: ids)
         queue.async {
-            guard self.publish != nil else { return }
+            guard self.publish != nil, self.session == generation, self.inventoryRevision == revision else { return }
             var changed = self.active != state.activeSpaceIDs
             self.active = state.activeSpaceIDs
             if changed {
@@ -173,7 +196,7 @@ private final class WindowTrackingWorker: @unchecked Sendable {
                 guard var window = self.windows[id] else { continue }
                 let membership = state.membership[id] ?? []
                 // Retain the last known membership while minimized or when a transient query fails.
-                if !membership.isEmpty && membership != window.spaceIDs {
+                if !window.isMinimized && !membership.isEmpty && membership != window.spaceIDs {
                     window.spaceIDs = membership; window.rememberedSpaceIDs = membership; self.windows[id] = window; changed = true
                 }
             }
@@ -203,11 +226,11 @@ private final class WindowTrackingWorker: @unchecked Sendable {
                 for (id, value) in windows where value.pid == app.pid { nextWindows[id] = value; nextElements[id] = elements[id] }
                 continue
             }
-            var candidates = raw as? [AXUIElement] ?? []
+            var candidates = AXRead.elements(raw)
             for key in [kAXFocusedWindowAttribute, kAXMainWindowAttribute] {
                 if let element = AXRead.element(root, key) { candidates.append(element) }
             }
-            candidates.append(contentsOf: elements.filter { windows[$0.key]?.pid == app.pid && cg[$0.key] != nil }.map(\.value))
+            candidates.append(contentsOf: elements.filter { windows[$0.key]?.pid == app.pid && (cg[$0.key] != nil || windows[$0.key]?.isMinimized == true) }.map(\.value))
             let known = Set(candidates.compactMap { AXPrivate.shared.windowID(of: $0) })
             let missing = Set(cg.compactMap { id, item -> CGWindowID? in
                 guard (item[kCGWindowOwnerPID as String] as? NSNumber)?.int32Value == app.pid,
@@ -230,14 +253,17 @@ private final class WindowTrackingWorker: @unchecked Sendable {
                 if roleStatus == .cannotComplete, let previous = windows[id], cg[id] != nil {
                     nextWindows[id] = previous; nextElements[id] = element; continue
                 }
+                let minimized = AXRead.value(element, kAXMinimizedAttribute) as? Bool ?? windows[id]?.isMinimized ?? false
+                // A validated AX root may survive being removed from the server's minimized inventory.
+                let previousRecord: [String: Any]? = minimized && windows[id] != nil ? [kCGWindowLayer as String: 0, kCGWindowAlpha as String: 1] : nil
                 guard roleStatus == .success, roleValue as? String == kAXWindowRole,
-                      let record = cg[id], (record[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
-                      (record[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 0 > 0,
+                      let record = cg[id] ?? previousRecord, (record[kCGWindowLayer as String] as? NSNumber)?.intValue == 0,
+                      ((record[kCGWindowAlpha as String] as? NSNumber)?.doubleValue ?? 0 > 0 || minimized),
                       let subrole = AXRead.value(element, kAXSubroleAttribute) as? String ?? (windows[id] != nil ? kAXStandardWindowSubrole : nil), subroles.contains(subrole),
                       let frame = AXRead.frame(element) ?? windows[id]?.frame, frame.width >= 100, frame.height >= 50 else { continue }
                 var window = TrackedWindow(id: id, pid: app.pid, bundleIdentifier: app.bundleIdentifier,
                     title: AXRead.value(element, kAXTitleAttribute) as? String ?? app.name, frame: frame,
-                    spaceIDs: windows[id]?.spaceIDs ?? [], isMinimized: AXRead.value(element, kAXMinimizedAttribute) as? Bool ?? windows[id]?.isMinimized ?? false,
+                    spaceIDs: windows[id]?.spaceIDs ?? [], isMinimized: minimized,
                     isAppHidden: app.isHidden, isFullscreen: AXRead.value(element, "AXFullScreen") as? Bool ?? false,
                     lastFocusedAt: windows[id]?.lastFocusedAt ?? .distantPast, rememberedSpaceIDs: windows[id]?.rememberedSpaceIDs ?? windows[id]?.spaceIDs ?? [])
                 if app.isFrontmost && id == focused {
@@ -251,15 +277,16 @@ private final class WindowTrackingWorker: @unchecked Sendable {
         windows = nextWindows; elements = nextElements
         cursors = cursors.filter { running.contains($0.key) }; lastScan = lastScan.filter { running.contains($0.key) }
         scanRetries = scanRetries.filter { running.contains($0.key) }; activated = activated.filter { running.contains($0.key) }
-        spaceLock.lock(); polledIDs = Array(windows.keys); spaceLock.unlock()
+        inventoryRevision &+= 1
+        spaceLock.lock(); polledIDs = Array(windows.keys); polledRevision = inventoryRevision; spaceLock.unlock()
         emit()
         spaceQueue.async { self.pollSpaces() }
         if hasGaps && !retryScheduled {
             retryScheduled = true
             let generation = session
             queue.asyncAfter(deadline: .now() + 3) {
-                self.retryScheduled = false
                 guard self.session == generation, self.publish != nil else { return }
+                self.retryScheduled = false
                 self.scheduleRefresh()
             }
         }

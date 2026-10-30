@@ -5,6 +5,7 @@ import Foundation
 public final class AXObserverHub {
     private final class Context {
         let handler: (pid_t, String) -> Void
+        let cancellation = OperationCancellation()
         init(_ handler: @escaping (pid_t, String) -> Void) { self.handler = handler }
     }
     private struct Registration {
@@ -36,7 +37,7 @@ public final class AXObserverHub {
         let keepAlive = CFRunLoopTimerCreateWithHandler(nil, CFAbsoluteTimeGetCurrent() + 3600, 3600, 0, 0) { _ in }
         if let timer = keepAlive { CFRunLoopAddTimer(runLoop, timer, .defaultMode) }
         lock.lock()
-        if stopped { lock.unlock(); return }
+        if stopped { lock.unlock(); if let timer = keepAlive { CFRunLoopTimerInvalidate(timer) }; return }
         loop = runLoop
         let work = pending
         pending.removeAll()
@@ -45,6 +46,7 @@ public final class AXObserverHub {
         CFRunLoopRun()
         for registration in registrations.values { CFRunLoopRemoveSource(runLoop, AXObserverGetRunLoopSource(registration.observer), .defaultMode) }
         registrations.removeAll()
+        if let timer = keepAlive { CFRunLoopTimerInvalidate(timer) }
         lock.lock(); loop = nil; lock.unlock()
     }
     private func enqueue(_ work: @escaping () -> Void) {
@@ -65,7 +67,7 @@ public final class AXObserverHub {
                     let context = Unmanaged<Context>.fromOpaque(refcon).takeUnretainedValue()
                     var pid: pid_t = 0
                     AXUIElementGetPid(element, &pid)
-                    context.handler(pid, notification as String)
+                    if !context.cancellation.isCancelled { context.handler(pid, notification as String) }
                 }, &observer)
                 guard status == .success, let observer else { return }
                 let application = AXUIElementCreateApplication(pid)
@@ -102,6 +104,7 @@ public final class AXObserverHub {
         }
     }
     public func stop() {
+        context.cancellation.cancel()
         lock.lock(); stopped = true; pending.removeAll()
         if let loop { CFRunLoopPerformBlock(loop, CFRunLoopMode.defaultMode.rawValue) { CFRunLoopStop(loop) }; CFRunLoopWakeUp(loop) }
         lock.unlock()

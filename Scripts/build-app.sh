@@ -12,10 +12,18 @@ cp "$bin/DockWindow" "$staging/DockWindow.app/Contents/MacOS/"
 cp Resources/AppIcon.icns "$staging/DockWindow.app/Contents/Resources/"
 cp Resources/Info.plist "$staging/DockWindow.app/Contents/"
 if security find-identity -v -p codesigning | /usr/bin/grep -q '"DockWindow Dev"'; then
- codesign --force --deep --options runtime --sign 'DockWindow Dev' "$staging/DockWindow.app"
+ codesign --force --deep --entitlements Resources/DockWindow.entitlements --options runtime --sign 'DockWindow Dev' "$staging/DockWindow.app"
 else
  print -u2 'WARNING: DockWindow Dev certificate missing. Ad-hoc signing can reset permissions on rebuild.'
- codesign --force --deep --sign - "$staging/DockWindow.app"
+ codesign --force --deep --entitlements Resources/DockWindow.entitlements --sign - "$staging/DockWindow.app"
+fi
+# A running app must finish exact native Dock restoration before its bundle is replaced.
+if /usr/bin/pgrep -x DockWindow >/dev/null; then
+ /usr/bin/osascript -e 'tell application id "com.dockwindow.app" to quit'
+ if /usr/bin/pgrep -x DockWindow >/dev/null; then
+  print -u2 'DockWindow is still running. Installation stopped so restoration can finish.'
+  exit 1
+ fi
 fi
 rm -rf "$app"
 mv "$staging/DockWindow.app" "$app"

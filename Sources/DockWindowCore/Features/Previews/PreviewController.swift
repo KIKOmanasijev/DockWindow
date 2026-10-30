@@ -57,6 +57,12 @@ import SwiftUI
             guard self.allowed else { self.dismiss(); return }
             if self.item != nil { self.update() }
         }.store(in: &subscriptions)
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.didWakeNotification, NSWorkspace.activeSpaceDidChangeNotification] {
+            NSWorkspace.shared.notificationCenter.publisher(for: name).receive(on: RunLoop.main)
+                .sink { [weak self] _ in self?.dismiss() }.store(in: &subscriptions)
+        }
+        NSWorkspace.shared.notificationCenter.publisher(for: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification)
+            .receive(on: RunLoop.main).sink { [weak self] _ in self?.presentation.objectWillChange.send() }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: NSApplication.didChangeScreenParametersNotification)
             .receive(on: RunLoop.main).sink { [weak self] _ in self?.dismiss() }.store(in: &subscriptions)
     }
@@ -98,7 +104,7 @@ import SwiftUI
     }
     private var allowed: Bool { enabled && settings.previewsEnabled && !settings.isPaused }
     private func receive(item: DockItem, anchor: CGRect, screen: NSScreen, native: Bool, pin: Bool) {
-        guard allowed, item.kind == .application else { return }
+        guard allowed, item.kind == .application, native != settings.useDockWindowDock else { return }
         // Show All Windows owns the surface until outside click or Escape.
         guard !pinned || pin else { return }
         closeTask?.cancel(); closeTask = nil
@@ -107,7 +113,7 @@ import SwiftUI
             generation &+= 1; appearanceTask?.cancel(); appearanceTask = nil
             openingTask?.cancel(); openingTask = nil
             presentation.opening = false; presentation.message = nil
-            visibleIDs = []; captures.stop()
+            visibleIDs = []; captures.stop(); presentation.contentID &+= 1
         }
         self.item = item; self.anchor = anchor; self.screen = screen; self.native = native
         pinned = pin
@@ -120,16 +126,21 @@ import SwiftUI
         if delay == 0 { reveal(); return }
         appearanceTask = Task { [weak self] in
             do { try await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000)) } catch { return }
-            guard let self, self.generation == token, self.allowed, self.anchor.contains(NSEvent.mouseLocation) else { self?.dismiss(); return }
+            guard let self, !Task.isCancelled, self.generation == token else { return }
+            guard self.allowed, self.anchor.contains(NSEvent.mouseLocation) else { self.dismiss(); return }
             self.appearanceTask = nil; self.reveal()
         }
     }
     private func update() {
         guard allowed, let item, let screen else { return }
+        guard native != settings.useDockWindowDock else { dismiss(); return }
         let snapshot = tracker.snapshot
         let app = item.app.flatMap { old in snapshot.apps.first { $0.pid == old.pid } }
             ?? snapshot.apps.first { $0.bundleIdentifier == item.pinnedApp?.bundleIdentifier && item.pinnedApp != nil }
         presentation.app = app
+        presentation.bundleURL = item.pinnedApp?.url ?? app?.bundleURL
+        presentation.appName = app?.name ?? item.pinnedApp?.url.deletingPathExtension().lastPathComponent ?? "Application"
+        presentation.appIcon = app?.icon ?? presentation.bundleURL.map { NSWorkspace.shared.icon(forFile: $0.path) }
         currentSpaces = SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: Self.displayIdentifier(screen), separateSpaces: NSScreen.screensHaveSeparateSpaces)
         if let app {
             presentation.windows = WindowFilter(scope: settings.previewScope, currentSpaceIDs: currentSpaces,
@@ -212,23 +223,27 @@ import SwiftUI
     }
     private func openWindow() {
         guard allowed, !presentation.opening else { return }
-        guard let app = presentation.app else {
-            report("Launch this application from the Dock, then use New Window to open a window here."); return
-        }
+        let app = presentation.app
+        let bundleURL = presentation.bundleURL
+        guard app != nil || bundleURL != nil else { report("This application's location is unavailable. Pin it again from Finder."); return }
+        let name = presentation.appName
         let space = currentSpaces.sorted().first ?? 0
-        let rule = settings.newWindowRule(for: app.bundleIdentifier ?? "")
+        let rule = settings.newWindowRule(for: app?.bundleIdentifier ?? item?.pinnedApp?.bundleIdentifier ?? "")
         pinned = true; presentation.opening = true
         let token = generation
         openingTask = Task { [weak self] in
             guard let self else { return }
-            let result = await self.newWindowOpener.open(app: app, onSpace: space, rule: rule)
+            let result: NewWindowOpener.Result
+            if let app { result = await self.newWindowOpener.open(app: app, onSpace: space, rule: rule) }
+            else if let bundleURL { result = await self.newWindowOpener.openPinned(bundleURL: bundleURL, onSpace: space, rule: rule) }
+            else { return }
             guard !Task.isCancelled, self.generation == token else { return }
             self.presentation.opening = false
             switch result {
             case .opened: self.dismiss()
             case .cancelled: break
             case .failed, .unknownSpace:
-                self.report("Could not confirm a new \(app.name) window on this desktop. Use the app's File menu to open a window here, then try again.")
+                self.report("Could not confirm a new \(name) window on this desktop. Use the app's File menu to open a window here, then try again.")
             }
         }
     }

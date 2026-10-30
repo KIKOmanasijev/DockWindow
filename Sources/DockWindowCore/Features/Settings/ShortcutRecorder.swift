@@ -5,8 +5,18 @@ import SwiftUI
 @MainActor public enum SettingsShortcutRecording {
     public static let recordingDidChange = Notification.Name("DockWindow.SettingsShortcutRecordingDidChange")
     public private(set) static var isRecording = false
-    fileprivate static func setRecording(_ value: Bool) {
-        isRecording = value
+    private static var owner: UUID?
+    static weak var activeRecorder: RecorderButton?
+    static func acquire(owner token: UUID) {
+        owner = token
+        if !isRecording {
+            isRecording = true
+            NotificationCenter.default.post(name: recordingDidChange, object: nil)
+        }
+    }
+    static func release(owner token: UUID) {
+        guard owner == token else { return }
+        owner = nil; isRecording = false
         NotificationCenter.default.post(name: recordingDidChange, object: nil)
     }
 }
@@ -25,6 +35,7 @@ import SwiftUI
 @MainActor final class RecorderButton: NSButton {
     var value = KeyboardShortcut.switcher
     var onRecord: ((KeyboardShortcut) -> Void)?
+    private let recordingID = UUID()
     private var monitor: Any?
     private var resignObserver: NSObjectProtocol?
     override init(frame: NSRect) {
@@ -38,10 +49,14 @@ import SwiftUI
     @objc private func begin() {
         if monitor != nil { finish(); return }
         // End any other recorder before claiming the event stream.
-        window?.makeFirstResponder(self)
-        SettingsShortcutRecording.setRecording(true)
+        guard let window, window.isKeyWindow else { return }
+        SettingsShortcutRecording.activeRecorder?.finish()
+        guard window.makeFirstResponder(self) else { return }
+        SettingsShortcutRecording.activeRecorder = self
+        SettingsShortcutRecording.acquire(owner: recordingID)
         monitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
+            guard event.window === self.window, self.window?.firstResponder === self else { self.finish(); return event }
             guard !event.isARepeat else { return nil }
             if event.keyCode == 53 { self.finish(); return nil }
             let modifiers = HotkeyModifiers(rawValue: UInt64(event.modifierFlags.rawValue)).intersection(.relevant)
@@ -64,8 +79,18 @@ import SwiftUI
         monitor = nil
         if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
         resignObserver = nil
-        SettingsShortcutRecording.setRecording(false)
+        SettingsShortcutRecording.release(owner: recordingID)
         refreshTitle()
+    }
+    override func viewWillMove(toWindow newWindow: NSWindow?) {
+        if newWindow !== window { finish() }
+        super.viewWillMove(toWindow: newWindow)
+    }
+    deinit {
+        if let monitor { NSEvent.removeMonitor(monitor) }
+        if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
+        let token = recordingID
+        Task { @MainActor in SettingsShortcutRecording.release(owner: token) }
     }
     func refreshTitle() {
         title = monitor == nil ? Self.label(value) : "Press shortcut (Esc cancels)"

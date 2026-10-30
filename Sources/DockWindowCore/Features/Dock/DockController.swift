@@ -11,7 +11,7 @@ import Combine
     public var onIconClicked: (() -> Void)?
     /// If absent, actionable failures appear in an NSAlert.
     public var onError: ((String) -> Void)?
-    public var previewVisible = false { didSet { guard previewVisible != oldValue else { return }; view.previewVisible = previewVisible; if previewVisible { hideTask?.cancel() } else { updatePointer() } } }
+    public var previewVisible = false { didSet { guard previewVisible != oldValue else { return }; view.previewVisible = previewVisible; if previewVisible { hideTask?.cancel(); hideTask = nil } else { updatePointer() } } }
     private let tracker: WindowTracker
     private let actions: WindowActions
     private let settings: AppSettings
@@ -24,6 +24,8 @@ import Combine
     private var globalMonitor: Any?
     private var screenObserver: NSObjectProtocol?
     private var launchObserver: NSObjectProtocol?
+    private var workspaceObservers: [NSObjectProtocol] = []
+    private var lifecycleGeneration: UInt64 = 0
     private var screen: NSScreen?
     private var shownFrame = CGRect.zero
     private var menuVisible = false
@@ -50,7 +52,7 @@ import Combine
     }
     /// Call only after the coordinator has enabled the native Dock mitigation and permission gates.
     public func start() {
-        guard !started else { return }; started = true
+        guard !started else { return }; started = true; lifecycleGeneration &+= 1
         tracker.$snapshot.receive(on: RunLoop.main).sink { [weak self] _ in self?.reload() }.store(in: &subscriptions)
         settings.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.reload() }.store(in: &subscriptions)
         pins.$apps.receive(on: RunLoop.main).sink { [weak self] _ in self?.reload() }.store(in: &subscriptions)
@@ -67,19 +69,35 @@ import Combine
         launchObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.reload() }
         }
-        reload(); panel.orderFrontRegardless(); updatePointer()
+        for name in [NSWorkspace.willSleepNotification, NSWorkspace.didWakeNotification, NSWorkspace.accessibilityDisplayOptionsDidChangeNotification] {
+            workspaceObservers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
+                MainActor.assumeIsolated {
+                    guard let self else { return }
+                    self.hideTask?.cancel(); self.hideTask = nil
+                    self.view.stopTracking()
+                    if notification.name == NSWorkspace.willSleepNotification {
+                        self.lifecycleGeneration &+= 1
+                        for task in self.openingTasks.values { task.cancel() }; self.openingTasks.removeAll()
+                        self.panel.orderOut(nil)
+                    }
+                    else { self.screen = nil; self.reload() }
+                }
+            })
+        }
+        reload(); updatePointer()
     }
     /// Cancels pending UI work and opening sequences. Does not stop shared services or restore native preferences.
     public func stop() {
-        guard started else { return }; started = false
+        guard started else { return }; started = false; lifecycleGeneration &+= 1
         hideTask?.cancel(); hideTask = nil
         for task in openingTasks.values { task.cancel() }; openingTasks.removeAll()
         for monitor in [localMonitor, globalMonitor].compactMap({ $0 }) { NSEvent.removeMonitor(monitor) }
         localMonitor = nil; globalMonitor = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }; screenObserver = nil
         if let launchObserver { NSWorkspace.shared.notificationCenter.removeObserver(launchObserver) }; launchObserver = nil
+        for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }; workspaceObservers = []
         subscriptions.removeAll(); view.launching = []; view.stopTracking(); panel.orderOut(nil); panel.ignoresMouseEvents = true
-        launching.removeAll(); removedRunning.removeAll(); hoverItem = nil; hidden = false
+        launching.removeAll(); removedRunning.removeAll(); hoverItem = nil; hidden = false; previewVisible = false; scrollState = nil
     }
     private func display() -> NSScreen? {
         if settings.dockDisplay == .withMouse {
@@ -99,9 +117,15 @@ import Combine
     private func reload() {
         guard started else { return }
         guard settings.useDockWindowDock, !settings.isPaused else {
-            panel.orderOut(nil); view.stopTracking(); return
+            hideTask?.cancel(); hideTask = nil
+            for task in openingTasks.values { task.cancel() }; openingTasks.removeAll()
+            lifecycleGeneration &+= 1
+            panel.orderOut(nil); panel.ignoresMouseEvents = true; view.stopTracking(); return
         }
-        guard let nextScreen = display() else { panel.orderOut(nil); return }
+        guard let nextScreen = display() else { hideTask?.cancel(); hideTask = nil; view.stopTracking(); panel.orderOut(nil); return }
+        if screen !== nextScreen {
+            hideTask?.cancel(); hideTask = nil; view.stopTracking()
+        }
         screen = nextScreen
         shownFrame = DockLayout.panelFrame(screen: nextScreen.frame, position: settings.dockPosition, depth: settings.dockPosition == .bottom ? max(210, settings.magnificationSize + 85) : max(360, settings.magnificationSize + 220))
         if !settings.autohide { hidden = false; hideTask?.cancel(); hideTask = nil }
@@ -141,10 +165,10 @@ import Combine
         let global = NSEvent.mouseLocation
         let point = view.convert(panel.convertPoint(fromScreen: global), from: nil)
         let inside = !hidden && view.containsInteractivePoint(point)
-        panel.ignoresMouseEvents = !inside && !view.isDragging
+        panel.ignoresMouseEvents = !inside && !view.ownsMouseSequence
         view.track(inside || view.isDragging ? point : nil)
         let edge = DockLayout.touchesEdge(global, screen: screen.frame, position: settings.dockPosition)
-        if inside || edge || previewVisible || view.isDragging || menuVisible {
+        if inside || edge || previewVisible || view.ownsMouseSequence || menuVisible {
             hideTask?.cancel(); hideTask = nil
             if hidden { setHidden(false) }
         } else if settings.autohide, !hidden, hideTask == nil {
@@ -159,6 +183,10 @@ import Combine
     private func setHidden(_ value: Bool) {
         hidden = value
         if value { view.stopTracking(); panel.ignoresMouseEvents = true }
+        if Theme.reducesMotion(settings) {
+            panel.setFrame(value ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame, display: true)
+            return
+        }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = Theme.reducesMotion(settings) ? 0 : 0.18
             panel.animator().setFrame(value ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame, display: true)
@@ -205,17 +233,24 @@ import Combine
         }
     }
     private func openNew(_ item: DockItem) {
-        guard let app = item.app else { launch(item); return }
+        let app = item.app
+        let url = item.pinnedApp?.url
+        guard app != nil || url != nil else { report("This application's location is unavailable. Pin it again from Finder."); return }
+        let name = app?.name ?? url?.deletingPathExtension().lastPathComponent ?? "application"
+        let rule = settings.newWindowRule(for: app?.bundleIdentifier ?? item.pinnedApp?.bundleIdentifier ?? "")
         guard let space = spaces.sorted().first else { report("The current desktop is unavailable. Open a window from the app's File menu, then try again."); return }
         guard openingTasks[item.id] == nil else { return }
         openingTasks[item.id] = Task { [weak self] in
             guard let self else { return }
-            let result = await self.opener.open(app: app, onSpace: space, rule: self.settings.newWindowRule(for: app.bundleIdentifier ?? ""))
+            let result: NewWindowOpener.Result
+            if let app { result = await self.opener.open(app: app, onSpace: space, rule: rule) }
+            else if let url { result = await self.opener.openPinned(bundleURL: url, onSpace: space, rule: rule) }
+            else { return }
             guard !Task.isCancelled, self.started else { return }
             self.openingTasks[item.id] = nil
             switch result {
             case .opened, .cancelled: break
-            case .failed, .unknownSpace: self.report("Could not confirm a new \(app.name) window on this desktop. Use the app's File menu to open a window here, then try again.")
+            case .failed, .unknownSpace: self.report("Could not confirm a new \(name) window on this desktop. Use the app's File menu to open a window here, then try again.")
             }
         }
     }
@@ -223,10 +258,11 @@ import Combine
         guard let url = item.pinnedApp?.url ?? item.app?.bundleURL else { report("This application's location is unavailable. Pin it again from Finder."); return }
         guard !launching.contains(item.id) else { return }
         launching.insert(item.id); view.launching = launching; view.render()
+        let token = lifecycleGeneration
         let configuration = NSWorkspace.OpenConfiguration(); configuration.activates = true
         NSWorkspace.shared.openApplication(at: url, configuration: configuration) { [weak self] _, error in
             Task { @MainActor [weak self] in
-                guard let self else { return }
+                guard let self, self.started, self.lifecycleGeneration == token else { return }
                 self.launching.remove(item.id); self.reload()
                 if let error, self.started { self.report("Could not open \(url.lastPathComponent): \(error.localizedDescription). Check its location in Finder.") }
             }
@@ -332,6 +368,16 @@ import Combine
             }.value
             if let failure { self?.report("Could not empty Trash. Open Trash in Finder and try again. \(failure)") }; self?.reload()
         }
+    }
+    deinit {
+        hideTask?.cancel()
+        for task in openingTasks.values { task.cancel() }
+        for monitor in [localMonitor, globalMonitor].compactMap({ $0 }) { NSEvent.removeMonitor(monitor) }
+        if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+        if let launchObserver { NSWorkspace.shared.notificationCenter.removeObserver(launchObserver) }
+        for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
+        let surface = view
+        Task { @MainActor in surface.stopTracking() }
     }
     private func report(_ message: String) {
         if let onError { onError(message) }

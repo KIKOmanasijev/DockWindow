@@ -111,3 +111,29 @@ Manual checks, pending user verification:
 - Enable/disable login launch and check status, approval and error reporting.
 - Request permissions, relaunch through the helper and check the dog icon in Finder.
 - Reveal debug logs, inspect symbol flags, and test reset/reimport confirmations without losing recovery backups.
+
+## M7: Hardening and user-reported UI issues
+
+Completed service cancellation, display-specific focus verification, stale membership reply rejection, minimized membership retention, observer teardown, guarded CF conversion, tested byte layouts and bounded capture geometry. Nonrunning pinned preview actions now launch and verify through openPinned. UI hardening covers stale tasks, lifecycle dismissal, hit testing, side autohide, display-link cleanup and exclusive recorder ownership. Removed the debug-only dump menu. Added the Apple Events entitlement used by hardened-runtime Trash automation. Installer requests orderly quit and refuses replacement while a process remains, rather than killing it.
+
+Latest user instructions supersede the original invisible-app requirement: DockWindow is now a regular foreground application, LSUIElement is false, and its own bundle is pinned into the replacement Dock. Normal self windows are tracked. Settings preserves regular activation. The menu bar keeps the dog identity and uses a small adjacent state indicator and tooltip instead of replacing the brand with a triangle. Onboarding has a retained hosting controller, explicit 640 by 530 viewport, scrolling content and layout before display. The parent moved actual permission/signature checks off-main and added an initial checking state. Both permission surfaces distinguish initial Checking from Unavailable to this build. Repeated login-status RPCs were removed from the main thread.
+
+Final verification: swift build, all 67 tests, release compilation and Scripts/build-app.sh passed without warnings. One final combined installation and fresh launch followed the parent's release of the install hold. codesign verification passed. The installed Info.plist reports LSUIElement=false and CFBundleIconFile=AppIcon. Installed icon content matches the selected dog resource. No local database was accessed. No browser or GUI automation was used. git diff --check passed.
+
+Runtime evidence, 2026-10-30: process 86846 launched from /Users/kiko/Applications/DockWindow.app. Its public system log states: accessibility=false, screenRecording=false, adHoc=true. This is the actual process result, despite the user's Settings screenshot showing Screen & System Audio Recording enabled. Permission access is not claimed as fixed. No fake grants or TCC resets were used. Security reports zero valid signing identities. Feature activation remains gated by effective permissions.
+
+A short top sample of this permission/setup state showed about 27 MB resident memory and CPU samples 0.0%, 1.7%, 2.6%. An earlier setup-state sample ranged from 0.0% to 5.4% at about 32 to 33 MB. These are not a verified full-Dock idle workload or 30-window memory test, and do not establish the under-1% CPU budget. Presentation latency, ProMotion pacing, Space-update timing, native visual parity and all live multi-display/private-API behavior remain unverified. The new onboarding rendering and visible Dock behavior still need user confirmation after this final launch.
+
+Consolidated manual checklist, all pending user verification:
+- Check Welcome content renders immediately, initial status says Checking, and resolved rows match actual process logs. Confirm the selected dog icon stays visible in the native and replacement Docks and the menu bar retains its identity.
+- Exercise Settings open/close/reopen and every pane live, including shortcut recording, login status, custom app rules, theme/material, reset/reimport and debug logs.
+- Use Option+Tab for quick and held switching, reverse/arrows/mouse/Escape, windowless apps, W/M/H/Q and traffic lights. Confirm Cmd+Tab stays native by default.
+- Create, rename, minimize, hide and close windows while surfaces are open. Check stable selection, title updates, count dots, caches and protected-content placeholders.
+- Compare native visual styling, magnification, labels, bounce, badges, autohide, transparent click-through and bottom/left/right layout.
+- Test pin reorder/removal, drag cancellation, file drops, scrolling, context menus and Trash confirmation with disposable files.
+- Place windows of the same app on different desktops, including fullscreen. Test local focus, remote-only new-window actions, rules and cancellation while switching desktops. Failure feedback must not claim verified success.
+- Test hover delay, instant app switching, bridge travel, pinned previews, native-Dock fallback, outside/Escape dismissal and concurrent switcher/preview captures.
+- Exercise mixed-scale offset displays, shared/separate Spaces, hot unplug, sleep/wake, app crashes and unresponsive apps. Verify no orphan panel, stale publication or late command.
+- Compare exact native Dock preferences after disable/Pause/Restore/Quit and next-launch crash recovery, then measure all performance budgets with effective permissions and a realistic 30-window workload.
+
+Known limits remain: exact native Liquid Glass requires a newer SDK; no third-party screen-space reservation; minimize animations target the hidden native Dock; third-party app-specific Dock menus are unavailable; remote AX discovery is bounded; capture can fail for protected/minimized surfaces; app Space assignments can defeat opening/focus intent. Crash recovery occurs on the next launch. The complete Definition of Done is not signed off until permission and manual/performance checks pass.

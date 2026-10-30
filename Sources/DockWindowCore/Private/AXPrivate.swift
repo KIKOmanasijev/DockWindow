@@ -19,15 +19,7 @@ public final class AXPrivate {
     }
     /// _AXUIElementCreateWithRemoteToken decodes pid, reserved, 'coco', and UInt64 element ID.
     public func element(pid: pid_t, elementID: UInt64) -> AXUIElement? {
-        var data = Data()
-        var process = pid.littleEndian
-        var reserved: UInt32 = 0
-        var magic = UInt32(0x636f636f).littleEndian
-        var identifier = elementID.littleEndian
-        withUnsafeBytes(of: &process) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: &reserved) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: &magic) { data.append(contentsOf: $0) }
-        withUnsafeBytes(of: &identifier) { data.append(contentsOf: $0) }
+        let data = PrivateLayouts.remoteToken(pid: pid, elementID: elementID)
         return remote?(data as CFData)?.takeRetainedValue()
     }
 }
@@ -40,15 +32,24 @@ internal enum AXRead {
     }
     static func element(_ element: AXUIElement, _ key: String) -> AXUIElement? {
         guard let value = value(element, key), CFGetTypeID(value) == AXUIElementGetTypeID() else { return nil }
-        return (value as! AXUIElement)
+        return unsafeDowncast(value, to: AXUIElement.self)
     }
     static func frame(_ element: AXUIElement) -> CGRect? {
         guard let p = value(element, kAXPositionAttribute), CFGetTypeID(p) == AXValueGetTypeID(),
               let s = value(element, kAXSizeAttribute), CFGetTypeID(s) == AXValueGetTypeID() else { return nil }
         var point = CGPoint.zero
         var size = CGSize.zero
-        guard AXValueGetValue(p as! AXValue, .cgPoint, &point), AXValueGetValue(s as! AXValue, .cgSize, &size) else { return nil }
+        guard AXValueGetValue(unsafeDowncast(p, to: AXValue.self), .cgPoint, &point), AXValueGetValue(unsafeDowncast(s, to: AXValue.self), .cgSize, &size) else { return nil }
+        guard point.x.isFinite, point.y.isFinite, size.width.isFinite, size.height.isFinite,
+              size.width >= 0, size.height >= 0 else { return nil }
         return CGRect(origin: point, size: size)
     }
-    static func children(_ element: AXUIElement) -> [AXUIElement] { value(element, kAXChildrenAttribute) as? [AXUIElement] ?? [] }
+    static func elements(_ value: CFTypeRef?) -> [AXUIElement] {
+        guard let array = value as? [AnyObject] else { return [] }
+        return array.compactMap { item in
+            guard CFGetTypeID(item) == AXUIElementGetTypeID() else { return nil }
+            return unsafeDowncast(item, to: AXUIElement.self)
+        }
+    }
+    static func children(_ element: AXUIElement) -> [AXUIElement] { elements(value(element, kAXChildrenAttribute)) }
 }

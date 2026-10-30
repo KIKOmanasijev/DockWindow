@@ -22,7 +22,7 @@ public struct NativeDockItem: Identifiable, Equatable {
     private var worker: DockReadingWorker?
     private var token: NSObjectProtocol?
     public init() {}
-    deinit { worker?.stop() }
+    deinit { worker?.stop(); if let token { NSWorkspace.shared.notificationCenter.removeObserver(token) } }
     public func start() {
         guard worker == nil else { return }
         let worker = DockReadingWorker()
@@ -92,8 +92,8 @@ private final class DockReadingWorker: @unchecked Sendable {
         }
         var value: CFTypeRef?
         guard AXUIElementCopyAttributeValue(list, kAXChildrenAttribute as CFString, &value) == .success else { self.list = nil; return }
-        let items = (value as? [AXUIElement] ?? []).compactMap(item)
-        let selected = (AXRead.value(list, kAXSelectedChildrenAttribute) as? [AXUIElement])?.first.flatMap(item)
+        let items = AXRead.elements(value).compactMap(item)
+        let selected = AXRead.elements(AXRead.value(list, kAXSelectedChildrenAttribute)).first.flatMap(item)
         callback?(items, selected)
     }
 }

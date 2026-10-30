@@ -1,9 +1,13 @@
 import AppKit
 import SwiftUI
 
-/// Owns the focusable settings window without changing the app's long-term activation policy.
+@MainActor final class SettingsVisibility: ObservableObject {
+    @Published var isVisible = false
+}
+
+/// Owns the focusable settings window and preserves the application's visible Dock identity.
 @MainActor public final class SettingsWindowController: NSWindowController, NSWindowDelegate {
-    private var previousPolicy: NSApplication.ActivationPolicy?
+    private let visibility = SettingsVisibility()
 
     public init(settings: AppSettings, permissions: PermissionsService, pinnedApps: PinnedAppsStore,
                 onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
@@ -14,9 +18,9 @@ import SwiftUI
         window.minSize = NSSize(width: 720, height: 520)
         window.isReleasedWhenClosed = false
         window.setFrameAutosaveName("DockWindow.Settings")
-        window.contentView = NSHostingView(rootView: SettingsRootView(settings: settings, permissions: permissions,
-            pinnedApps: pinnedApps, onRestoreNativeDock: onRestoreNativeDock, onShowPermissions: onShowPermissions))
         super.init(window: window)
+        window.contentView = NSHostingView(rootView: SettingsRootView(settings: settings, permissions: permissions,
+            visibility: visibility, pinnedApps: pinnedApps, onRestoreNativeDock: onRestoreNativeDock, onShowPermissions: onShowPermissions))
         window.delegate = self
         window.center()
     }
@@ -24,14 +28,17 @@ import SwiftUI
 
     /// Brings Settings forward, including when DockWindow is running as a menu bar app.
     public func show() {
-        if previousPolicy == nil { previousPolicy = NSApp.activationPolicy() }
-        NSApp.setActivationPolicy(.accessory)
+        NSApp.setActivationPolicy(.regular)
+        visibility.isVisible = true
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
         window?.makeKeyAndOrderFront(nil)
     }
+    public func windowDidMiniaturize(_ notification: Notification) { visibility.isVisible = false }
+    public func windowDidDeminiaturize(_ notification: Notification) { visibility.isVisible = true }
     public func windowWillClose(_ notification: Notification) {
-        if let previousPolicy { NSApp.setActivationPolicy(previousPolicy) }
-        previousPolicy = nil
+        visibility.isVisible = false
+        SettingsShortcutRecording.activeRecorder?.finish()
+        NSApp.setActivationPolicy(.regular)
     }
 }

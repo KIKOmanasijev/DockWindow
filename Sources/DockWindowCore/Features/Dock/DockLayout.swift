@@ -5,9 +5,12 @@ public struct DockLayout {
     public var iconFrames: [CGRect]
     public var background: CGRect
     public var position: DockPosition
+    private var cornerRadius: CGFloat = 0
     public init(kinds: [DockItem.Kind], bounds: CGRect, position: DockPosition, baseSize: CGFloat,
                 maximumSize: CGFloat, pointer: CGPoint? = nil) {
         self.position = position
+        guard !kinds.isEmpty else { iconFrames = []; background = .zero; return }
+        cornerRadius = min(30, baseSize * 0.3)
         let horizontal = position == .bottom
         let length = horizontal ? bounds.width : bounds.height
         let base = min(128, max(16, baseSize.isFinite ? baseSize : 48))
@@ -49,7 +52,15 @@ public struct DockLayout {
     }
     /// Only the visible material and icons intercept input, never their transparent bounding hull.
     public func containsInteractivePoint(_ point: CGPoint) -> Bool {
-        background.contains(point) || iconFrames.contains { $0.contains(point) }
+        Self.roundedContains(point, rect: background, radius: cornerRadius) || iconFrames.contains { $0.contains(point) }
+    }
+    /// Matches the material's rounded corners so transparent corners pass through.
+    static func roundedContains(_ point: CGPoint, rect: CGRect, radius: CGFloat) -> Bool {
+        guard !rect.isEmpty, rect.contains(point) else { return false }
+        let r = min(max(0, radius), min(rect.width, rect.height) / 2)
+        let center = CGPoint(x: min(max(point.x, rect.minX + r), rect.maxX - r),
+                             y: min(max(point.y, rect.minY + r), rect.maxY - r))
+        return hypot(point.x - center.x, point.y - center.y) <= r
     }
     public func hitTest(_ point: CGPoint, kinds: [DockItem.Kind]) -> Int? {
         iconFrames.indices.first { kinds.indices.contains($0) && kinds[$0] != .separator && iconFrames[$0].contains(point) }

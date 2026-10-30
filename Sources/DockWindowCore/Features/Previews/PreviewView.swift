@@ -2,7 +2,11 @@ import AppKit
 import SwiftUI
 
 @MainActor final class PreviewPresentation: ObservableObject {
+    @Published var contentID: UInt64 = 0
     @Published var app: TrackedApp?
+    @Published var bundleURL: URL?
+    @Published var appName = "Application"
+    @Published var appIcon: NSImage?
     @Published var windows: [TrackedWindow] = []
     @Published var thumbnailSize = CGSize(width: 288, height: 180)
     @Published var size = CGSize(width: 340, height: 260)
@@ -28,21 +32,21 @@ import SwiftUI
         let _ = thumbnails.revision
         VStack(alignment: .leading, spacing: 10) {
             HStack {
-                if let app = presentation.app { Image(nsImage: app.icon).resizable().scaledToFit().frame(width: 24, height: 24) }
-                Text(presentation.app?.name ?? "Application").font(.system(size: 14, weight: .semibold))
+                if let icon = presentation.appIcon { Image(nsImage: icon).resizable().scaledToFit().frame(width: 24, height: 24) }
+                Text(presentation.appName).font(.system(size: 14, weight: .semibold))
                 Spacer()
                 if presentation.opening { ProgressView().controlSize(.small) }
             }
             if let message = presentation.message { Text(message).font(.callout).fixedSize(horizontal: false, vertical: true) }
             if presentation.windows.isEmpty {
                 HStack(spacing: 16) {
-                    if let app = presentation.app {
-                        Image(nsImage: app.icon).resizable().scaledToFit().frame(width: 64, height: 64)
+                    if let icon = presentation.appIcon {
+                        Image(nsImage: icon).resizable().scaledToFit().frame(width: 64, height: 64)
                     } else { Image(systemName: "macwindow").font(.system(size: 48)).foregroundStyle(.secondary) }
                     Text(settings.previewScope == .currentDesktop ? "No open windows on this desktop" : "No open windows")
                         .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
                 }
-                Button("New Window", action: presentation.open).disabled(presentation.opening || presentation.app == nil)
+                Button("New Window", action: presentation.open).disabled(presentation.opening || (presentation.app == nil && presentation.bundleURL == nil))
             } else {
                 ScrollView(.horizontal) {
                     LazyHStack(alignment: .top, spacing: 10) {
@@ -60,7 +64,7 @@ import SwiftUI
                                 .onAppear { presentation.visibility(window.id, true) }
                                 .onDisappear { presentation.visibility(window.id, false) }
                         }
-                    }.padding(3)
+                    }.padding(3).id(presentation.contentID)
                 }
             }
         }

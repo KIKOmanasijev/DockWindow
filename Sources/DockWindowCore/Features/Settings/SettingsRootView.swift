@@ -21,6 +21,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
 @MainActor struct SettingsRootView: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var permissions: PermissionsService
+    @ObservedObject var visibility: SettingsVisibility
     let pinnedApps: PinnedAppsStore
     let onRestoreNativeDock: () -> Void
     let onShowPermissions: () -> Void
@@ -28,10 +29,11 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
     @State private var resetConfirmation = false
     @State private var reimportConfirmation = false
     @State private var errorMessage: String?
-    @State private var loginStatus = SMAppService.mainApp.status
+    @State private var loginStatus = SMAppService.Status.notRegistered
+    @State private var loginStatusChecking = true
+    @State private var loginStatusRequest = UUID()
     @State private var loginBusy = false
     @State private var subrolesText = ""
-    private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         NavigationSplitView {
@@ -50,9 +52,15 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                 }
             }.formStyle(.grouped).navigationTitle((pane ?? .general).rawValue)
         }
-        .onReceive(timer) { _ in
-            guard NSApp.windows.contains(where: { $0.identifier?.rawValue == "DockWindow.Settings" && $0.isVisible }) else { return }
-            permissions.refresh(); loginStatus = SMAppService.mainApp.status
+        .task(id: visibility.isVisible ? pane : nil) {
+            guard visibility.isVisible, pane == .general, !loginBusy else { return }
+            let request = UUID(); loginStatusRequest = request
+            loginStatusChecking = true
+            defer { if loginStatusRequest == request { loginStatusChecking = false } }
+            let status = await LoginItemWorker.status()
+            guard !Task.isCancelled else { return }
+            loginStatus = status
+            permissions.refresh()
         }
         .onChange(of: settings.allowedWindowSubroles) { _, values in
             let draft = subrolesText.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
@@ -75,7 +83,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
         Group {
             Section("Startup") {
                 Toggle("Launch at login", isOn: Binding(get: { settings.launchAtLogin }, set: { setLogin($0) }))
-                    .disabled(loginBusy).settingsDescription("Start DockWindow when you sign in. Status: \(loginStatusText).")
+                    .disabled(loginBusy || loginStatusChecking).settingsDescription("Start DockWindow when you sign in. Status: \(loginStatusText).")
                 if loginStatus == .requiresApproval {
                     Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
                         .settingsDescription("Approve DockWindow in System Settings to finish enabling login launch.")
@@ -102,21 +110,24 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                 Button("Restore Native Dock", action: onRestoreNativeDock)
                     .settingsDescription("Restore the original Dock preferences through the app coordinator.")
                 Button("Reset all settings", role: .destructive) { resetConfirmation = true }
-                    .settingsDescription("Restore defaults after confirmation, preserving native Dock recovery backups.")
+                    .disabled(loginBusy || loginStatusChecking).settingsDescription("Restore defaults after confirmation, preserving native Dock recovery backups.")
             }
         }
     }
     private func permissionRow(_ title: String, granted: Bool, description: String, action: @escaping () -> Void) -> some View {
         SettingsControl(description: description) {
             HStack {
-                Label(title + (granted ? ": Granted" : ": Missing"), systemImage: granted ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
-                    .foregroundStyle(granted ? Color.green : Color.orange)
+                let state = PermissionRowStatus(hasChecked: permissions.hasCheckedPermissions, granted: granted)
+                Label(title + ": " + state.label, systemImage: state.symbol)
+                    .foregroundStyle(state == .checking ? Color.secondary : (granted ? Color.green : Color.orange))
                 Spacer()
-                Button(granted ? "Open System Settings" : "Request access", action: action)
+                Button(permissions.hasCheckedPermissions ? (granted ? "Open System Settings" : "Request access") : "Checking...", action: action)
+                    .disabled(!permissions.hasCheckedPermissions || permissions.isChecking)
             }
         }
     }
     private var loginStatusText: String {
+        if loginStatusChecking { return "Checking..." }
         switch loginStatus {
         case .enabled: return "Enabled"
         case .notRegistered: return "Not registered"
@@ -126,13 +137,12 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
         }
     }
     private func setLogin(_ enabled: Bool, completion: (() -> Void)? = nil) {
+        guard !loginBusy else { return }
         loginBusy = true
         Task { @MainActor in
-            defer { loginBusy = false; loginStatus = SMAppService.mainApp.status }
+            defer { loginBusy = false }
             do {
-                if enabled { try SMAppService.mainApp.register() }
-                else { try await SMAppService.mainApp.unregister() }
-                loginStatus = SMAppService.mainApp.status
+                loginStatus = try await LoginItemWorker.setEnabled(enabled)
                 let succeeded = enabled ? (loginStatus == .enabled || loginStatus == .requiresApproval) : loginStatus == .notRegistered
                 guard succeeded else {
                     errorMessage = "Login launch did not reach the requested state. Status: \(loginStatusText)."
@@ -140,16 +150,16 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                 }
                 settings.launchAtLogin = enabled
                 completion?()
-            } catch { errorMessage = error.localizedDescription }
+            } catch {
+                loginStatus = await LoginItemWorker.status()
+                errorMessage = error.localizedDescription
+            }
         }
     }
     private func reset() {
-        // Do not report a reset login preference until unregister actually succeeds.
-        if SMAppService.mainApp.status == .notRegistered {
-            settings.reset(); DiagnosticsService.setDebugLogging(settings.debugLogging)
-        } else {
-            setLogin(false) { settings.reset(); DiagnosticsService.setDebugLogging(settings.debugLogging) }
-        }
+        guard !loginBusy else { return }
+        // The worker checks actual status before unregistering, even if the cached status is stale.
+        setLogin(false) { settings.reset(); DiagnosticsService.setDebugLogging(settings.debugLogging) }
     }
     private var advanced: some View {
         Group {
@@ -175,5 +185,20 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                     .settingsDescription("Replace DockWindow's pins after confirmation. The native Dock is unchanged.")
             }
         }
+    }
+}
+
+/// Service Management can make a blocking XPC call. Never query it while constructing a view.
+private enum LoginItemWorker {
+    static func status() async -> SMAppService.Status {
+        await Task.detached(priority: .utility) { SMAppService.mainApp.status }.value
+    }
+    static func setEnabled(_ enabled: Bool) async throws -> SMAppService.Status {
+        try await Task.detached(priority: .utility) {
+            let service = SMAppService.mainApp
+            if enabled { try service.register() }
+            else if service.status != .notRegistered { try await service.unregister() }
+            return service.status
+        }.value
     }
 }

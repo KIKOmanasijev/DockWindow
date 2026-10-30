@@ -25,24 +25,39 @@ import Combine
     var lifecycleTask: Task<Void, Never>?
     var terminating = false
     var subscriptions = Set<AnyCancellable>()
+    var previouslyGranted: Bool?
+    var lastDockMode: Bool?
     var permissionTimer: Timer?
     var statusItem: NSStatusItem?
     var onboarding: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
+        let mainMenu = NSMenu()
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu(title: "DockWindow")
+        appMenu.addItem(withTitle: "About DockWindow", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
+        appMenu.addItem(.separator())
+        appMenu.addItem(withTitle: "Quit DockWindow", action: #selector(quit), keyEquivalent: "q").target = self
+        appMenuItem.submenu = appMenu; mainMenu.addItem(appMenuItem); NSApp.mainMenu = mainMenu
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        item.button?.image = NSImage(systemSymbolName: "dock.rectangle", accessibilityDescription: "DockWindow")
+        if let resourceURL = Bundle.main.resourceURL, let image = NSImage(contentsOf: resourceURL.appendingPathComponent("AppIcon.icns")) {
+            image.size = NSSize(width: 18, height: 18)
+            item.button?.image = image
+        } else { item.button?.image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "DockWindow") }
+        item.button?.imagePosition = .imageLeading
+        item.button?.setAccessibilityLabel("DockWindow")
         let menu = NSMenu()
         menu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "Pause DockWindow", action: #selector(togglePause), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Restore Native Dock", action: #selector(restoreNativeDock), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "Debug: dump windows", action: #selector(dumpWindows), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit DockWindow", action: #selector(quit), keyEquivalent: "q").target = self
         item.menu = menu; statusItem = item
-        if !permissions.isGranted { showOnboarding() }
-        permissionTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.updatePermissions() }
+        if Bundle.main.bundleURL.pathExtension == "app" {
+            pinnedApps.pin(bundleIdentifier: "com.dockwindow.app", url: Bundle.main.bundleURL)
         }
+        if !permissions.isGranted { showOnboarding() }
+        startPermissionTimer()
         dock.onHover = { [weak self] item, anchor, screen in self?.previews.hover(item: item, anchor: anchor, screen: screen) }
         dock.onHoverEnded = { [weak self] in self?.previews.hoverEnded() }
         dock.onShowWindows = { [weak self] item, anchor, screen in self?.previews.showWindows(item: item, anchor: anchor, screen: screen) }
@@ -68,20 +83,37 @@ import Combine
         nativeReader.$items.receive(on: RunLoop.main).sink { [weak self] _ in
             guard let self else { return }; self.tracker.setBadges(self.nativeReader.badges)
         }.store(in: &subscriptions)
+        permissions.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.updateFeatureState() }.store(in: &subscriptions)
         settings.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.updatePermissions() }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: SettingsShortcutRecording.recordingDidChange).receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updatePermissions() }.store(in: &subscriptions)
         updatePermissions()
         Log.system.info("DockWindow launched")
     }
+    private func startPermissionTimer() {
+        permissionTimer?.invalidate()
+        permissionTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.updatePermissions() }
+        }
+        permissionTimer?.tolerance = 0.2
+    }
     private func updatePermissions() {
         permissions.refresh()
+        updateFeatureState()
+    }
+    private func updateFeatureState() {
+        if previouslyGranted == true && !permissions.isGranted && !terminating { showOnboarding() }
+        if permissions.hasCheckedPermissions { previouslyGranted = permissions.isGranted }
+        if lastDockMode != settings.useDockWindowDock {
+            previews.dismiss()
+            lastDockMode = settings.useDockWindowDock
+        }
         statusItem?.isVisible = settings.showMenuBarIcon
-        statusItem?.button?.image = NSImage(systemSymbolName: permissions.isGranted ? "dock.rectangle" : "exclamationmark.triangle", accessibilityDescription: permissions.isGranted ? "DockWindow" : "DockWindow needs permissions")
+        statusItem?.button?.title = !permissions.hasCheckedPermissions ? " …" : permissions.isGranted ? "" : " !"
         let subroles = Set(settings.allowedWindowSubroles)
         if tracker.allowedSubroles != subroles { tracker.allowedSubroles = subroles }
         DiagnosticsService.setDebugLogging(settings.debugLogging)
-        statusItem?.button?.toolTip = permissions.isGranted ? "DockWindow" : "DockWindow needs permissions"
+        statusItem?.button?.toolTip = !permissions.hasCheckedPermissions ? "DockWindow: checking current process access" : permissions.isGranted ? "DockWindow" : "DockWindow: current process access is unavailable"
         let enabled = permissions.isGranted && !settings.isPaused && !terminating
         previews.enabled = enabled && settings.previewsEnabled
         switcher.enabled = enabled && !SettingsShortcutRecording.isRecording
@@ -161,6 +193,8 @@ import Combine
             do { try await nativeDock.endSession(); NSApp.reply(toApplicationShouldTerminate: true) }
             catch {
                 terminating = false
+                startPermissionTimer()
+                updatePermissions()
                 showError("The native Dock could not be restored. The backup is retained. Try Restore Native Dock before quitting. \(error.localizedDescription)")
                 NSApp.reply(toApplicationShouldTerminate: false)
             }
@@ -168,17 +202,27 @@ import Combine
         return .terminateLater
     }
     @objc func togglePause() { settings.isPaused.toggle() }
-    @objc func dumpWindows() { tracker.dumpWindows() }
     func applicationWillTerminate(_ notification: Notification) { permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); previews.dismiss(); nativeReader.stop(); dock.stop(); tracker.stop() }
     @objc func quit() { NSApp.terminate(nil) }
-    @objc func showSettings() { settingsWindow.show() }
+    @objc func showSettings() { onboarding?.orderOut(nil); settingsWindow.show() }
     @objc func showOnboarding() {
         if onboarding == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 530), styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.title = "Welcome to DockWindow"; window.isReleasedWhenClosed = false
-            window.contentView = NSHostingView(rootView: PermissionsView(permissions: permissions)); window.center(); onboarding = window
+            let host = NSHostingController(rootView: PermissionsView(permissions: permissions).frame(width: 640, height: 530))
+            window.contentViewController = host
+            window.setContentSize(NSSize(width: 640, height: 530))
+            host.view.frame = NSRect(x: 0, y: 0, width: 640, height: 530)
+            host.view.autoresizingMask = [.width, .height]
+            host.view.needsLayout = true
+            host.view.layoutSubtreeIfNeeded()
+            window.center(); onboarding = window
         }
-        onboarding?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
+        guard let onboarding else { return }
+        onboarding.contentView?.layoutSubtreeIfNeeded()
+        onboarding.displayIfNeeded()
+        onboarding.makeKeyAndOrderFront(nil)
+        NSApp.activate(ignoringOtherApps: true)
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
 }
