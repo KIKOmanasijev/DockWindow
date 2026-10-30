@@ -12,7 +12,7 @@ A native macOS Dock and window switcher for people with a lot of windows open. S
 - **Keep desktops separate.** Show apps with windows on the current desktop, while keeping your pinned apps available everywhere. The Dock, switcher and previews each have their own scope setting.
 - **Preview before switching.** Hover an app to see its windows, then choose the exact one you want. Traffic-light controls close, minimize or toggle fullscreen for that window. Previews also work with Apple's native Dock.
 - **Count open windows.** Window-count dots show how many windows an app has in the selected scope, with configurable styles and limits.
-- **Resize the Dock directly.** Drag its divider grip inward to enlarge it or outward to shrink it. Icons keep a fixed size on hover. Bottom, left and right placement, autohide, pinning and app rules are configurable.
+- **Resize the Dock directly.** Hover the inward border or divider grip for a resize cue, then drag inward to enlarge it or outward to shrink it. Sizes snap into small steps with resistance to cursor jitter. Icons keep a fixed size on hover. Bottom, left and right placement, autohide, pinning and app rules are configurable.
 - **Change settings live.** Open Settings from the monochrome paw in the menu bar or the app icon. Pause and Restore Native Dock bring back the original Dock preferences.
 
 ### Feature illustrations

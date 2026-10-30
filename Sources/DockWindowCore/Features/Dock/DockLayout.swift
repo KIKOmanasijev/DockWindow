@@ -63,6 +63,25 @@ public struct DockLayout {
         case .right: return CGRect(x: background.minX + 2, y: background.midY - 12, width: 6, height: 24)
         }
     }
+    /// The inward border also resizes, without stealing input from app icons.
+    public var resizeEdge: CGRect {
+        guard !background.isEmpty else { return .zero }
+        let radius = min(cornerRadius, min(background.width, background.height) / 2)
+        switch position {
+        case .bottom:
+            return CGRect(x: background.minX + radius, y: background.maxY - 9,
+                          width: max(0, background.width - radius * 2), height: 9)
+        case .left:
+            return CGRect(x: background.maxX - 9, y: background.minY + radius,
+                          width: 9, height: max(0, background.height - radius * 2))
+        case .right:
+            return CGRect(x: background.minX, y: background.minY + radius,
+                          width: 9, height: max(0, background.height - radius * 2))
+        }
+    }
+    public func containsResizeTarget(_ point: CGPoint, kinds: [DockItem.Kind]) -> Bool {
+        resizeHandle(kinds: kinds).contains(point) || resizeEdge.contains(point)
+    }
     /// Only the visible material and icons intercept input, never their transparent bounding hull.
     public func containsInteractivePoint(_ point: CGPoint) -> Bool {
         Self.roundedContains(point, rect: background, radius: cornerRadius) || iconFrames.contains { $0.contains(point) }

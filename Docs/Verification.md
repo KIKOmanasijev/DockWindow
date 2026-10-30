@@ -4,7 +4,7 @@
 
 - Native Swift package, Swift 5 language mode, deployment target macOS 14, no dependencies.
 - Debug build and release bundle build pass without warnings.
-- All 95 native tests pass. Tests have no database integration.
+- All 99 native tests pass. Tests have no database integration.
 - Dock magnification is removed. Icon rasterization chooses Retina representations and updates for size or display-scale changes. Whole switcher cards render at 90 percent of their previous dimensions.
 - Switcher content is bounded before scaling, preventing intrinsic title widths from overlapping adjacent cards. A persistent Dock resize grip supports all three positions. Focus and desktop events use independent fast publication paths instead of waiting for full AX scans. Live latency is still unmeasured.
 - App installed at ~/Applications/DockWindow.app and fresh process launched.
@@ -30,6 +30,8 @@ Hide waits for the target application's actual hidden state, tries the Accessibi
 The release bundle was rebuilt, installed and launched with the existing DockWindow Dev identity. Signature integrity and the stable designated requirement were verified. Manual acceptance still includes right-click and long-press menus, Options submenus, Hide on the reported target app, and Show All Windows after menu dismissal.
 
 ## Pending acceptance
+
+Dock resize feedback now highlights the inward border and divider in purple, shows an immediate direction/drag cue and live point size, and uses four-point detents with reversal hysteresis. The border target excludes icons and transparent corners on all three edges. Coarser alignment haptics use the system's default performer on supported input devices. Dragging immediately dismisses previews; Escape restores the original size. Tests cover cue visibility independently of app-name labels, border geometry, jitter, bounds, cancellation and mouse-sequence ownership. Perceived feel and hardware haptics still need manual acceptance.
 
 All live interactions, the reported blank Welcome fix, visible Dock/icon behavior, exact native preference restore on real enablement, crash recovery, desktop isolation, hot-plug/sleep/wake, fullscreen, unresponsive applications and the full performance budgets require user verification. A short permission/setup-state sample used about 27 MB but reached 2.6% sampled CPU. This is not a passing idle-Dock performance result.
 

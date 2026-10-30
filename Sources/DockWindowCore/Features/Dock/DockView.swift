@@ -12,6 +12,7 @@ import QuartzCore
     var previewVisible = false { didSet { if previewVisible != oldValue { render() } } }
     var onClick: ((DockItem) -> Void)?
     var onMenu: ((DockItem, NSEvent) -> Void)?
+    var onResizeStarted: (() -> Void)?
     var onHover: ((DockItem?, CGRect) -> Void)?
     var onReorder: ((DockItem, Int, Bool) -> Void)?
     var onFiles: (([URL], DockItem) -> Void)?
@@ -35,6 +36,8 @@ import QuartzCore
     private var resizeMouseDown = false
     private var resizeHandle = CGRect.zero
     private let resizeGrip = CALayer()
+    private let resizeHighlight = CAShapeLayer()
+    private var lastFeedbackSize: CGFloat = 0
     private var cancelMonitor: Any?
     var isDragging: Bool { dragged != nil || resizeMouseDown }
     var ownsMouseSequence: Bool { pressed != nil || isDragging }
@@ -82,6 +85,7 @@ import QuartzCore
         resizeHandle = geometry.resizeHandle(kinds: kinds)
         removeAllToolTips()
         if !resizeHandle.isEmpty { addToolTip(resizeHandle, owner: self, userData: nil) }
+        if !geometry.resizeEdge.isEmpty { addToolTip(geometry.resizeEdge, owner: self, userData: nil) }
         window?.invalidateCursorRects(for: self)
         CATransaction.begin(); CATransaction.setDisableActions(duration == 0); CATransaction.setAnimationDuration(duration)
         background.frame = geometry.background
@@ -127,7 +131,26 @@ import QuartzCore
                         position: settings.dockPosition, scale: window?.backingScaleFactor ?? 2, reduceMotion: Theme.reducesMotion(settings))
             icon.bounce(position: settings.dockPosition, enabled: launching.contains(item.id) && settings.bounceOnLaunch && !Theme.reducesMotion(settings))
         }
+        if resizeHighlight.superlayer == nil { layer?.addSublayer(resizeHighlight) }
         if resizeGrip.superlayer == nil { layer?.addSublayer(resizeGrip) }
+        let resizeArmed = resizeSession != nil || (!resizeMouseDown && pointer.map { geometry.containsResizeTarget($0, kinds: kinds) } == true)
+        let accent = NSColor.systemPurple
+        let edge = geometry.resizeEdge
+        let outline = CGMutablePath()
+        if settings.dockPosition == .bottom {
+            outline.move(to: CGPoint(x: edge.minX, y: edge.midY))
+            outline.addLine(to: CGPoint(x: edge.maxX, y: edge.midY))
+        } else {
+            outline.move(to: CGPoint(x: edge.midX, y: edge.minY))
+            outline.addLine(to: CGPoint(x: edge.midX, y: edge.maxY))
+        }
+        resizeHighlight.path = outline
+        resizeHighlight.fillColor = NSColor.clear.cgColor
+        resizeHighlight.strokeColor = accent.cgColor
+        resizeHighlight.lineWidth = 3; resizeHighlight.lineCap = .round
+        resizeHighlight.shadowColor = accent.cgColor; resizeHighlight.shadowRadius = 4
+        resizeHighlight.shadowOpacity = 0.4; resizeHighlight.shadowOffset = .zero
+        resizeHighlight.isHidden = !resizeArmed
         let hasSeparator = kinds.contains(.separator)
         let vertical = hasSeparator ? settings.dockPosition == .bottom : settings.dockPosition != .bottom
         resizeGrip.frame = CGRect(x: resizeHandle.midX - (vertical ? 1.5 : min(24, resizeHandle.width) / 2),
@@ -136,39 +159,49 @@ import QuartzCore
                                   height: vertical ? min(24, resizeHandle.height) : 3)
         resizeGrip.cornerRadius = 1.5
         resizeGrip.isHidden = resizeHandle.isEmpty
-        let handleHovered = pointer.map { resizeHandle.contains($0) } ?? false
-        resizeGrip.backgroundColor = NSColor.labelColor.withAlphaComponent(handleHovered || resizeSession != nil ? 0.65 : 0.3).cgColor
+        resizeGrip.backgroundColor = (resizeArmed ? accent : NSColor.labelColor.withAlphaComponent(0.3)).cgColor
         CATransaction.commit()
-        let hovered = !resizeMouseDown ? pointer.flatMap { resizeHandle.contains($0) ? nil : geometry.hitTest($0, kinds: kinds) } : nil
+        let hovered = !resizeMouseDown ? pointer.flatMap { geometry.containsResizeTarget($0, kinds: kinds) ? nil : geometry.hitTest($0, kinds: kinds) } : nil
         let item = hovered.map { items[$0] }
         if item?.id != hoverID {
             hoverID = item?.id
             onHover?(item, hovered.map { geometry.iconFrames[$0] } ?? .zero)
         } else if let item, let hovered { onHover?(item, geometry.iconFrames[hovered]) }
-        label.isHidden = item == nil || previewVisible || !settings.showAppNameLabels || dragged != nil
-        if let item, let hovered {
+        label.isHidden = !resizeArmed && (item == nil || previewVisible || !settings.showAppNameLabels || dragged != nil)
+        label.textColor = .labelColor
+        label.layer?.borderColor = accent.cgColor
+        label.layer?.borderWidth = resizeArmed ? 1.5 : 0
+        if resizeArmed {
+            let direction = settings.dockPosition == .bottom ? "↕" : "↔"
+            label.stringValue = resizeSession == nil ? "\(direction) Drag to resize" : "\(direction) Resizing · \(Int(settings.iconSize)) pt"
+            positionLabel(relativeTo: geometry.background)
+        } else if let item, let hovered {
             label.stringValue = item.app?.name ?? item.pinnedApp?.url.deletingPathExtension().lastPathComponent ?? "Trash"
-            label.sizeToFit()
-            let frame = geometry.iconFrames[hovered]
-            let size = CGSize(width: min(bounds.width - 10, label.frame.width + 20), height: 25)
-            var origin: CGPoint
-            switch settings.dockPosition {
-            case .bottom: origin = CGPoint(x: frame.midX - size.width / 2, y: frame.maxY + 10)
-            case .left: origin = CGPoint(x: frame.maxX + 10, y: frame.midY - size.height / 2)
-            case .right: origin = CGPoint(x: frame.minX - size.width - 10, y: frame.midY - size.height / 2)
-            }
-            origin.x = max(0, min(bounds.width - size.width, origin.x)); origin.y = max(0, min(bounds.height - size.height, origin.y))
-            label.frame = CGRect(origin: origin, size: size)
+            positionLabel(relativeTo: geometry.iconFrames[hovered])
         }
+    }
+    private func positionLabel(relativeTo frame: CGRect) {
+        label.sizeToFit()
+        let size = CGSize(width: min(bounds.width - 10, label.frame.width + 20), height: 25)
+        var origin: CGPoint
+        switch settings.dockPosition {
+        case .bottom: origin = CGPoint(x: frame.midX - size.width / 2, y: frame.maxY + 10)
+        case .left: origin = CGPoint(x: frame.maxX + 10, y: frame.midY - size.height / 2)
+        case .right: origin = CGPoint(x: frame.minX - size.width - 10, y: frame.midY - size.height / 2)
+        }
+        origin.x = max(0, min(bounds.width - size.width, origin.x)); origin.y = max(0, min(bounds.height - size.height, origin.y))
+        label.frame = CGRect(origin: origin, size: size)
     }
     private func item(at point: CGPoint) -> DockItem? { geometry.hitTest(point, kinds: items.map(\.kind)).map { items[$0] } }
     override func mouseDown(with event: NSEvent) {
         pressPoint = convert(event.locationInWindow, from: nil)
-        if resizeHandle.contains(pressPoint) {
+        if geometry.containsResizeTarget(pressPoint, kinds: items.map(\.kind)) {
             longPress?.cancel(); longPress = nil; pressed = nil
             resizeMouseDown = true
             resizeSession = DockResizeSession(size: settings.iconSize, origin: NSEvent.mouseLocation, position: settings.dockPosition)
+            lastFeedbackSize = settings.iconSize
             pointer = nil; hoverID = nil; onHover?(nil, .zero)
+            onResizeStarted?()
             cancelMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
                 guard event.keyCode == 53, let self, self.resizeSession != nil else { return event }
                 self.finishResize(cancelled: true)
@@ -201,8 +234,16 @@ import QuartzCore
         if let item = item(at: convert(event.locationInWindow, from: nil)) { onMenu?(item, event) }
     }
     override func mouseDragged(with event: NSEvent) {
-        if let resizeSession {
-            settings.iconSize = resizeSession.size(at: NSEvent.mouseLocation)
+        if var resizeSession {
+            let size = resizeSession.size(at: NSEvent.mouseLocation)
+            self.resizeSession = resizeSession
+            if size != settings.iconSize {
+                settings.iconSize = size
+                if abs(size - lastFeedbackSize) >= 16 {
+                    NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .drawCompleted)
+                    lastFeedbackSize = size
+                }
+            }
             resizeCursor.set(); render()
             return
         }
@@ -254,6 +295,7 @@ import QuartzCore
     override func resetCursorRects() {
         super.resetCursorRects()
         if !resizeHandle.isEmpty { addCursorRect(resizeHandle, cursor: resizeCursor) }
+        if !geometry.resizeEdge.isEmpty { addCursorRect(geometry.resizeEdge, cursor: resizeCursor) }
     }
     @objc func view(_ view: NSView, stringForToolTip tag: NSView.ToolTipTag, point: NSPoint, userData data: UnsafeMutableRawPointer?) -> String {
         "Drag to resize Dock. Press Escape to cancel."
@@ -264,7 +306,7 @@ import QuartzCore
         super.viewWillMove(toWindow: newWindow)
     }
     private func finishResize(cancelled: Bool) {
-        guard let session = resizeSession else { return }
+        guard var session = resizeSession else { return }
         settings.iconSize = session.end(at: NSEvent.mouseLocation, cancelled: cancelled)
         resizeSession = nil
         if let cancelMonitor { NSEvent.removeMonitor(cancelMonitor); self.cancelMonitor = nil }

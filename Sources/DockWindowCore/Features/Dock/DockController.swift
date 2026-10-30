@@ -48,6 +48,7 @@ import Combine
         view = DockView(settings: settings); panel.contentView = view
         view.onClick = { [weak self] in self?.click($0) }
         view.onMenu = { [weak self] in self?.showMenu(item: $0, event: $1) }
+        view.onResizeStarted = { [weak self] in self?.onIconClicked?() }
         view.onHover = { [weak self] item, rect in self?.hover(item: item, rect: rect) }
         view.onReorder = { [weak self] item, index, remove in self?.reorder(item, at: index, remove: remove) }
         view.onFiles = { [weak self] in self?.openFiles($0, item: $1) }
