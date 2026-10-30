@@ -46,3 +46,20 @@ Manual checks, pending user verification:
 - Change current/all desktop and mouse/all display preferences through saved settings until M6 UI arrives.
 - Revoke a permission or Pause during appearance delay and verify interception stops.
 - Test protected/minimized thumbnails and appearance under light/dark mode.
+
+## M3: Replacement Dock and window dots
+
+Added AppKit/CALayer Dock rendering, display-linked magnification, autohide, labels, capped dots, badges, launch bounce, pinned import, Finder and Trash, context menus, reorder/removal, app and Trash file drops, and optional scroll cycling. Coordinator now gates replacement on permissions and pause, saves native preferences before showing the panel, restores on disable/Pause/Restore, and delays application termination until exact restoration completes. Startup recovers stale backups before enablement. Errors retain recovery state rather than silently overwriting it. All 42 tests, debug build and installed release build pass without warnings. Runtime preference mutation, GUI parity and performance are not claimed as tested.
+
+Manual checks, pending user verification:
+- Record native Dock settings, enable replacement, Pause, resume, Restore and Quit, then compare exact settings.
+- Force-exit and relaunch with replacement disabled to check crash recovery.
+- Compare size, spacing, background and labels with the native Dock.
+- Sweep magnification, test edge autohide and click through transparent overflow.
+- Check bottom/left/right and main/mouse display placement.
+- Reorder pins, pin a running app and drag out to remove, leaving Finder fixed.
+- Test all context-menu actions, badge updates and launch bounce.
+- Drop disposable files onto an app and Trash, then test Empty Trash confirmation.
+- Create/minimize/close windows and compare count dots, cap, custom color and single-dot style.
+
+Known limits: the SDK uses material approximation, external Trash updates are not watched, running-only ordering is session-local, no screen-space reservation, and minimize animations target the hidden native Dock. DockIntegration.md has detailed runtime checks.

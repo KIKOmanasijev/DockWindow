@@ -1,0 +1,87 @@
+import Foundation
+
+/// Pure Dock geometry in AppKit coordinates. The inward axis points away from the screen edge.
+public struct DockLayout {
+    public var iconFrames: [CGRect]
+    public var background: CGRect
+    public var position: DockPosition
+    public init(kinds: [DockItem.Kind], bounds: CGRect, position: DockPosition, baseSize: CGFloat,
+                maximumSize: CGFloat, pointer: CGPoint? = nil) {
+        self.position = position
+        let horizontal = position == .bottom
+        let length = horizontal ? bounds.width : bounds.height
+        let base = min(128, max(16, baseSize.isFinite ? baseSize : 48))
+        // Fit crowded Docks without putting inaccessible icons offscreen.
+        let units = kinds.reduce(CGFloat(0)) { $0 + ($1 == .separator ? 0.25 : 1) }
+        let size = min(base, max(4, (length - 16 - CGFloat(max(0, kinds.count - 1)) * 4) / max(1, units)))
+        let widths = kinds.map { $0 == .separator ? size * 0.25 : size }
+        let restLength = widths.reduce(0, +) + CGFloat(max(0, kinds.count - 1)) * 4
+        var cursor = (length - restLength) / 2
+        let coordinate = pointer.map { horizontal ? $0.x - bounds.minX : bounds.maxY - $0.y }
+        let sizes = widths.enumerated().map { index, width -> CGFloat in
+            defer { cursor += width + 4 }
+            guard kinds[index] != .separator, let coordinate else { return width }
+            let scale = MagnificationPolicy.scale(distance: Double((coordinate - cursor - width / 2) / size), baseSize: Double(base), maximumSize: Double(maximumSize))
+            return width * CGFloat(scale)
+        }
+        let requested = sizes.reduce(0, +) + CGFloat(max(0, kinds.count - 1)) * 4
+        let spacing = CGFloat(max(0, kinds.count - 1)) * 4
+        let fit = min(1, max(1, length - 16 - spacing) / max(1, requested - spacing))
+        let total = sizes.reduce(0, +) * fit + CGFloat(max(0, kinds.count - 1)) * 4
+        cursor = (length - total) / 2
+        let start = cursor
+        iconFrames = sizes.enumerated().map { index, width in
+            let side = width * fit
+            defer { cursor += side + 4 }
+            let depth = kinds[index] == .separator ? size * 0.7 : side
+            switch position {
+            case .bottom: return CGRect(x: bounds.minX + cursor, y: bounds.minY + 14, width: side, height: depth)
+            case .left: return CGRect(x: bounds.minX + 14, y: bounds.maxY - cursor - side, width: depth, height: side)
+            case .right: return CGRect(x: bounds.maxX - 14 - depth, y: bounds.maxY - cursor - side, width: depth, height: side)
+            }
+        }
+        let thickness = size + 24
+        switch position {
+        case .bottom: background = CGRect(x: bounds.minX + start - 8, y: bounds.minY + 4, width: total + 16, height: thickness)
+        case .left: background = CGRect(x: bounds.minX + 4, y: bounds.maxY - start - total - 8, width: thickness, height: total + 16)
+        case .right: background = CGRect(x: bounds.maxX - 4 - thickness, y: bounds.maxY - start - total - 8, width: thickness, height: total + 16)
+        }
+    }
+    /// Only the visible material and icons intercept input, never their transparent bounding hull.
+    public func containsInteractivePoint(_ point: CGPoint) -> Bool {
+        background.contains(point) || iconFrames.contains { $0.contains(point) }
+    }
+    public func hitTest(_ point: CGPoint, kinds: [DockItem.Kind]) -> Int? {
+        iconFrames.indices.first { kinds.indices.contains($0) && kinds[$0] != .separator && iconFrames[$0].contains(point) }
+    }
+    public func insertionIndex(at point: CGPoint) -> Int {
+        return iconFrames.firstIndex { position == .bottom ? point.x < $0.midX : point.y > $0.midY } ?? iconFrames.count
+    }
+    public func isDragRemoval(at point: CGPoint, distance: CGFloat = 60) -> Bool {
+        let dx = max(background.minX - point.x, 0, point.x - background.maxX)
+        let dy = max(background.minY - point.y, 0, point.y - background.maxY)
+        return hypot(dx, dy) > distance
+    }
+    public static func panelFrame(screen: CGRect, position: DockPosition, depth: CGFloat = 210) -> CGRect {
+        switch position {
+        case .bottom: return CGRect(x: screen.minX, y: screen.minY, width: screen.width, height: depth)
+        case .left: return CGRect(x: screen.minX, y: screen.minY, width: depth, height: screen.height)
+        case .right: return CGRect(x: screen.maxX - depth, y: screen.minY, width: depth, height: screen.height)
+        }
+    }
+    public static func hiddenFrame(_ frame: CGRect, position: DockPosition) -> CGRect {
+        switch position {
+        case .bottom: return frame.offsetBy(dx: 0, dy: -frame.height)
+        case .left: return frame.offsetBy(dx: -frame.width, dy: 0)
+        case .right: return frame.offsetBy(dx: frame.width, dy: 0)
+        }
+    }
+    public static func touchesEdge(_ point: CGPoint, screen: CGRect, position: DockPosition) -> Bool {
+        guard screen.insetBy(dx: -1, dy: -1).contains(point) else { return false }
+        switch position {
+        case .bottom: return point.y <= screen.minY + 2
+        case .left: return point.x <= screen.minX + 2
+        case .right: return point.x >= screen.maxX - 2
+        }
+    }
+}
