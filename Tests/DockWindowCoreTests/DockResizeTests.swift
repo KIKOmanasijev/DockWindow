@@ -62,7 +62,7 @@ final class DockResizeTests: XCTestCase {
             }
         }
     }
-    @MainActor func testResizeCueAppearsOnBorderEvenWhenAppLabelsAreDisabled() throws {
+    @MainActor func testResizePillAppearsWithoutTextOnHoverAndDrag() throws {
         let suite = "DockResizeCueTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -76,18 +76,26 @@ final class DockResizeTests: XCTestCase {
         let point = CGPoint(x: edge.midX, y: edge.midY)
         view.track(point)
         let label = try XCTUnwrap(view.subviews.compactMap { $0 as? NSTextField }.first)
-        XCTAssertFalse(label.isHidden)
-        XCTAssertTrue(label.stringValue.contains("Drag to resize"))
+        XCTAssertTrue(label.isHidden)
+        let pill = try XCTUnwrap(view.layer?.sublayers?.first { $0.name == "resize-pill" })
+        XCTAssertFalse(pill.isHidden)
+        XCTAssertEqual(pill.frame.width, 28)
+        XCTAssertEqual(pill.frame.height, 3)
         let down = try XCTUnwrap(NSEvent.mouseEvent(with: .leftMouseDown, location: point, modifierFlags: [],
                                                   timestamp: 0, windowNumber: 0, context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
         var resized = false
         view.onResizeStarted = { resized = true }
         view.mouseDown(with: down)
         XCTAssertTrue(resized)
-        XCTAssertTrue(label.stringValue.contains("Resizing"))
-        XCTAssertTrue(label.stringValue.contains("48 pt"))
+        XCTAssertFalse(pill.isHidden)
+        XCTAssertTrue(label.isHidden)
+        XCTAssertGreaterThan(pill.frame.width, 0)
+        XCTAssertLessThanOrEqual(pill.frame.width, 36)
+        XCTAssertTrue(edge.contains(CGPoint(x: pill.frame.midX, y: pill.frame.midY)))
+        XCTAssertEqual(pill.frame.height, 4)
         view.stopTracking()
         XCTAssertTrue(label.isHidden)
+        XCTAssertTrue(pill.isHidden)
     }
     func testHandleDoesNotCompeteWithIconsAtAllSizesAndEdges() {
         for position in DockPosition.allCases {

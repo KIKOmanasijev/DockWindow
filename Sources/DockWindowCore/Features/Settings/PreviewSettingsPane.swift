@@ -10,6 +10,7 @@ import SwiftUI
                 SettingsSlider(title: "Preview height", description: "Set the height of each preview thumbnail.", value: $settings.previewThumbnailHeight, range: 80...400, step: 1, unit: "pt")
                 SettingsChoice(title: "Windows from", description: "Choose which desktops contribute preview windows.", value: $settings.previewScope)
                 Toggle("Show window titles", isOn: $settings.previewShowWindowTitles).settingsDescription("Display a title pill on each window card.")
+                Toggle("Show empty-app previews", isOn: $settings.previewShowEmptyApps).settingsDescription("Show a New Window button on hover when the app has no windows in the selected scope.")
                 Toggle("Show traffic lights", isOn: $settings.previewShowTrafficLights).settingsDescription("Show close, minimize and fullscreen controls on cards.")
                 Toggle("Include minimized", isOn: $settings.previewIncludeMinimized).settingsDescription("Show minimized windows with their cached thumbnails.")
                 Toggle("Show pointer arrow", isOn: $settings.previewShowPointer).settingsDescription("Point the preview panel toward its Dock icon.")

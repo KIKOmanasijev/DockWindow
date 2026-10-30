@@ -34,6 +34,7 @@ final class DockMenuTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let settings = AppSettings(defaults: defaults)
         settings.previewHoverDelay = 0.1
+        settings.previewShowEmptyApps = true
         let tracker = WindowTracker()
         let previews = PreviewController(tracker: tracker, actions: WindowActions(tracker: tracker),
             thumbnails: ThumbnailService(), settings: settings, newWindowOpener: NewWindowOpener(tracker: tracker))

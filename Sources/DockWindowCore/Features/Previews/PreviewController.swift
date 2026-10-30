@@ -122,6 +122,7 @@ import SwiftUI
         pinned = pin
         edge = native ? PreviewGeometry.edge(anchor: anchor, screen: screen.frame) : settings.dockPosition
         installMonitors(); update()
+        guard self.item != nil else { return }
         if panel.isVisible || pin { reveal(); return }
         guard appearanceTask == nil else { return }
         let token = generation
@@ -149,6 +150,9 @@ import SwiftUI
             presentation.windows = WindowFilter(scope: settings.previewScope, currentSpaceIDs: currentSpaces,
                 includeMinimized: settings.previewIncludeMinimized, includeHiddenApps: true, pid: app.pid).apply(to: snapshot.windows)
         } else { presentation.windows = [] }
+        if presentation.windows.isEmpty, !pinned, !settings.previewShowEmptyApps {
+            dismiss(); return
+        }
         presentation.desktopLabels = [:]
         for window in presentation.windows {
             let spaces = SpacePolicy.membership(of: window)

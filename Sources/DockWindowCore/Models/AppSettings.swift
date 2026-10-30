@@ -260,6 +260,10 @@ public final class AppSettings: ObservableObject {
         get { read("previewShowWindowTitles", fallback: true) }
         set { write("previewShowWindowTitles", value: newValue) }
     }
+    public var previewShowEmptyApps: Bool {
+        get { read("previewShowEmptyApps", fallback: false) }
+        set { write("previewShowEmptyApps", value: newValue) }
+    }
     public var previewShowTrafficLights: Bool {
         get { read("previewShowTrafficLights", fallback: true) }
         set { write("previewShowTrafficLights", value: newValue) }
@@ -361,6 +365,7 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "previewThumbnailHeight": encoded(160 as Double),
             keyPrefix + "previewScope": encoded(WindowScope.currentDesktop),
             keyPrefix + "previewShowWindowTitles": encoded(true as Bool),
+            keyPrefix + "previewShowEmptyApps": encoded(false as Bool),
             keyPrefix + "previewShowTrafficLights": encoded(true as Bool),
             keyPrefix + "previewIncludeMinimized": encoded(true as Bool),
             keyPrefix + "thumbnailRefreshInterval": encoded(1 as Double),

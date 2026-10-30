@@ -36,7 +36,8 @@ import QuartzCore
     private var resizeMouseDown = false
     private var resizeHandle = CGRect.zero
     private let resizeGrip = CALayer()
-    private let resizeHighlight = CAShapeLayer()
+    private let resizePill = CALayer()
+    private var resizeCuePoint = CGPoint.zero
     private var lastFeedbackSize: CGFloat = 0
     private var cancelMonitor: Any?
     var isDragging: Bool { dragged != nil || resizeMouseDown }
@@ -84,8 +85,6 @@ import QuartzCore
         let duration = pointer == nil && !isDragging && !Theme.reducesMotion(settings) ? 0.12 : 0
         resizeHandle = geometry.resizeHandle(kinds: kinds)
         removeAllToolTips()
-        if !resizeHandle.isEmpty { addToolTip(resizeHandle, owner: self, userData: nil) }
-        if !geometry.resizeEdge.isEmpty { addToolTip(geometry.resizeEdge, owner: self, userData: nil) }
         window?.invalidateCursorRects(for: self)
         CATransaction.begin(); CATransaction.setDisableActions(duration == 0); CATransaction.setAnimationDuration(duration)
         background.frame = geometry.background
@@ -131,26 +130,27 @@ import QuartzCore
                         position: settings.dockPosition, scale: window?.backingScaleFactor ?? 2, reduceMotion: Theme.reducesMotion(settings))
             icon.bounce(position: settings.dockPosition, enabled: launching.contains(item.id) && settings.bounceOnLaunch && !Theme.reducesMotion(settings))
         }
-        if resizeHighlight.superlayer == nil { layer?.addSublayer(resizeHighlight) }
+        if resizePill.superlayer == nil { layer?.addSublayer(resizePill) }
         if resizeGrip.superlayer == nil { layer?.addSublayer(resizeGrip) }
         let resizeArmed = resizeSession != nil || (!resizeMouseDown && pointer.map { geometry.containsResizeTarget($0, kinds: kinds) } == true)
         let accent = NSColor.systemPurple
         let edge = geometry.resizeEdge
-        let outline = CGMutablePath()
+        let point = resizeSession == nil ? (pointer ?? .zero) : resizeCuePoint
+        let length = resizeSession == nil ? CGFloat(28) : 36
+        let thickness = resizeSession == nil ? CGFloat(3) : 4
         if settings.dockPosition == .bottom {
-            outline.move(to: CGPoint(x: edge.minX, y: edge.midY))
-            outline.addLine(to: CGPoint(x: edge.maxX, y: edge.midY))
+            let width = min(length, edge.width)
+            let x = min(max(point.x - width / 2, edge.minX), edge.maxX - width)
+            resizePill.frame = CGRect(x: x, y: edge.midY - thickness / 2, width: width, height: thickness)
         } else {
-            outline.move(to: CGPoint(x: edge.midX, y: edge.minY))
-            outline.addLine(to: CGPoint(x: edge.midX, y: edge.maxY))
+            let height = min(length, edge.height)
+            let y = min(max(point.y - height / 2, edge.minY), edge.maxY - height)
+            resizePill.frame = CGRect(x: edge.midX - thickness / 2, y: y, width: thickness, height: height)
         }
-        resizeHighlight.path = outline
-        resizeHighlight.fillColor = NSColor.clear.cgColor
-        resizeHighlight.strokeColor = accent.cgColor
-        resizeHighlight.lineWidth = 3; resizeHighlight.lineCap = .round
-        resizeHighlight.shadowColor = accent.cgColor; resizeHighlight.shadowRadius = 4
-        resizeHighlight.shadowOpacity = 0.4; resizeHighlight.shadowOffset = .zero
-        resizeHighlight.isHidden = !resizeArmed
+        resizePill.name = "resize-pill"
+        resizePill.backgroundColor = accent.cgColor
+        resizePill.cornerRadius = thickness / 2
+        resizePill.isHidden = !resizeArmed
         let hasSeparator = kinds.contains(.separator)
         let vertical = hasSeparator ? settings.dockPosition == .bottom : settings.dockPosition != .bottom
         resizeGrip.frame = CGRect(x: resizeHandle.midX - (vertical ? 1.5 : min(24, resizeHandle.width) / 2),
@@ -167,15 +167,9 @@ import QuartzCore
             hoverID = item?.id
             onHover?(item, hovered.map { geometry.iconFrames[$0] } ?? .zero)
         } else if let item, let hovered { onHover?(item, geometry.iconFrames[hovered]) }
-        label.isHidden = !resizeArmed && (item == nil || previewVisible || !settings.showAppNameLabels || dragged != nil)
+        label.isHidden = resizeArmed || item == nil || previewVisible || !settings.showAppNameLabels || dragged != nil
         label.textColor = .labelColor
-        label.layer?.borderColor = accent.cgColor
-        label.layer?.borderWidth = resizeArmed ? 1.5 : 0
-        if resizeArmed {
-            let direction = settings.dockPosition == .bottom ? "↕" : "↔"
-            label.stringValue = resizeSession == nil ? "\(direction) Drag to resize" : "\(direction) Resizing · \(Int(settings.iconSize)) pt"
-            positionLabel(relativeTo: geometry.background)
-        } else if let item, let hovered {
+        if !resizeArmed, let item, let hovered {
             label.stringValue = item.app?.name ?? item.pinnedApp?.url.deletingPathExtension().lastPathComponent ?? "Trash"
             positionLabel(relativeTo: geometry.iconFrames[hovered])
         }
@@ -198,6 +192,7 @@ import QuartzCore
         if geometry.containsResizeTarget(pressPoint, kinds: items.map(\.kind)) {
             longPress?.cancel(); longPress = nil; pressed = nil
             resizeMouseDown = true
+            resizeCuePoint = pressPoint
             resizeSession = DockResizeSession(size: settings.iconSize, origin: NSEvent.mouseLocation, position: settings.dockPosition)
             lastFeedbackSize = settings.iconSize
             pointer = nil; hoverID = nil; onHover?(nil, .zero)
@@ -296,9 +291,6 @@ import QuartzCore
         super.resetCursorRects()
         if !resizeHandle.isEmpty { addCursorRect(resizeHandle, cursor: resizeCursor) }
         if !geometry.resizeEdge.isEmpty { addCursorRect(geometry.resizeEdge, cursor: resizeCursor) }
-    }
-    @objc func view(_ view: NSView, stringForToolTip tag: NSView.ToolTipTag, point: NSPoint, userData data: UnsafeMutableRawPointer?) -> String {
-        "Drag to resize Dock. Press Escape to cancel."
     }
     override func cancelOperation(_ sender: Any?) { finishResize(cancelled: true) }
     override func viewWillMove(toWindow newWindow: NSWindow?) {
