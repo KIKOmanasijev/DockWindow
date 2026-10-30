@@ -79,3 +79,20 @@ Manual checks, pending user verification:
 - Check minimized remembered membership and fullscreen desktop behavior.
 - Test separate/shared display Spaces and unplug a display during opening.
 - Toggle all-desktop Dock scope and confirm clicks still choose local windows.
+
+## M5: Dock hover previews
+
+Added a shared preview panel for replacement and native Dock modes, delayed hover, instant app switching, tapered pointer bridge, pinned Show All Windows, empty states, live thumbnail leases, title and traffic-light settings, and remote desktop labels from cached topology. Coordinator routes both hover sources and disables previews on permission loss/Pause. Six geometry tests cover edges, negative origins, clamping and bridging. User changed the default switcher binding to Option+Tab; tests now ensure native Cmd+Tab passes through by default. All 55 tests, debug build and installed release build pass without warnings. The parent permission fix 400eff6 is preserved. Ad-hoc installs can still invalidate TCC grants.
+
+Manual checks, pending user verification:
+- Use Option+Tab for the switcher and confirm Cmd+Tab remains native by default.
+- Hover, move between icons and cross the bridge into the preview panel.
+- Leave all regions and reenter before/after the close delay.
+- Pin Show All Windows, then dismiss with Escape or outside click.
+- Disable replacement Dock and test native Dock hover on all three edges.
+- Toggle scope, titles, controls and refresh interval, including zero.
+- Click traffic lights and thumbnails, including minimized and protected windows.
+- Compare desktop-number badges and mixed-scale display placement.
+- Open a preview and switcher concurrently, then close each independently.
+
+Nonrunning pinned apps must first launch from the Dock before New Window is enabled. Native AX selection may miss hover signals. UI parity and timing remain unverified. PreviewIntegration.md contains detailed checks.

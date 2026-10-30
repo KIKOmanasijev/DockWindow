@@ -25,9 +25,9 @@ final class SwitcherSessionTests: XCTestCase {
     }
     func testMouseEndRetainsKeyUpOwnership() {
         var state = HotkeySessionState(); let config = HotkeyConfiguration()
-        _ = state.process(kind: .keyDown, keyCode: 48, flags: .command, configuration: config, canDeliver: true)
+        _ = state.process(kind: .keyDown, keyCode: 48, flags: .option, configuration: config, canDeliver: true)
         state.endSession(); XCTAssertFalse(state.isActive)
         XCTAssertTrue(state.process(kind: .keyUp, keyCode: 48, configuration: config, canDeliver: true).swallow)
-        XCTAssertFalse(state.process(kind: .keyDown, keyCode: 13, flags: .command, configuration: config, canDeliver: true).swallow)
+        XCTAssertFalse(state.process(kind: .keyDown, keyCode: 13, flags: .option, configuration: config, canDeliver: true).swallow)
     }
 }

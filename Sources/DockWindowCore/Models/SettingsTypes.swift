@@ -39,7 +39,7 @@ public struct KeyboardShortcut: Codable, Hashable, Sendable {
     public var keyCode: UInt16
     public var modifiers: HotkeyModifiers
     public init(keyCode: UInt16, modifiers: HotkeyModifiers = .command) { self.keyCode = keyCode; self.modifiers = modifiers }
-    public static let switcher = Self(keyCode: 48)
+    public static let switcher = Self(keyCode: 48, modifiers: .option)
     public static let sameApp = Self(keyCode: 50)
     public static let newWindow = Self(keyCode: 45)
 }

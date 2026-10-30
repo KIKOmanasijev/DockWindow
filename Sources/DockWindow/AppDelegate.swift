@@ -16,6 +16,8 @@ import Combine
     let nativeReader = NativeDockReader()
     let pinnedApps = PinnedAppsStore()
     lazy var dock = DockController(tracker: tracker, actions: actions, settings: settings, pinnedApps: pinnedApps, newWindowOpener: newWindowOpener)
+    lazy var previews = PreviewController(tracker: tracker, actions: actions, thumbnails: thumbnails, settings: settings, newWindowOpener: newWindowOpener)
+    var desktopNumbers: [UInt64: Int] = [:]
     var nativeSessionStarted = false
     var replacementActive = false
     var lifecycleTask: Task<Void, Never>?
@@ -39,6 +41,23 @@ import Combine
         permissionTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.updatePermissions() }
         }
+        dock.onHover = { [weak self] item, anchor, screen in self?.previews.hover(item: item, anchor: anchor, screen: screen) }
+        dock.onHoverEnded = { [weak self] in self?.previews.hoverEnded() }
+        dock.onShowWindows = { [weak self] item, anchor, screen in self?.previews.showWindows(item: item, anchor: anchor, screen: screen) }
+        dock.onIconClicked = { [weak self] in self?.previews.dismiss() }
+        previews.onVisibilityChanged = { [weak self] visible in self?.dock.previewVisible = visible }
+        previews.desktopNumber = { [weak self] in self?.desktopNumbers[$0] }
+        tracker.$snapshot.map(\.activeSpaceIDs).removeDuplicates().receive(on: RunLoop.main).sink { [weak self] _ in
+            Task { @MainActor [weak self] in
+                let numbers = await Task.detached { SpacesService().read(windowIDs: []).desktopNumbers }.value
+                self?.desktopNumbers = numbers
+            }
+        }.store(in: &subscriptions)
+        nativeReader.$hoveredItem.receive(on: RunLoop.main).sink { [weak self] item in
+            guard let self, !self.replacementActive, !self.settings.useDockWindowDock else { return }
+            guard let item, let screen = NSScreen.screens.first(where: { $0.frame.intersects(item.frame) }) else { self.previews.hoverEnded(); return }
+            self.previews.hover(item: item, screen: screen)
+        }.store(in: &subscriptions)
         switcher.onSessionEnded = { [weak self] in self?.hotkey.endSession() }
         tracker.onWindowInventoryChanged = { [weak self] in self?.thumbnails.invalidateShareableContent() }
         nativeReader.$items.receive(on: RunLoop.main).sink { [weak self] _ in
@@ -52,6 +71,7 @@ import Combine
         permissions.refresh()
         statusItem?.button?.toolTip = permissions.isGranted ? "DockWindow" : "DockWindow needs permissions"
         let enabled = permissions.isGranted && !settings.isPaused && !terminating
+        previews.enabled = enabled && settings.previewsEnabled
         switcher.enabled = enabled
         var configuration = HotkeyConfiguration()
         configuration.enabled = enabled && settings.switcherEnabled
@@ -93,7 +113,7 @@ import Combine
                         if self.wantsReplacement { self.dock.start(); self.replacementActive = true }
                         else { try await self.nativeDock.restore() }
                     } else {
-                        self.dock.stop()
+                        self.previews.dismiss(); self.dock.stop()
                         try await self.nativeDock.restore()
                         self.replacementActive = false
                     }
@@ -137,7 +157,7 @@ import Combine
     }
     @objc func togglePause() { settings.isPaused.toggle() }
     @objc func dumpWindows() { tracker.dumpWindows() }
-    func applicationWillTerminate(_ notification: Notification) { permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); tracker.stop() }
+    func applicationWillTerminate(_ notification: Notification) { permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); previews.dismiss(); nativeReader.stop(); dock.stop(); tracker.stop() }
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showOnboarding() {
         if onboarding == nil {

@@ -8,6 +8,7 @@ public final class SpacesService {
         public var membership: [CGWindowID: [UInt64]]
         public var fullscreenSpaceIDs: Set<UInt64>
         public var hasSeparateSpaces: Bool
+        public var desktopNumbers: [UInt64: Int]
     }
     public init() {}
     public func read(windowIDs: [CGWindowID]) -> State {
@@ -16,12 +17,14 @@ public final class SpacesService {
         var active: [String: UInt64] = [:]
         var all = Set<UInt64>()
         var fullscreen = Set<UInt64>()
+        var numbers: [UInt64: Int] = [:]
         for display in displays {
             let key = display["Display Identifier"] as? String ?? "Main"
             if let current = display["Current Space"] as? [String: Any], let id = Self.id(current) { active[key] = id; all.insert(id) }
-            for space in display["Spaces"] as? [[String: Any]] ?? [] {
+            for (index, space) in (display["Spaces"] as? [[String: Any]] ?? []).enumerated() {
                 guard let id = Self.id(space) else { continue }
                 all.insert(id)
+                numbers[id] = index + 1
                 if (space["type"] as? NSNumber)?.intValue == 4 { fullscreen.insert(id) }
             }
         }
@@ -39,7 +42,7 @@ public final class SpacesService {
             if let spaces = sky.spaces(containing: [id]), !spaces.isEmpty { membership[id] = spaces }
         }
         return State(activeSpaceIDs: active, membership: membership, fullscreenSpaceIDs: fullscreen,
-                     hasSeparateSpaces: !(UserDefaults.standard.persistentDomain(forName: "com.apple.spaces")?["spans-displays"] as? Bool ?? false))
+                     hasSeparateSpaces: !(UserDefaults.standard.persistentDomain(forName: "com.apple.spaces")?["spans-displays"] as? Bool ?? false), desktopNumbers: numbers)
     }
     private static func id(_ space: [String: Any]) -> UInt64? {
         (space["ManagedSpaceID"] as? NSNumber ?? space["id64"] as? NSNumber)?.uint64Value

@@ -200,22 +200,22 @@ final class PolicyTests: XCTestCase {
         XCTAssertNil(PreferenceValue(propertyList: URL(fileURLWithPath: "/tmp")))
     }
     func testHotkeyBeginCycleReleaseAndCancel() {
-        func decode(_ kind: HotkeyEventKind = .keyDown, _ key: UInt16 = 48, _ flags: HotkeyModifiers = .command, active: Bool = false) -> HotkeyDecision {
+        func decode(_ kind: HotkeyEventKind = .keyDown, _ key: UInt16 = 48, _ flags: HotkeyModifiers = .option, active: Bool = false) -> HotkeyDecision {
             HotkeyPolicy.decode(kind: kind, keyCode: key, flags: flags, isSessionActive: active)
         }
         XCTAssertEqual(decode(), .init(command: .begin(reverse: false, sameAppOnly: false), swallow: true))
-        XCTAssertEqual(decode(.keyDown, 48, [.command, .shift]), .init(command: .begin(reverse: true, sameAppOnly: false), swallow: true))
+        XCTAssertEqual(decode(.keyDown, 48, [.option, .shift]), .init(command: .begin(reverse: true, sameAppOnly: false), swallow: true))
         XCTAssertEqual(decode(active: true), .init(command: .next, swallow: true))
-        XCTAssertEqual(decode(.keyDown, 48, [.command, .shift], active: true), .init(command: .previous, swallow: true))
+        XCTAssertEqual(decode(.keyDown, 48, [.option, .shift], active: true), .init(command: .previous, swallow: true))
         XCTAssertEqual(decode(.keyUp), .init(swallow: true))
         XCTAssertEqual(decode(.flagsChanged, 0, [], active: true), .init(command: .commit))
-        XCTAssertEqual(decode(.flagsChanged, 0, [.command, .shift], active: true), .init())
-        XCTAssertEqual(decode(.keyDown, 53, .command, active: true), .init(command: .cancel, swallow: true))
+        XCTAssertEqual(decode(.flagsChanged, 0, [.option, .shift], active: true), .init())
+        XCTAssertEqual(decode(.keyDown, 53, .option, active: true), .init(command: .cancel, swallow: true))
         XCTAssertEqual(decode(.tapDisabled), .init(command: .reenableTap))
-        XCTAssertEqual(decode(.keyDown, 48, [.command, .control]), .init())
+        XCTAssertEqual(decode(.keyDown, 48, [.option, .control]), .init())
         XCTAssertEqual(decode(.keyDown, 1), .init())
         XCTAssertEqual(decode(.keyDown, 48, [], active: false), .init())
-        XCTAssertEqual(decode(.keyDown, 48, HotkeyModifiers(rawValue: HotkeyModifiers.command.rawValue | (1 << 16))), decode())
+        XCTAssertEqual(decode(.keyDown, 48, HotkeyModifiers(rawValue: HotkeyModifiers.option.rawValue | (1 << 16))), decode())
     }
     func testHotkeyActionsAndConfiguration() {
         let actions: [(UInt16, SwitcherCommand)] = [(123, .moveLeft), (124, .moveRight), (125, .moveDown), (126, .moveUp), (13, .closeWindow), (46, .minimizeWindow), (4, .hideApp), (12, .quitApp)]
