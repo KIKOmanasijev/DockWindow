@@ -34,7 +34,6 @@ h1, h2, h3, p { margin: 0; }
 ul { margin: 0; padding: 0; list-style: none; }
 a { color: inherit; }
 kbd { font: inherit; }
-[hidden] { display: none; }
 
 .sr-only {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
@@ -659,3 +658,6 @@ kbd { font: inherit; }
   .btn { width: 100%; }
   .tile { width: 62px; }
 }
+
+/* Keep semantic visibility after all component display and responsive rules. */
+[hidden] { display: none !important; }

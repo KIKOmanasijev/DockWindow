@@ -37,3 +37,52 @@ test("feature illustrations never inherit album-cover dimensions", { skip: !JSDO
     assert.equal(cover.height, "2.6em");
   } finally { dom.window.close(); }
 });
+
+test("closed preview and switcher shells stay invisible through demo transitions", { skip: !JSDOM && "jsdom not found" }, () => {
+  const dom = new JSDOM(fs.readFileSync(path.join(ROOT, "index.html"), "utf8"), {
+    url: "https://dogbar.hristijan.dev/", runScripts: "outside-only", pretendToBeVisual: true,
+  });
+  try {
+    const w = dom.window;
+    const d = w.document;
+    const style = d.createElement("style");
+    style.textContent = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+    d.head.append(style);
+    w.matchMedia = () => ({ matches: false, addEventListener() {} });
+    const $ = (s) => d.querySelector(s);
+    const display = (selector) => w.getComputedStyle($(selector)).display;
+    const escape = () => $("#demo").dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+    const closed = () => {
+      assert.equal($("[data-preview]").hidden, true);
+      assert.equal($("[data-switcher]").hidden, true);
+      assert.equal(display("[data-preview]"), "none", "no empty bubble or pointer");
+      assert.equal(display("[data-switcher]"), "none", "no overlay or empty tile shell");
+    };
+
+    closed();
+    w.eval(fs.readFileSync(path.join(ROOT, "script.js"), "utf8"));
+    assert.equal(display("[data-preview]"), "flex", "opening example still renders");
+    assert.equal(display("[data-switcher]"), "none");
+    assert.equal(display("[data-release]"), "none");
+    $('[data-focus="s2"]').click();
+    closed();
+    $("[data-tab]").click();
+    assert.equal(display("[data-switcher]"), "grid", "switcher opens normally");
+    assert.equal(display("[data-preview]"), "none");
+    escape();
+    closed();
+    $('[data-desk-btn="2"]').click();
+    closed();
+    $('[data-desk-btn="1"]').click();
+    closed();
+    $('.dock-btn[data-app="safari"]').click();
+    assert.equal(display("[data-preview]"), "flex");
+    escape();
+    closed();
+    $('[data-reset]').click();
+    assert.equal(display("[data-preview]"), "flex");
+    escape();
+    closed();
+    assert.equal(display("[data-preview-help]"), "none");
+  } finally { dom.window.close(); }
+});
