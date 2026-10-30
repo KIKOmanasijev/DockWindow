@@ -21,6 +21,8 @@ After the DogBar rebrand, installed process 21095 logged accessibility=false, sc
 
 This records that earlier process, not the permission state of every subsequent build.
 
+The resize-feedback build launched as process 50404 on 2026-10-30 and logged accessibility=true, screenRecording=true and adHoc=false. Both effective permissions are active for that installed process with the preserved signing requirement.
+
 ## Dock context menus and Hide
 
 Context-menu tracking now suppresses pending, hover and pinned previews. The gate is set before dismissal to cover synchronous visibility callbacks. Menu actions, including Options submenu actions, execute after AppKit finishes tracking. This also prevents Show All Windows from displaying a preview over its own menu.
