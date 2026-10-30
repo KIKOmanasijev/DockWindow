@@ -127,7 +127,29 @@ import ApplicationServices
             AXUIElementSetAttributeValue($0, "AXFullScreen" as CFString, value ? kCFBooleanFalse : kCFBooleanTrue)
         }
     }
-    public func hide(pid: pid_t) { NSRunningApplication(processIdentifier: pid)?.hide(); tracker.refresh() }
+    public func hide(pid: pid_t, completion: ((Bool) -> Void)? = nil) {
+        guard pid > 0, let app = NSRunningApplication(processIdentifier: pid), !app.isTerminated else {
+            completion?(false); return
+        }
+        let lifecycle = tracker.actionCancellation
+        Task { [weak self] in
+            let hidden = await ApplicationHideOperation.run(
+                isHidden: { app.isHidden }, isTerminated: { app.isTerminated },
+                isCancelled: { lifecycle.isCancelled }, requestHide: { app.hide() },
+                setAXHidden: {
+                    await Task.detached(priority: .userInitiated) {
+                        guard !lifecycle.isCancelled else { return false }
+                        let element = AXUIElementCreateApplication(pid)
+                        AXUIElementSetMessagingTimeout(element, 0.25)
+                        return AXUIElementSetAttributeValue(element, kAXHiddenAttribute as CFString, kCFBooleanTrue) == .success
+                    }.value
+                })
+            guard !lifecycle.isCancelled else { return }
+            self?.tracker.refresh()
+            if !hidden { Log.system.error("Could not hide application pid \(pid)") }
+            completion?(hidden)
+        }
+    }
     public func quit(pid: pid_t, force: Bool = false) {
         if force { NSRunningApplication(processIdentifier: pid)?.forceTerminate() } else { NSRunningApplication(processIdentifier: pid)?.terminate() }
     }

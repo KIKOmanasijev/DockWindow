@@ -9,6 +9,8 @@ import Combine
     /// Requests a preview pinned open from the context menu.
     public var onShowWindows: ((DockItem, CGRect, NSScreen) -> Void)?
     public var onIconClicked: (() -> Void)?
+    /// Suppresses pending and new previews for the complete context-menu session.
+    public var onContextMenuTrackingChanged: ((Bool) -> Void)?
     /// If absent, actionable failures appear in an NSAlert.
     public var onError: ((String) -> Void)?
     public var previewVisible = false { didSet { guard previewVisible != oldValue else { return }; view.previewVisible = previewVisible; if previewVisible { hideTask?.cancel(); hideTask = nil } else { updatePointer() } } }
@@ -163,6 +165,7 @@ import Combine
     }
     private func updatePointer() {
         guard started, settings.useDockWindowDock, !settings.isPaused, let screen else { return }
+        guard !menuVisible else { return }
         if settings.dockDisplay == .withMouse, !screen.frame.contains(NSEvent.mouseLocation), !view.isDragging, !previewVisible {
             if let next = display(), next !== screen { self.screen = next; reload(); return }
         }
@@ -197,6 +200,7 @@ import Combine
         }
     }
     private func hover(item: DockItem?, rect: CGRect) {
+        guard !menuVisible else { return }
         let wasHovering = hoverItem?.kind == .application
         hoverItem = item
         guard let item, item.kind == .application, let screen else { if wasHovering { onHoverEnded?() }; return }
@@ -217,7 +221,7 @@ import Combine
         case .openNewWindowHere: openNew(item)
         case .launch: launch(item)
         case .minimize: if let window = localWindows(item).first { actions.minimize(window) }
-        case .hide: if let pid = item.app?.pid { actions.hide(pid: pid) }
+        case .hide: if let pid = item.app?.pid { hideApplication(pid: pid) }
         case .none: break
         }
     }
@@ -319,10 +323,17 @@ import Combine
         }
     }
     private func showMenu(item: DockItem, event: NSEvent) {
-        onIconClicked?(); hideTask?.cancel(); hideTask = nil; menuVisible = true
+        guard !menuVisible else { return }
+        // Set the gate before dismissing: visibility callbacks can synchronously re-enter hover.
+        menuVisible = true
+        onContextMenuTrackingChanged?(true)
+        onIconClicked?(); hideTask?.cancel(); hideTask = nil
+        view.stopTracking()
+        let session = DockMenuSession()
+        let token = lifecycleGeneration
         let menu = NSMenu(); menu.autoenablesItems = false
         func add(_ title: String, action: @escaping () -> Void) -> DockMenuItem {
-            let entry = DockMenuItem(title: title, handler: action); menu.addItem(entry); return entry
+            let entry = DockMenuItem(title: title) { session.select(action) }; menu.addItem(entry); return entry
         }
         if item.kind == .trash {
             _ = add("Open Trash") { [weak self] in if let self { NSWorkspace.shared.open(self.trashURL) } }
@@ -338,17 +349,22 @@ import Combine
             }
             show.isEnabled = onShowWindows != nil
             if let app = item.app {
-                _ = add("Hide") { [weak self] in self?.actions.hide(pid: app.pid) }
+                _ = add(app.isHidden ? "Show" : "Hide") { [weak self] in
+                    if app.isHidden { NSRunningApplication(processIdentifier: app.pid)?.unhide() }
+                    else { self?.hideApplication(pid: app.pid) }
+                }
                 _ = add("Quit") { [weak self] in self?.actions.quit(pid: app.pid) }
                 let force = add("Force Quit") { [weak self] in self?.actions.quit(pid: app.pid, force: true) }
                 force.isAlternate = true; force.keyEquivalentModifierMask = .option
             }
             menu.addItem(.separator())
             let options = NSMenu(); options.autoenablesItems = false; let root = NSMenuItem(title: "Options", action: nil, keyEquivalent: ""); root.submenu = options; menu.addItem(root)
-            let pin = DockMenuItem(title: item.isPinned ? "Remove from Dock" : "Keep in Dock") { [weak self] in
-                guard let self else { return }
-                if item.isPinned { self.pins.unpin(bundleIdentifier: item.id) }
-                else if let url = item.app?.bundleURL, let identifier = item.app?.bundleIdentifier { self.pins.pin(bundleIdentifier: identifier, url: url) }
+            let pin = DockMenuItem(title: item.isPinned ? "Remove from Dock" : "Keep in Dock") {
+                session.select { [weak self] in
+                    guard let self else { return }
+                    if item.isPinned { self.pins.unpin(bundleIdentifier: item.id) }
+                    else if let url = item.app?.bundleURL, let identifier = item.app?.bundleIdentifier { self.pins.pin(bundleIdentifier: identifier, url: url) }
+                }
             }
             pin.isEnabled = item.id != DockCompositionPolicy.finderBundleIdentifier && (item.isPinned || item.app?.bundleIdentifier != nil)
             options.addItem(pin)
@@ -357,7 +373,16 @@ import Combine
             }
         }
         NSMenu.popUpContextMenu(menu, with: event, for: view)
-        menuVisible = false; updatePointer()
+        menuVisible = false
+        onContextMenuTrackingChanged?(false)
+        if started, lifecycleGeneration == token { session.finish() }
+        updatePointer()
+    }
+    private func hideApplication(pid: pid_t) {
+        actions.hide(pid: pid) { [weak self] success in
+            guard let self, self.started, !success else { return }
+            self.report("Could not hide this application. Check Accessibility access, then try Hide from the application's own menu.")
+        }
     }
     private func emptyTrash() {
         let alert = NSAlert(); alert.messageText = "Empty Trash?"; alert.informativeText = "These items will be permanently deleted."

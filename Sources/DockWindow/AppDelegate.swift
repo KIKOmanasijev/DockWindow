@@ -68,6 +68,7 @@ import Combine
         dock.onHoverEnded = { [weak self] in self?.previews.hoverEnded() }
         dock.onShowWindows = { [weak self] item, anchor, screen in self?.previews.showWindows(item: item, anchor: anchor, screen: screen) }
         dock.onIconClicked = { [weak self] in self?.previews.dismiss() }
+        dock.onContextMenuTrackingChanged = { [weak self] in self?.previews.contextMenuTracking = $0 }
         previews.onVisibilityChanged = { [weak self] visible in self?.dock.previewVisible = visible }
         previews.desktopNumber = { [weak self] in self?.desktopNumbers[$0] }
         tracker.$snapshot.map(\.activeSpaceIDs).removeDuplicates().receive(on: RunLoop.main).sink { [weak self] _ in

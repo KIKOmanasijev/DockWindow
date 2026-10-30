@@ -8,6 +8,9 @@ import SwiftUI
     public var enabled = false { didSet { if !enabled { dismiss() } } }
     public var onVisibilityChanged: ((Bool) -> Void)?
     public var onError: ((String) -> Void)?
+    public var contextMenuTracking = false {
+        didSet { if contextMenuTracking { dismiss() } }
+    }
     /// Optional topology ordinal lookup. Space IDs are not desktop numbers.
     public var desktopNumber: ((UInt64) -> Int?)?
     public var isVisible: Bool { panel.isVisible }
@@ -102,7 +105,7 @@ import SwiftUI
         presentation.opening = false; presentation.message = nil
         if visible { onVisibilityChanged?(false) }
     }
-    private var allowed: Bool { enabled && settings.previewsEnabled && !settings.isPaused }
+    private var allowed: Bool { enabled && settings.previewsEnabled && !settings.isPaused && !contextMenuTracking }
     private func receive(item: DockItem, anchor: CGRect, screen: NSScreen, native: Bool, pin: Bool) {
         guard allowed, item.kind == .application, native != settings.useDockWindowDock else { return }
         // Show All Windows owns the surface until outside click or Escape.
