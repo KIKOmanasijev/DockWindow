@@ -63,3 +63,19 @@ Manual checks, pending user verification:
 - Create/minimize/close windows and compare count dots, cap, custom color and single-dot style.
 
 Known limits: the SDK uses material approximation, external Trash updates are not watched, running-only ordering is session-local, no screen-space reservation, and minimize animations target the hidden native Dock. DockIntegration.md has detailed runtime checks.
+
+## M4: Per-desktop behavior
+
+Wired current-desktop composition and verified click/open strategies through the replacement Dock. Hardened new-window attempts with a display-specific DesktopTarget: abort when that display changes desktop or disappears, even if another display has the old Space. Space/app activation events now schedule immediate membership queries alongside inventory recovery. Shortened item transition animation to 120 ms. Added three desktop-isolation regressions. All 45 tests and debug/release compilation pass without warnings after the final correction.
+
+The initial milestone bundle installation completed before a parent-coordinated permission repair requested an install pause. It has not been relaunched. Further installation/launch is deferred until the parent clears the signing/request/relaunch fix. No manual isolation or sub-150-ms guarantee is claimed. A busy serial AX inventory may still delay publication, despite off-main membership queries. New-window operations remain best effort for assigned Spaces and app-specific behavior.
+
+Manual checks, pending user verification:
+- Put different apps on two desktops and verify only local running apps plus pins and Finder appear.
+- Move a window with Mission Control and verify membership catches up.
+- Click a remote-only pinned app and verify it creates a local window or reports failure.
+- Test Finder, browser and Terminal rules, then a custom keyboard rule.
+- Change desktop while opening and verify no fallback commands continue there.
+- Check minimized remembered membership and fullscreen desktop behavior.
+- Test separate/shared display Spaces and unplug a display during opening.
+- Toggle all-desktop Dock scope and confirm clicks still choose local windows.

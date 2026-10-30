@@ -46,7 +46,13 @@ import Combine
             NSWorkspace.didUnhideApplicationNotification, NSWorkspace.activeSpaceDidChangeNotification, NSWorkspace.didWakeNotification]
         for name in notifications {
             tokens.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.refresh() }
+                Task { @MainActor in
+                    guard let self else { return }
+                    if name == NSWorkspace.activeSpaceDidChangeNotification || name == NSWorkspace.didActivateApplicationNotification {
+                        self.worker.spaceQueue.async { [weak worker = self.worker] in worker?.pollSpaces() }
+                    }
+                    self.refresh()
+                }
             })
         }
         tokens.append(NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
@@ -86,7 +92,8 @@ import Combine
     }
 }
 
-private final class WindowTrackingWorker {
+// Mutable inventory stays on queue. Membership query input is protected by spaceLock.
+private final class WindowTrackingWorker: @unchecked Sendable {
     let queue = DispatchQueue(label: "com.dockwindow.ax", qos: .userInitiated)
     let spaceQueue = DispatchQueue(label: "com.dockwindow.spaces", qos: .utility)
     private var hub: AXObserverHub?

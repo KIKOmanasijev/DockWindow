@@ -10,13 +10,15 @@ import ApplicationServices
     private var opening = Set<pid_t>()
     public init(tracker: WindowTracker) { self.tracker = tracker; actions = WindowActions(tracker: tracker) }
     public func open(app: TrackedApp, onSpace space: UInt64, rule: NewWindowRule? = nil) async -> Result {
-        guard space != 0 else { return .unknownSpace }
+        guard let target = DesktopTarget(spaceID: space, activeSpaceIDs: tracker.snapshot.activeSpaceIDs) else { return .unknownSpace }
         guard opening.insert(app.pid).inserted else { return .failed }
         defer { opening.remove(app.pid) }
         let before = Set(tracker.snapshot.windows.map(\.id))
         let rule = rule ?? NewWindowRule.defaults.first(where: { $0.bundleIdentifier == app.bundleIdentifier }) ?? NewWindowRule(bundleIdentifier: app.bundleIdentifier ?? "")
         for strategy in NewWindowMenuPolicy.strategies(for: rule) {
             guard !Task.isCancelled else { return .cancelled }
+            let current = await Task.detached { SpacesService().read(windowIDs: []).activeSpaceIDs }.value
+            guard target.isCurrent(in: current), !Task.isCancelled else { return .cancelled }
             NSRunningApplication(processIdentifier: app.pid)?.activate(options: [])
             switch strategy {
             case .menu:
@@ -44,9 +46,9 @@ import ApplicationServices
             repeat {
                 tracker.refresh()
                 try? await Task.sleep(nanoseconds: 100_000_000)
-                if Task.isCancelled { return .cancelled }
+                if Task.isCancelled || !target.isCurrent(in: tracker.snapshot.activeSpaceIDs) { return .cancelled }
                 if let window = tracker.snapshot.windows.first(where: { $0.pid == app.pid && !before.contains($0.id) && $0.spaceIDs.contains(space) }) {
-                    guard tracker.snapshot.activeSpaceIDs.values.contains(space), await actions.focusVerified(window, requiringSpace: space) else { return .failed }
+                    guard target.isCurrent(in: tracker.snapshot.activeSpaceIDs), await actions.focusVerified(window, requiringSpace: space) else { return .failed }
                     return .opened(window.id)
                 }
             } while ProcessInfo.processInfo.systemUptime < deadline

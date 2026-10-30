@@ -73,7 +73,7 @@ import QuartzCore
         geometry = DockLayout(kinds: kinds, bounds: bounds, position: settings.dockPosition, baseSize: settings.iconSize,
                               maximumSize: settings.magnificationEnabled ? settings.magnificationSize : settings.iconSize,
                               pointer: dragged == nil ? pointer : nil)
-        let duration = link == nil && !Theme.reducesMotion(settings) ? 0.15 : 0
+        let duration = link == nil && !Theme.reducesMotion(settings) ? 0.12 : 0
         CATransaction.begin(); CATransaction.setDisableActions(duration == 0); CATransaction.setAnimationDuration(duration)
         background.frame = geometry.background
         let style = "\(settings.panelMaterial.rawValue):\(settings.theme.rawValue):\(settings.iconSize)"
