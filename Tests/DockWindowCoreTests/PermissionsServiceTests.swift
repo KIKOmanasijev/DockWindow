@@ -1,7 +1,44 @@
 import XCTest
+import Combine
 @testable import DockWindowCore
 
 final class PermissionsServiceTests: XCTestCase {
+    func testSlowSystemProbeDoesNotBlockUIOrPublishMissingBeforeCompletion() async {
+        let gate = DispatchSemaphore(value: 0)
+        let started = expectation(description: "Background preflight starts once")
+        started.assertForOverFulfill = true
+        let completed = expectation(description: "Effective access published")
+        let (service, subscription) = await MainActor.run {
+            let service = PermissionsService(checkAccessibility: {
+                XCTAssertFalse(Thread.isMainThread)
+                started.fulfill()
+                XCTAssertEqual(gate.wait(timeout: .now() + 5), .success)
+                return true
+            }, checkScreenRecording: {
+                XCTAssertFalse(Thread.isMainThread)
+                return true
+            }, requestAccessibility: { XCTFail("Polling must not request access") },
+                requestScreenRecording: { XCTFail("Polling must not request access") }, showSettings: { _ in },
+                workerQueue: DispatchQueue(label: "test.permissions"), checkSigning: { true })
+            XCTAssertTrue(service.isChecking)
+            XCTAssertFalse(service.hasCheckedPermissions)
+            XCTAssertFalse(service.isGranted)
+            let subscription = service.$hasCheckedPermissions.dropFirst().filter { $0 }.sink { _ in completed.fulfill() }
+            service.refresh(); service.refresh()
+            return (service, subscription)
+        }
+        await fulfillment(of: [started], timeout: 2)
+        await MainActor.run { service.refresh() }
+        gate.signal()
+        await fulfillment(of: [completed], timeout: 2)
+        await MainActor.run {
+            XCTAssertTrue(service.isGranted)
+            XCTAssertFalse(service.isChecking)
+            XCTAssertTrue(service.usesAdHocSigning)
+            subscription.cancel()
+        }
+    }
+
     func testPollingReadsEffectiveAccessWithoutRequestingPermission() async {
         await MainActor.run {
             var accessibility = false, recording = false, requests = 0
