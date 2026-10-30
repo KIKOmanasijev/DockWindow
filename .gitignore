@@ -5,3 +5,10 @@ DerivedData/
 .swiftpm/
 .vercel/
 node_modules/
+dist/
+landing/downloads/
+*.dmg
+*.p12
+*.p8
+*.key
+__pycache__/
