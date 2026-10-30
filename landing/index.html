@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DockWindow: switch windows, not apps</title>
-  <meta name="description" content="DockWindow is a native macOS app in development: a per-desktop Dock, an Option+Tab switcher with one tile per window, and hover previews. macOS 14+.">
+  <title>DockWindow: a Windows-style window switcher and Dock for macOS</title>
+  <meta name="description" content="DockWindow brings Windows-style window switching to the Mac: Option+Tab shows every window, each desktop gets its own Dock, and Dock icons show window previews and counts. In development. macOS 14+.">
   <meta name="theme-color" content="#6E24E6">
   <link rel="canonical" href="https://dockwindow.vercel.app/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="DockWindow: switch windows, not apps">
-  <meta property="og:description" content="A native macOS Dock and Option+Tab switcher that works by window and by desktop. In development. macOS 14+.">
+  <meta property="og:title" content="DockWindow: a Windows-style window switcher and Dock for macOS">
+  <meta property="og:description" content="Option+Tab that shows every window, a separate Dock for each desktop, window previews and counts. A native Mac app in development. macOS 14+.">
   <meta property="og:url" content="https://dockwindow.vercel.app/">
   <meta property="og:image" content="https://dockwindow.vercel.app/assets/dog-640.jpg">
   <meta property="og:image:alt" content="DockWindow app icon: a cartoon dog holding two windows on purple">
@@ -47,12 +47,13 @@
 
     <div class="hero-inner" id="top">
       <div class="hero-copy">
+        <p class="eyebrow">Window switcher &amp; Dock manager for macOS</p>
         <h1 class="brand-title">DockWindow</h1>
         <p class="promise">Switch windows, not apps.</p>
-        <p class="lede">A native macOS Dock and Option+Tab switcher that works by window and by desktop.</p>
+        <p class="lede">The Windows-style app switcher the Mac never had. Every open window gets its own tile, its own preview and its own dot.</p>
         <div class="actions">
           <a class="btn btn-cream" href="#demo" data-demo-start>Try the demo</a>
-          <a class="btn btn-ghost" href="#features">See the tricks</a>
+          <a class="btn btn-ghost" href="#features">See how it works</a>
         </div>
         <p class="avail">In development. macOS 14+</p>
       </div>
@@ -97,7 +98,7 @@
 
   <main id="main">
     <section class="features" id="features" aria-labelledby="features-title">
-      <h2 id="features-title" class="section-title">Four tricks, one good dog.</h2>
+      <h2 id="features-title" class="section-title">Built for Macs with a lot of windows open.</h2>
 
       <article class="feature">
         <figure class="art reveal">
@@ -106,8 +107,8 @@
         </figure>
         <div class="feature-copy">
           <span class="num" aria-hidden="true">01</span>
-          <h3>Option+Tab, by window.</h3>
-          <p>Every window gets its own tile. Hold Option, tap Tab, let go to land.</p>
+          <h3>Alt+Tab, finally on the Mac.</h3>
+          <p>Cmd+Tab shows one icon per app, even when that app has five windows open. DockWindow’s Option+Tab shows <strong>every single window as its own tile</strong>, just like on Windows. Hold Option, tap Tab, let go, and you’re in the exact window you wanted.</p>
         </div>
       </article>
 
@@ -118,8 +119,8 @@
         </figure>
         <div class="feature-copy">
           <span class="num" aria-hidden="true">02</span>
-          <h3>A Dock for each desktop.</h3>
-          <p>Each desktop shows its own apps. Your pins stay on all of them.</p>
+          <h3>Every desktop is its own workspace.</h3>
+          <p>Each desktop gets a Dock with <strong>only the apps you use there</strong>, so work stays with work and personal stays personal. Click Safari when its windows live on another desktop, and DockWindow asks for a new window right here instead of pulling you away. Pinned apps show up everywhere.</p>
         </div>
       </article>
 
@@ -130,8 +131,8 @@
         </figure>
         <div class="feature-copy">
           <span class="num" aria-hidden="true">03</span>
-          <h3>Previews that pick the window.</h3>
-          <p>Hover an icon to see its windows. Click one, or use its traffic lights.</p>
+          <h3>See a window before you switch to it.</h3>
+          <p>Hover any app in the Dock to see <strong>a preview of each of its windows</strong>. No more guessing which Safari window is which. Click the one you want and exactly that window comes forward, or close, minimize or zoom it with its traffic lights.</p>
         </div>
       </article>
 
@@ -142,8 +143,8 @@
         </figure>
         <div class="feature-copy">
           <span class="num" aria-hidden="true">04</span>
-          <h3>Dots that count.</h3>
-          <p>One dot per window. Drag the edge to resize. Icons hold still, with no magnification.</p>
+          <h3>Know how many windows are open.</h3>
+          <p>Like the Windows taskbar, each app shows <strong>one dot for every open window</strong>. Three dots, three windows. Drag the Dock’s edge to make it bigger or smaller, and the icons stay put with no magnification wobble.</p>
         </div>
       </article>
     </section>
@@ -151,8 +152,8 @@
     <section class="detail" aria-labelledby="detail-title">
       <div class="detail-copy">
         <h2 id="detail-title" class="section-title">Set it your way.</h2>
-        <p>Choose current desktop or all desktops for the Dock, switcher and previews.</p>
-        <p>Prefer Apple’s Dock? Native Dock mode keeps previews and the switcher. Pause brings the native Dock back.</p>
+        <p>Show apps and windows from the current desktop or from all desktops, set separately for the Dock, the switcher and previews.</p>
+        <p>Rather keep Apple’s Dock? Native Dock mode still gives you previews and the switcher. Pause brings the regular Dock back anytime.</p>
       </div>
       <div class="settings reveal" aria-hidden="true">
         <div class="settings-bar"><span class="lights"><i></i><i></i><i></i></span><b>DockWindow Settings</b></div>
@@ -169,9 +170,9 @@
 
     <section class="final" aria-labelledby="final-title">
       <img class="final-dog" src="assets/dog-640.jpg" width="640" height="640" alt="" loading="lazy" decoding="async">
-      <h2 id="final-title" class="section-title">Still in the kennel.</h2>
-      <p>DockWindow is in active development. It needs Accessibility and Screen Recording permission, and live behavior is still being tested. No public download yet.</p>
-      <a class="btn btn-cream" href="#demo" data-demo-start>Replay the demo</a>
+      <h2 id="final-title" class="section-title">Still in the works.</h2>
+      <p>DockWindow is in active development. It needs Accessibility and Screen Recording permission to see your windows, and live behavior is still being tested. There’s no public download yet.</p>
+      <a class="btn btn-cream" href="#demo" data-demo-start>Try the demo again</a>
       <p class="avail">In development. macOS 14+</p>
     </section>
   </main>
