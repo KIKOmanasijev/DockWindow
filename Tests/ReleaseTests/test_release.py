@@ -94,6 +94,9 @@ class ReleaseTests(unittest.TestCase):
         self.assertIn('anchor apple generic', req)
         self.assertIn('1.2.840.113635.100.6.1.13', req)
         self.assertIn(TEAM, req)
+        with patch.object(r, 'run', return_value='') as command, self.assertRaises(r.ReleaseError):
+            r.verify_signature(Path('DogBar.app'), TEAM, app=True)
+        self.assertIn('-R=' + req, command.call_args_list[0].args)
         for detail in (f'TeamIdentifier={TEAM}\nAuthority=Developer ID Application: Example\n',
                        'TeamIdentifier=OTHER\nTimestamp=now\nAuthority=Developer ID Application: Example\n'):
             with patch.object(r, 'run', side_effect=['', detail]), self.assertRaises(r.ReleaseError):

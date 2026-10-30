@@ -4,7 +4,7 @@
 
 - Native Swift package, Swift 5 language mode, deployment target macOS 14, no dependencies.
 - Debug build and release bundle build pass without warnings.
-- All 99 native tests pass. Tests have no database integration.
+- All 102 native tests pass. Tests have no database integration.
 - Dock magnification is removed. Icon rasterization chooses Retina representations and updates for size or display-scale changes. Whole switcher cards render at 90 percent of their previous dimensions.
 - Switcher content is bounded before scaling, preventing intrinsic title widths from overlapping adjacent cards. A persistent Dock resize grip supports all three positions. Focus and desktop events use independent fast publication paths instead of waiting for full AX scans. Live latency is still unmeasured.
 - App installed at ~/Applications/DockWindow.app and fresh process launched.
@@ -33,8 +33,12 @@ The release bundle was rebuilt, installed and launched with the existing DockWin
 
 ## Pending acceptance
 
-Dock resize feedback now highlights the inward border and divider in purple, shows an immediate direction/drag cue and live point size, and uses four-point detents with reversal hysteresis. The border target excludes icons and transparent corners on all three edges. Coarser alignment haptics use the system's default performer on supported input devices. Dragging immediately dismisses previews; Escape restores the original size. Tests cover cue visibility independently of app-name labels, border geometry, jitter, bounds, cancellation and mouse-sequence ownership. Perceived feel and hardware haptics still need manual acceptance.
+Dock resize feedback now uses a thin purple pill on hover and drag, without a text badge or full-border outline. Four-point detents retain reversal hysteresis. The border target excludes icons and transparent corners on all three edges. Coarser alignment haptics use the system's default performer on supported input devices. Dragging immediately dismisses previews; Escape restores the original size. Tests cover pill geometry without a text label, border hit targets, jitter, bounds, cancellation and mouse-sequence ownership. Empty-app hover previews are off by default for both Docks; the opt-in setting persists, and changing it closes an empty hover panel. Explicit Show All Windows remains available. Perceived feel and hardware haptics still need manual acceptance.
 
 All live interactions, the reported blank Welcome fix, visible Dock/icon behavior, exact native preference restore on real enablement, crash recovery, desktop isolation, hot-plug/sleep/wake, fullscreen, unresponsive applications and the full performance budgets require user verification. A short permission/setup-state sample used about 27 MB but reached 2.6% sampled CPU. This is not a passing idle-Dock performance result.
 
 See Docs/Milestones.md for the consolidated ten-step manual checklist and historical milestone reports. ServiceHardening.md and UIHardening.md document remaining technical limitations.
+
+## Unnotarized preview distribution
+
+The owner explicitly authorized a self-signed, unnotarized preview. Version 0.1.0-preview.1 (build 2) was built in an isolated directory, signed with the preserved DockWindow Dev certificate, and checked for signature integrity, arm64 architecture, metadata, exact entitlements, read-only UDZO image integrity, Applications shortcut and the mounted inner app. Its staged 3,146,380-byte DMG has SHA-256 `1d914c181344b0628c508cff843682fc18a0ca6b5e976c2924eabb95c01f922c`. Gatekeeper acceptance and fresh-Mac installation are not claimed. The existing notarized pipeline remains strict; its literal codesign requirement syntax was corrected after a real preview build exposed the filename-vs-inline distinction.

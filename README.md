@@ -4,15 +4,15 @@ A native macOS Dock and window switcher for people with a lot of windows open. S
 
 [Website](https://dogbar.hristijan.dev/) · [Features](#features) · [Build and run](#build-and-run) · [Testing](#testing) · [Distribution](#distribution)
 
-**Status:** active development. There is no public signed and notarized download yet. DogBar needs Accessibility and Screen Recording permissions to run its window-management features.
+**Status:** active development. An [unnotarized preview for Apple Silicon](https://dogbar.hristijan.dev/#get) is available for macOS 14+. It is self-signed, so macOS may block first launch. DogBar needs Accessibility and Screen Recording permissions to run its window-management features.
 
 ## Features
 
 - **Switch windows with Option+Tab.** Each window gets its own thumbnail, including multiple windows from the same app. Hold Option, tap Tab, then release to focus the selection. Shift reverses direction, arrows navigate, and Escape cancels.
 - **Keep desktops separate.** Show apps with windows on the current desktop, while keeping your pinned apps available everywhere. The Dock, switcher and previews each have their own scope setting.
-- **Preview before switching.** Hover an app to see its windows, then choose the exact one you want. Traffic-light controls close, minimize or toggle fullscreen for that window. Previews also work with Apple's native Dock.
+- **Preview before switching.** Hover an app to see its windows, then choose the exact one you want. Empty-app previews are off by default and can be enabled in Settings. Traffic-light controls close, minimize or toggle fullscreen for that window. Previews also work with Apple's native Dock.
 - **Count open windows.** Window-count dots show how many windows an app has in the selected scope, with configurable styles and limits.
-- **Resize the Dock directly.** Hover the inward border or divider grip for a resize cue, then drag inward to enlarge it or outward to shrink it. Sizes snap into small steps with resistance to cursor jitter. Icons keep a fixed size on hover. Bottom, left and right placement, autohide, pinning and app rules are configurable.
+- **Resize the Dock directly.** Hover the inward border or divider grip for a small pill cue, then drag inward to enlarge it or outward to shrink it. Sizes snap into small steps with resistance to cursor jitter. Icons keep a fixed size on hover. Bottom, left and right placement, autohide, pinning and app rules are configurable.
 - **Change settings live.** Open Settings from the monochrome paw in the menu bar or the app icon. Pause and Restore Native Dock bring back the original Dock preferences.
 
 ### Feature illustrations
@@ -133,9 +133,11 @@ Window focus, Spaces, permissions, native Dock restoration and performance also 
 
 ## Distribution
 
-A public DMG needs an Apple-issued **Developer ID Application** certificate, hardened-runtime signing, notarization and stapled tickets. Enrollment in the Apple Developer Program is required before this project can produce that release.
+The current download is an **unnotarized, self-signed preview**. The [preview guide](Docs/PreviewDistribution.md) covers its build, checks and first-launch instructions. Preview artifacts are hosted on the DogBar website; the GitHub repository stays private.
 
-The [distribution guide](Docs/Distribution.md) explains owner setup, Keychain credentials, building, verifying and staging a versioned DMG. The release tools reject development or ad-hoc signing and do not modify the installed development app. Website downloads stay unavailable until a verified release is staged.
+A notarized release needs an Apple-issued **Developer ID Application** certificate, hardened-runtime signing, notarization and stapled tickets. Enrollment in the Apple Developer Program is required before this project can produce that release.
+
+The [distribution guide](Docs/Distribution.md) explains owner setup, Keychain credentials, building, verifying and staging a notarized DMG. That workflow rejects development or ad-hoc signing. Preview tooling stays separate, and neither workflow modifies the installed development app.
 
 ## Project layout
 

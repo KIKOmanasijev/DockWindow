@@ -141,7 +141,7 @@ def requirement(team, app=False):
     return r
 
 def verify_signature(path, team, app=False):
-    run('codesign', '--verify', '--deep', '--strict', '--verbose=2', '-R', requirement(team, app), path)
+    run('codesign', '--verify', '--deep', '--strict', '--verbose=2', '-R=' + requirement(team, app), path)
     detail = run('codesign', '--display', '--verbose=4', path)
     require(f'TeamIdentifier={team}\n' in detail, 'Unexpected code signing TeamIdentifier')
     require('Authority=Developer ID Application: ' in detail and 'Timestamp=' in detail,

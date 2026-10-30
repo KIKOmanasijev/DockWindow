@@ -1,6 +1,6 @@
 # DogBar direct distribution
 
-Public releases are currently blocked. The owner is not enrolled in the Apple Developer Program, and the local DockWindow Dev self-signed certificate provides no public trust. Do not distribute a development or ad-hoc build as a secure release. `landing/release.json` intentionally declares no available download.
+Notarized releases are currently blocked because the owner is not enrolled in the Apple Developer Program. The local DockWindow Dev self-signed certificate provides no Apple-verified public trust. An explicitly labelled [unnotarized preview](PreviewDistribution.md) is offered through a separate build and `landing/preview.json`. The strict notarized-release manifest, `landing/release.json`, intentionally remains unavailable.
 
 The owner must enroll personally at [Apple Developer Program](https://developer.apple.com/programs/enroll/). Enrollment, payment, certificate issuance, and credential entry are owner actions. These scripts do not perform them, ask for secrets, export keys, alter trust, clear permissions, bypass quarantine, or disable Gatekeeper.
 
@@ -86,4 +86,4 @@ Commands were checked against local `codesign(1)`, `spctl(8)`, `security find-id
 - [Apple TN2206: Code signing and disk image Gatekeeper assessment](https://developer.apple.com/library/archive/technotes/tn2206/)
 - [Apple DTS: Testing a notarised product and preliminary checks](https://developer.apple.com/forums/topics/code-signing-topic)
 
-No public secure artifact can be produced until the owner supplies the genuine Apple identity and locally stored notarization credentials. No DMG has been published by this work.
+No notarized artifact can be produced until the owner supplies the genuine Apple identity and locally stored notarization credentials. The separate preview download does not satisfy this guide's notarized-release checks.
