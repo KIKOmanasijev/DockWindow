@@ -2,7 +2,7 @@
 
 Static, dependency-free site. Deploy with `landing` as the output root. No build step.
 
-Custom domain: https://dogbar.hristijan.dev/ (Cloudflare DNS record required).
+Production: https://dogbar.hristijan.dev/ (Cloudflare DNS configured and HTTPS verified).
 
 Working Vercel address: https://dockwindow.vercel.app/
 
@@ -20,7 +20,7 @@ The subdomain `dogbar.hristijan.dev` is attached to this Vercel project. Its aut
 | Proxy status | DNS only, grey cloud |
 | TTL | Auto |
 
-Save, then check the domain under Vercel project **dockwindow > Settings > Domains**. Vercel provisions HTTPS once DNS is configured. This target was returned for this project, not a universal Vercel target. Registration and nameservers remain at the existing provider.
+This record is now configured. For future DNS changes, save and check the domain under Vercel project **dockwindow > Settings > Domains**. Vercel provisions HTTPS once DNS is configured. This target was returned for this project, not a universal Vercel target. Registration and nameservers remain at the existing provider.
 
 ```
 landing/
