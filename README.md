@@ -1,6 +1,8 @@
-# DockWindow
+# DogBar
 
-A native Swift macOS window manager with a per-desktop Dock, Option+Tab window switcher, hover previews and live settings. The selected app icon is the cartoon dog holding stacked windows. DockWindow remains visible in the native Dock, and is pinned in its replacement Dock.
+A native Swift macOS window manager with a per-desktop Dock, Option+Tab window switcher, hover previews and live settings. The selected app icon is the cartoon dog holding stacked windows. DogBar remains visible in the native Dock, and is pinned in its replacement Dock.
+
+DogBar is the public product and app display name. The bundle ID `com.dockwindow.app`, executable `DockWindow`, installed path `~/Applications/DockWindow.app`, settings keys and signing certificate name `DockWindow Dev` stay unchanged to preserve the existing identity and local state.
 
 ## Build and run
 
@@ -21,8 +23,8 @@ The install script asks the running app to quit and finish native Dock restorati
 - Option+Tab opens one tile per window. Hold Option to inspect; release to focus. Shift reverses, arrows navigate, Escape cancels. The shortcut is configurable.
 - The Dock uses the current desktop by default. Pinned apps remain visible. Icons keep a fixed size on hover. Counts, icon size, autohide, positioning and app rules are live settings.
 - Drag the divider grip toward the desktop to enlarge the Dock, or toward the screen edge to shrink it. Without a divider, a small grip appears along the inward edge. The size is saved automatically.
-- Hover previews work with either DockWindow's Dock or the native Dock. Traffic lights act on the exact window.
-- Open Settings from the monochrome paw in the menu bar, app menu, or by clicking the DockWindow icon. Pause or Restore Native Dock returns the native Dock preferences.
+- Hover previews work with either DogBar's Dock or the native Dock. Traffic lights act on the exact window.
+- Open Settings from the monochrome paw in the menu bar, app menu, or by clicking the DogBar icon. Pause or Restore Native Dock returns the native Dock preferences.
 
 ## Local signing certificate
 

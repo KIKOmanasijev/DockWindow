@@ -1,4 +1,4 @@
-// DockWindow landing: interactive demo and scroll reveals. No dependencies.
+// DogBar landing: interactive demo and scroll reveals. No dependencies.
 (() => {
   "use strict";
   document.documentElement.classList.add("js");
@@ -39,7 +39,7 @@
 
   const APPS = {
     finder: { name: "Finder", icon: "i-finder", pinned: true },
-    dockwindow: { name: "DockWindow", img: "assets/dog-96.png", pinned: true },
+    dockwindow: { name: "DogBar", img: "assets/dog-96.png", pinned: true },
     safari: { name: "Safari", icon: "i-safari" },
     notes: { name: "Notes", icon: "i-notes" },
     terminal: { name: "Terminal", icon: "i-terminal" },
@@ -278,7 +278,7 @@
     renderDesk({ swap: dir });
     renderDock({ animate: true });
     const { running } = dockApps();
-    say(`Desktop ${n}: the Dock shows ${running.map((a) => APPS[a].name).join(" and ") || "only pins"}. Finder and DockWindow stay pinned.`);
+    say(`Desktop ${n}: the Dock shows ${running.map((a) => APPS[a].name).join(" and ") || "only pins"}. Finder and DogBar stay pinned.`);
   }
 
   function reset() {

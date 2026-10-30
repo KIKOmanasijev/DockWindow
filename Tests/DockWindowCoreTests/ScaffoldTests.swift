@@ -5,6 +5,9 @@ final class ScaffoldTests: XCTestCase {
         let data = try Data(contentsOf: root.appendingPathComponent("Resources/Info.plist"))
         let plist = try XCTUnwrap(PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any])
         XCTAssertEqual(plist["CFBundleIdentifier"] as? String, "com.dockwindow.app")
+        XCTAssertEqual(plist["CFBundleName"] as? String, "DogBar")
+        XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "DogBar")
+        XCTAssertEqual(plist["CFBundleExecutable"] as? String, "DockWindow")
         XCTAssertEqual(plist["LSUIElement"] as? Bool, false)
         XCTAssertEqual(plist["LSMinimumSystemVersion"] as? String, "14.0")
     }

@@ -385,7 +385,7 @@ import Combine
     }
     private func report(_ message: String) {
         if let onError { onError(message) }
-        else { let alert = NSAlert(); alert.messageText = "DockWindow"; alert.informativeText = message; alert.addButton(withTitle: "OK"); alert.runModal() }
+        else { let alert = NSAlert(); alert.messageText = "DogBar"; alert.informativeText = message; alert.addButton(withTitle: "OK"); alert.runModal() }
     }
 }
 

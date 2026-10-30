@@ -1,4 +1,4 @@
-/* DockWindow landing: purple cartoon desk, inky hand-drawn borders. */
+/* DogBar landing: purple cartoon desk, inky hand-drawn borders. */
 :root {
   --purple: #6e24e6;
   --purple-hi: #8a4bff;
@@ -124,7 +124,7 @@ kbd { font: inherit; }
 .hero-copy { min-width: 0; container-type: inline-size; }
 .brand-title {
   font-size: 3.4rem;
-  font-size: clamp(2.4rem, 15.4cqi, 7.2rem);
+  font-size: clamp(2.4rem, 24cqi, 7.2rem);
   font-weight: 900;
   letter-spacing: -.035em;
   line-height: .92;

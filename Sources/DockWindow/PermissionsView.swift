@@ -10,7 +10,7 @@ struct PermissionsView: View {
         ScrollView {
         VStack(alignment: .leading, spacing: 18) {
             Text("Your windows, on this desktop").font(.title2.bold())
-            Text("DockWindow needs both permissions before it can replace the Dock or window switcher.")
+            Text("DogBar needs both permissions before it can replace the Dock or window switcher.")
                 .foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             HStack {
                 Label(!permissions.hasCheckedPermissions ? "Accessibility: Checking..." : permissions.accessibility ? "Accessibility granted" : "Accessibility: Unavailable to this build", systemImage: permissions.accessibility ? "checkmark.circle.fill" : "exclamationmark.triangle")
@@ -30,11 +30,11 @@ struct PermissionsView: View {
                 Label("This build uses ad-hoc signing. Rebuilding can invalidate grants even when Settings still shows them enabled. The DockWindow Dev certificate keeps the app identity stable across builds.", systemImage: "signature")
                     .font(.callout).foregroundStyle(.orange).fixedSize(horizontal: false, vertical: true)
             }
-            Button("Relaunch DockWindow") {
+            Button("Relaunch DogBar") {
                 do { try AppRelauncher.relaunch() }
                 catch { relaunchError = error.localizedDescription }
             }
-            Text("Relaunch waits for DockWindow to quit and restore the native Dock before starting a fresh process.")
+            Text("Relaunch waits for DogBar to quit and restore the native Dock before starting a fresh process.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -43,7 +43,7 @@ struct PermissionsView: View {
         .frame(minWidth: 580, minHeight: 480)
         .onReceive(timer) { _ in permissions.refresh() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in permissions.refresh() }
-        .alert("Could not relaunch DockWindow", isPresented: Binding(get: { relaunchError != nil }, set: { if !$0 { relaunchError = nil } })) {
+        .alert("Could not relaunch DogBar", isPresented: Binding(get: { relaunchError != nil }, set: { if !$0 { relaunchError = nil } })) {
             Button("OK") { relaunchError = nil }
         } message: { Text(relaunchError ?? "") }
     }

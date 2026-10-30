@@ -8,7 +8,7 @@
 - Dock magnification is removed. Icon rasterization chooses Retina representations and updates for size or display-scale changes. Whole switcher cards render at 90 percent of their previous dimensions.
 - Switcher content is bounded before scaling, preventing intrinsic title widths from overlapping adjacent cards. A persistent Dock resize grip supports all three positions. Focus and desktop events use independent fast publication paths instead of waiting for full AX scans. Live latency is still unmeasured.
 - App installed at ~/Applications/DockWindow.app and fresh process launched.
-- Signature integrity verifies. Signing is ad-hoc, with no valid DockWindow Dev identity installed.
+- Signature integrity verifies. The installed DogBar display name uses the existing DockWindow Dev self-signed certificate. Its designated requirement retains com.dockwindow.app and the certificate leaf, rather than an ad-hoc binary hash.
 - Selected dog AppIcon.icns and CFBundleIconFile are packaged.
 - LSUIElement is false. The app uses regular activation and pins itself in the replacement Dock.
 - Source audit found no AX/private force casts, force tries, em dashes or debug-only dump menu in current code.
@@ -17,7 +17,7 @@
 
 ## Runtime blocker
 
-The final installed process 86846 logged accessibility=false and screenRecording=false. The user's Screen & System Audio Recording toggle is enabled in Settings, but that does not change the observed API result for this ad-hoc build. Actual access is not claimed as repaired. Initial checks are asynchronous and explicit. Invasive features stay disabled until both effective permissions are true.
+After the DogBar rebrand, installed process 21095 logged accessibility=false, screenRecording=false and adHoc=false. The signing fallback bug is fixed: the self-signed DockWindow Dev identity was being excluded by valid-only identity lookup even though it can sign successfully. Existing grants still do not authorize this process, so actual permission access is not claimed as repaired. Initial checks are asynchronous and explicit. Invasive features stay disabled until both effective permissions are true.
 
 ## Pending acceptance
 

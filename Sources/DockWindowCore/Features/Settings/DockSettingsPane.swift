@@ -5,7 +5,7 @@ import SwiftUI
     var body: some View {
         Group {
             Section("Dock mode") {
-                Toggle("Use DockWindow Dock", isOn: $settings.useDockWindowDock).settingsDescription("Replace the native Dock while enabled and not paused.")
+                Toggle("Use DogBar Dock", isOn: $settings.useDockWindowDock).settingsDescription("Replace the native Dock while enabled and not paused.")
                 if !settings.useDockWindowDock { Text("Native Dock mode supports previews and the switcher. Dock layout, window dots and desktop filtering require the replacement Dock.").font(.caption).foregroundStyle(.secondary) }
             }
             Section("Layout") {

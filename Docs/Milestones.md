@@ -165,3 +165,11 @@ Manual checks:
 - Cancel resizing and ensure no app was focused, pinned app moved or hover panel left open.
 - Switch rapidly between apps, windows and desktops and check the Dock updates promptly without reverting.
 - Check the monochrome paw on light and dark menu bars, then open its menu for permission status.
+
+## DogBar rebrand and custom domain
+
+Renamed the public site and native display name, menus, onboarding and Settings to DogBar. Kept com.dockwindow.app, DockWindow executable and install path, settings keys, window autosave keys and DockWindow Dev certificate name unchanged. Bundle metadata tests cover the new display name and preserved executable/identifier.
+
+The user-created self-signed identity was present but excluded from valid-only identity lookup. Signing a temporary app copy proved it works without changing system trust settings. The installer now selects present signing identities, aborts on signing failure rather than silently changing identity, and waits for asynchronous quit/restoration before replacing the app. The installed app verifies with Authority DockWindow Dev and a designated requirement anchored to its certificate leaf. All 87 tests, debug and release builds pass. Current process permissions remain false, with adHoc=false, so permission reapproval is still pending.
+
+Attached dogbar.hristijan.dev to the existing Vercel project. Cloudflare is authoritative for hristijan.dev. Project-specific CNAME instructions are in landing/README.md. Canonical/social URLs use the custom domain; dockwindow.vercel.app remains the working fallback until DNS is configured.

@@ -1,10 +1,26 @@
-# DockWindow landing page
+# DogBar landing page
 
 Static, dependency-free site. Deploy with `landing` as the output root. No build step.
 
-Production: https://dockwindow.vercel.app/
+Custom domain: https://dogbar.hristijan.dev/ (Cloudflare DNS record required).
+
+Working Vercel address: https://dockwindow.vercel.app/
 
 The Vercel project is `dockwindow` in the connected account. Only the site files are uploaded, not native app sources or this README. `vercel.json` keeps deployment static. Canonical and social image URLs use the production domain. The repository remains private.
+
+## Custom domain setup
+
+The subdomain `dogbar.hristijan.dev` is attached to this Vercel project. Its authoritative DNS provider is Cloudflare. In Cloudflare, open **hristijan.dev > DNS > Records > Add record**:
+
+| Field | Value |
+| --- | --- |
+| Type | CNAME |
+| Name | dogbar |
+| Target | a03bcfc7b14d0c0e.vercel-dns-017.com |
+| Proxy status | DNS only, grey cloud |
+| TTL | Auto |
+
+Save, then check the domain under Vercel project **dockwindow > Settings > Domains**. Vercel provisions HTTPS once DNS is configured. This target was returned for this project, not a universal Vercel target. Registration and nameservers remain at the existing provider.
 
 ```
 landing/
@@ -21,7 +37,7 @@ A loud purple cartoon desk: the dog mascot's violet as the primary surface, crea
 
 ## Content plan
 
-- **Hero.** The DockWindow name is the loudest element. The promise is "Switch windows, not apps." A live cartoon Mac demo is the one dominant visual. The primary action is "Try the demo" (in-page). Availability note: "In development. macOS 14+".
+- **Hero.** The DogBar name is the loudest element. The promise is "Switch windows, not apps." A live cartoon Mac demo is the one dominant visual. The primary action is "Try the demo" (in-page). Availability note: "In development. macOS 14+".
 - **Support (features).** Four alternating rows, each with its own illustration: per-window switcher, a Dock per desktop, hover previews, count dots and resizing. Each row has one sentence.
 - **Detail.** A deep-purple band about settings: scopes, previews on the native Dock, and Pause/Restore.
 - **Final CTA.** An honest status note covering active development, required permissions and no public download yet. Its action returns to the demo.

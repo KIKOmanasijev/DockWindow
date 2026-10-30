@@ -5,7 +5,7 @@ import SwiftUI
     var body: some View {
         Group {
             Section("Activation") {
-                Toggle("Enable window switcher", isOn: $settings.switcherEnabled).settingsDescription("Use DockWindow to switch between individual windows.")
+                Toggle("Enable window switcher", isOn: $settings.switcherEnabled).settingsDescription("Use DogBar to switch between individual windows.")
                 HStack { Text("Shortcut"); Spacer(); ShortcutRecorder(shortcut: $settings.switcherShortcut) }.settingsDescription("Click to record a modifier and physical key. Default: Option+Tab. Esc cancels.")
                 Toggle("Enable same-app shortcut", isOn: $settings.sameAppShortcutEnabled).settingsDescription("Switch only between windows belonging to the active app.")
                 HStack { Text("Same-app shortcut"); Spacer(); ShortcutRecorder(shortcut: $settings.sameAppShortcut) }.disabled(!settings.sameAppShortcutEnabled).settingsDescription("Record the same-app shortcut. Default: Command+grave accent.")

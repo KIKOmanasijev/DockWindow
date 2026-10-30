@@ -73,7 +73,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
         .alert("Replace pinned apps?", isPresented: $reimportConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Re-import", role: .destructive) { pinnedApps.reimportNativeDock() }
-        } message: { Text("Replace DockWindow's pinned apps with the current native Dock list.") }
+        } message: { Text("Replace DogBar's pinned apps with the current native Dock list.") }
         .alert("Settings action failed", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK") { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }
@@ -83,20 +83,20 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
         Group {
             Section("Startup") {
                 Toggle("Launch at login", isOn: Binding(get: { settings.launchAtLogin }, set: { setLogin($0) }))
-                    .disabled(loginBusy || loginStatusChecking).settingsDescription("Start DockWindow when you sign in. Status: \(loginStatusText).")
+                    .disabled(loginBusy || loginStatusChecking).settingsDescription("Start DogBar when you sign in. Status: \(loginStatusText).")
                 if loginStatus == .requiresApproval {
                     Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
-                        .settingsDescription("Approve DockWindow in System Settings to finish enabling login launch.")
+                        .settingsDescription("Approve DogBar in System Settings to finish enabling login launch.")
                 }
                 Toggle("Show menu bar icon", isOn: $settings.showMenuBarIcon)
-                    .settingsDescription("Open Settings by launching DockWindow again if the icon is hidden.")
+                    .settingsDescription("Open Settings by launching DogBar again if the icon is hidden.")
             }
             Section("Permissions") {
                 permissionRow("Accessibility", granted: permissions.accessibility, description: "Allows window focus, controls and keyboard shortcuts.", action: permissions.openAccessibility)
                 permissionRow("Screen Recording", granted: permissions.screenRecording, description: "Allows window thumbnails. A relaunch may be needed after granting access.", action: permissions.openScreenRecording)
                 Button("Show permission setup", action: onShowPermissions)
                     .settingsDescription("Open the guided permission setup window.")
-                Button("Relaunch DockWindow") {
+                Button("Relaunch DogBar") {
                     do { try AppRelauncher.relaunch() } catch { errorMessage = error.localizedDescription }
                 }.settingsDescription("Restart the installed app after permission changes, restoring the native Dock first.")
                 if permissions.usesAdHocSigning {
@@ -105,7 +105,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                 }
             }
             Section("Session") {
-                Toggle("Pause DockWindow", isOn: $settings.isPaused)
+                Toggle("Pause DogBar", isOn: $settings.isPaused)
                     .settingsDescription("Suspend features and restore the native Dock while paused.")
                 Button("Restore Native Dock", action: onRestoreNativeDock)
                     .settingsDescription("Restore the original Dock preferences through the app coordinator.")
@@ -182,7 +182,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                         settings.allowedWindowSubroles = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
                     }.settingsDescription("Comma-separated AX subroles, normally AXStandardWindow and AXDialog.")
                 Button("Re-import pinned apps from native Dock") { reimportConfirmation = true }
-                    .settingsDescription("Replace DockWindow's pins after confirmation. The native Dock is unchanged.")
+                    .settingsDescription("Replace DogBar's pins after confirmation. The native Dock is unchanged.")
             }
         }
     }

@@ -13,7 +13,7 @@ import SwiftUI
                 onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 820, height: 620),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
-        window.title = "DockWindow Settings"
+        window.title = "DogBar Settings"
         window.identifier = NSUserInterfaceItemIdentifier("DockWindow.Settings")
         window.minSize = NSSize(width: 720, height: 520)
         window.isReleasedWhenClosed = false

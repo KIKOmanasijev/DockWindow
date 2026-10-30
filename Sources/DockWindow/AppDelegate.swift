@@ -33,20 +33,20 @@ import Combine
     func applicationDidFinishLaunching(_ notification: Notification) {
         let mainMenu = NSMenu()
         let appMenuItem = NSMenuItem()
-        let appMenu = NSMenu(title: "DockWindow")
-        appMenu.addItem(withTitle: "About DockWindow", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        let appMenu = NSMenu(title: "DogBar")
+        appMenu.addItem(withTitle: "About DogBar", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
         appMenu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
         appMenu.addItem(.separator())
-        appMenu.addItem(withTitle: "Quit DockWindow", action: #selector(quit), keyEquivalent: "q").target = self
+        appMenu.addItem(withTitle: "Quit DogBar", action: #selector(quit), keyEquivalent: "q").target = self
         appMenuItem.submenu = appMenu; mainMenu.addItem(appMenuItem); NSApp.mainMenu = mainMenu
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
-        if let image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "DockWindow") {
+        if let image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "DogBar") {
             image.size = NSSize(width: 18, height: 18)
             image.isTemplate = true
             item.button?.image = image
         }
         item.button?.imagePosition = .imageOnly
-        item.button?.setAccessibilityLabel("DockWindow")
+        item.button?.setAccessibilityLabel("DogBar")
         let menu = NSMenu()
         let permissionStatus = NSMenuItem(title: "Checking permissions...", action: nil, keyEquivalent: "")
         permissionStatus.identifier = NSUserInterfaceItemIdentifier("permissionStatus")
@@ -54,10 +54,10 @@ import Combine
         menu.addItem(permissionStatus)
         menu.addItem(.separator())
         menu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
-        menu.addItem(withTitle: "Pause DockWindow", action: #selector(togglePause), keyEquivalent: "").target = self
+        menu.addItem(withTitle: "Pause DogBar", action: #selector(togglePause), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Restore Native Dock", action: #selector(restoreNativeDock), keyEquivalent: "").target = self
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit DockWindow", action: #selector(quit), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: "Quit DogBar", action: #selector(quit), keyEquivalent: "q").target = self
         item.menu = menu; statusItem = item
         if Bundle.main.bundleURL.pathExtension == "app" {
             pinnedApps.pin(bundleIdentifier: "com.dockwindow.app", url: Bundle.main.bundleURL)
@@ -94,7 +94,7 @@ import Combine
         NotificationCenter.default.publisher(for: SettingsShortcutRecording.recordingDidChange).receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updatePermissions() }.store(in: &subscriptions)
         updatePermissions()
-        Log.system.info("DockWindow launched")
+        Log.system.info("DogBar launched")
     }
     private func startPermissionTimer() {
         permissionTimer?.invalidate()
@@ -122,7 +122,7 @@ import Combine
         let subroles = Set(settings.allowedWindowSubroles)
         if tracker.allowedSubroles != subroles { tracker.allowedSubroles = subroles }
         DiagnosticsService.setDebugLogging(settings.debugLogging)
-        statusItem?.button?.toolTip = !permissions.hasCheckedPermissions ? "DockWindow: checking current process access" : permissions.isGranted ? "DockWindow" : "DockWindow: current process access is unavailable"
+        statusItem?.button?.toolTip = !permissions.hasCheckedPermissions ? "DogBar: checking current process access" : permissions.isGranted ? "DogBar" : "DogBar: current process access is unavailable"
         let enabled = permissions.isGranted && !settings.isPaused && !terminating
         previews.enabled = enabled && settings.previewsEnabled
         switcher.enabled = enabled && !SettingsShortcutRecording.isRecording
@@ -144,7 +144,7 @@ import Combine
         if enabled { nativeReader.start() } else { nativeReader.stop() }
         reconcileDock()
         if let item = statusItem?.menu?.items.first(where: { $0.action == #selector(togglePause) }) {
-            item.title = settings.isPaused ? "Resume DockWindow" : "Pause DockWindow"
+            item.title = settings.isPaused ? "Resume DogBar" : "Pause DogBar"
         }
     }
     private var wantsReplacement: Bool { permissions.isGranted && !settings.isPaused && settings.useDockWindowDock && !terminating }
@@ -175,7 +175,7 @@ import Combine
                 self.dock.stop(); self.replacementActive = false
                 self.settings.useDockWindowDock = false
                 do { try await self.nativeDock.restore() } catch { Log.system.error("Native Dock restore failed: \(String(describing: error))") }
-                self.showError("DockWindow could not update the native Dock. The recovery backup is retained when restoration fails. Try Restore Native Dock again. \(error.localizedDescription)")
+                self.showError("DogBar could not update the native Dock. The recovery backup is retained when restoration fails. Try Restore Native Dock again. \(error.localizedDescription)")
             }
             self.lifecycleTask = nil
         }
@@ -190,7 +190,7 @@ import Combine
         }
     }
     private func showError(_ message: String) {
-        let alert = NSAlert(); alert.messageText = "DockWindow"; alert.informativeText = message
+        let alert = NSAlert(); alert.messageText = "DogBar"; alert.informativeText = message
         alert.addButton(withTitle: "OK"); alert.runModal()
     }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
@@ -217,7 +217,7 @@ import Combine
     @objc func showOnboarding() {
         if onboarding == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 530), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            window.title = "Welcome to DockWindow"; window.isReleasedWhenClosed = false
+            window.title = "Welcome to DogBar"; window.isReleasedWhenClosed = false
             let host = NSHostingController(rootView: PermissionsView(permissions: permissions).frame(width: 640, height: 530))
             window.contentViewController = host
             window.setContentSize(NSSize(width: 640, height: 530))
