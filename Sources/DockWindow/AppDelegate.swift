@@ -4,6 +4,9 @@ import DockWindowCore
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
     let permissions = PermissionsService()
+    let tracker = WindowTracker()
+    let thumbnails = ThumbnailService()
+    var permissionTimer: Timer?
     var statusItem: NSStatusItem?
     var onboarding: NSWindow?
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -11,12 +14,25 @@ import DockWindowCore
         item.button?.image = NSImage(systemSymbolName: "dock.rectangle", accessibilityDescription: "DockWindow")
         let menu = NSMenu()
         menu.addItem(withTitle: "Permissions...", action: #selector(showOnboarding), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: "Debug: dump windows", action: #selector(dumpWindows), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit DockWindow", action: #selector(quit), keyEquivalent: "q").target = self
         item.menu = menu; statusItem = item
         if !permissions.isGranted { showOnboarding() }
+        permissionTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            Task { @MainActor in self?.updatePermissions() }
+        }
+        tracker.onWindowInventoryChanged = { [weak self] in self?.thumbnails.invalidateShareableContent() }
+        updatePermissions()
         Log.system.info("DockWindow launched")
     }
+    private func updatePermissions() {
+        permissions.refresh()
+        statusItem?.button?.toolTip = permissions.isGranted ? "DockWindow" : "DockWindow needs permissions"
+        if permissions.isGranted { tracker.start() } else { tracker.stop() }
+    }
+    @objc func dumpWindows() { tracker.dumpWindows() }
+    func applicationWillTerminate(_ notification: Notification) { permissionTimer?.invalidate(); tracker.stop() }
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showOnboarding() {
         if onboarding == nil {
