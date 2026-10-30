@@ -27,8 +27,11 @@ landing/
   index.html      page and inline app-icon symbols
   styles.css      all styling, responsive and reduced-motion rules
   script.js       interactive hero demo and scroll reveals
-  assets/         mascot raster derived from Resources/IconConcepts/dog-windows.png,
-                  plus four authored feature SVGs (mascot embedded as data URI)
+  release.js      Mac download CTAs, driven by release.json
+  release.json    release manifest (owned by the release process)
+  assets/         app icon rasters, mascot pose cutouts and four feature SVGs
+  tools/          art build (not deployed)
+  tests/          node:test suites (not deployed)
 ```
 
 ## Visual thesis
@@ -37,20 +40,54 @@ A loud purple cartoon desk: the dog mascot's violet as the primary surface, crea
 
 ## Content plan
 
-- **Hero.** The DogBar name is the loudest element. The promise is "Switch windows, not apps." A live cartoon Mac demo is the one dominant visual. The primary action is "Try the demo" (in-page). Availability note: "In development. macOS 14+".
-- **Support (features).** Four alternating rows, each with its own illustration: per-window switcher, a Dock per desktop, hover previews, count dots and resizing. Each row has one sentence.
+- **Hero.** The DogBar name is the loudest element. The promise is "Switch windows, not apps." A live cartoon Mac demo is the one dominant visual. Actions: the Mac download CTA (shows "Coming soon" until a release is verified) and "Try the demo".
+- **Support (features).** Four alternating rows, each with one sentence-sized idea and its own illustration. In each, the dog does the feature: works Option and Tab, walks a new window to Desktop 2, peeks at Dock previews, lifts the Dock's resize grip.
 - **Detail.** A deep-purple band about settings: scopes, previews on the native Dock, and Pause/Restore.
-- **Final CTA.** An honest status note covering active development, required permissions and no public download yet. Its action returns to the demo.
+- **Get DogBar.** A cream banner near the footer with the same download CTA, permissions note and "Try the demo". The nav pill and footer link here.
 
 ## Interaction thesis
 
 1. **Entrance.** The hero mascot sticker drops in and the headline settles with a short stagger.
 2. **Demo state changes.** Switching desktops swaps the Dock and windows while pins stay. Option+Tab pops a tile per window, and Dock previews spring from the hovered icon.
-3. **Hover and press.** Ink-shadowed buttons and feature art lift on hover and squash on press. Feature art tilts in on scroll.
+3. **Hover and press.** Ink-shadowed buttons and feature art lift on hover and squash on press. Feature art tilts in on scroll. The unavailable download CTA stays flat and dashed, so it never pretends to be clickable.
 
-All motion collapses under `prefers-reduced-motion`. The demo only listens for keys inside itself (Escape, arrows), never globally.
+All motion collapses under `prefers-reduced-motion`. The demo only listens for keys inside itself (Escape, arrows), never globally. Activating a Dock icon from the keyboard moves focus into its previews, and Escape returns it.
+
+## Download CTAs and release.json
+
+Both download CTAs (hero and banner) ship as placeholder `<a>` elements without `href`: not focusable, labelled "Download for Mac, Coming soon", with a note that the public release is being prepared. `release.js` fetches same-origin `/release.json` (no-store) and turns both into real links only when every check passes:
+
+- `available === true` and `notarized === true` (strict booleans)
+- `version` like `1.0`, `1.0.0` or `1.0.0-beta.2`
+- `architecture === "arm64"`, `sha256` is 64 hex characters, `minimumMacOS` like `14.0`
+- `url` is exactly `/downloads/DogBar-<version>-arm64.dmg`, or the same path on this page's own HTTPS origin
+- the page itself is served over HTTPS
+
+Live CTAs get `href`, `download`, an "Apple Silicon" tag and the note "Version X · Apple Silicon · macOS 14+". The banner also shows the SHA-256. A missing file, network error, bad JSON or any failed check keeps the unavailable state. Contract defaults:
+
+```json
+{ "available": false, "version": null, "url": null, "sha256": null, "architecture": "arm64", "minimumMacOS": "14.0", "notarized": false }
+```
+
+## Feature art
+
+The four `assets/feature-*.svg` files are generated and self-contained, because SVGs shown through `<img>` cannot load external images. Mascot poses (`assets/mascot-poses/*.png`) and the app icon are cropped, downscaled and embedded as PNG data URIs. Rebuild after changing a pose or a layout:
+
+```
+node landing/tools/build-art.mjs
+```
+
+The DogBar app icon (`dog-96.png`, `dog-640.jpg`) stays the identity in the nav, favicon, settings sketch and each illustrated Dock.
+
+## Tests
+
+```
+node --test 'landing/tests/*.test.cjs'
+JSDOM_PATH=/path/to/node_modules/jsdom node --test 'landing/tests/*.test.cjs'
+```
+
+`release.test.cjs` needs only Node: manifest verification, shipped markup and art checks. `dom.test.cjs` drives the page and demo in jsdom, which this repo does not install. Point `JSDOM_PATH` at any local copy, otherwise it skips.
 
 ## Copy guardrails
 
-The page avoids claims the app has not verified. It makes no speed claims and no guarantee about never switching Space. It does not mention App Store, notarization, pricing, downloads, testimonials or full Liquid Glass. It does not link to the private repository.
-
+The page avoids claims the app has not verified. It makes no speed claims and no guarantee about never switching Space. It does not mention App Store, pricing, testimonials or full Liquid Glass. It says nothing about notarization, and it names Apple Silicon only once a verified release is live. It does not link to the private repository, and there is no waitlist.

@@ -134,7 +134,7 @@
       const count = windowsHere().filter((w) => w.app === key).length;
       const label = `${APPS[key].name}, ${count ? plural(count, "window") : "no windows"} on this desktop`;
       return `<li><button type="button" class="dock-btn${animate && !pins.includes(key) ? " enter" : ""}" data-app="${key}"
-        aria-label="${label}" aria-expanded="false" aria-haspopup="true">
+        aria-label="${label}" aria-expanded="false" aria-controls="demo-preview">
         ${iconMarkup(key)}<span class="dots" aria-hidden="true">${"<i></i>".repeat(count)}</span></button></li>`;
     };
     dock.innerHTML = pins.map(button).join("") +
@@ -164,7 +164,7 @@
     state.mode = "switcher";
     state.sel = list.length > 1 ? 1 : 0;
     switcher.hidden = false;
-    tabBtn.innerHTML = "<kbd>⇥</kbd> Tab again";
+    tabBtn.innerHTML = '<kbd aria-hidden="true">⇥</kbd> Tab again';
     releaseBtn.hidden = false;
     renderTiles();
   }
@@ -190,7 +190,7 @@
     state.mode = "idle";
     switcher.hidden = true;
     tilesEl.innerHTML = "";
-    tabBtn.innerHTML = "<kbd>⌥</kbd> Option+Tab";
+    tabBtn.innerHTML = '<kbd aria-hidden="true">⌥</kbd> Option+Tab';
     releaseBtn.hidden = true;
   }
 
@@ -224,14 +224,19 @@
     }
   }
 
+  // Centre over the hovered icon, keep inside the screen, sit just above the Dock.
   function placePreview(btn) {
     const m = mac.getBoundingClientRect();
     const b = btn.getBoundingClientRect();
-    const half = preview.offsetWidth / 2;
+    const d = dock.getBoundingClientRect();
+    const width = preview.offsetWidth;
+    const half = width / 2;
     const center = b.left + b.width / 2 - m.left;
-    const left = Math.min(Math.max(center, half + 8), m.width - half - 8);
+    const left = Math.min(Math.max(center, half + 8), Math.max(half + 8, m.width - half - 8));
+    const tail = Math.min(Math.max(center - left + half, 22), Math.max(22, width - 22));
     preview.style.left = `${left}px`;
-    preview.style.setProperty("--tail", `${center - left + half}px`);
+    preview.style.bottom = `${Math.max(m.bottom - d.top + 16, 0)}px`;
+    preview.style.setProperty("--tail", `${tail}px`);
   }
 
   function closePreview() {
@@ -321,8 +326,9 @@
     const b = e.target.closest(".dock-btn");
     if (!b) return;
     const key = b.dataset.app;
-    if (state.mode === "preview" && state.previewApp === key) closePreview();
-    else openPreview(key);
+    if (state.mode === "preview" && state.previewApp === key) { closePreview(); return; }
+    openPreview(key);
+    if (e.detail === 0) preview.querySelector("button")?.focus();
   });
 
   // Hover previews for mouse pointers only; touch and keyboard use click.

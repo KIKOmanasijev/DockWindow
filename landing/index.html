@@ -17,6 +17,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
+  <script src="release.js" defer></script>
   <script src="script.js" defer></script>
 </head>
 <body>
@@ -29,6 +30,8 @@
     <symbol id="i-notes" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="9.5" fill="#FFFDF5" stroke="#1D0B3F" stroke-width="2"/><path d="M1.5 12V10A8.5 8.5 0 0 1 10 1.5h20A8.5 8.5 0 0 1 38.5 10v2z" fill="#FFC93C"/><path d="M1.5 12h37" stroke="#1D0B3F" stroke-width="1.6"/><path d="M8 19h24M8 25h24M8 31h16" stroke="#C9C2B0" stroke-width="2" stroke-linecap="round"/></symbol>
     <symbol id="i-terminal" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="9.5" fill="#25223A" stroke="#1D0B3F" stroke-width="2"/><path d="M9 14l7 5-7 5M19 27h11" stroke="#7CF29A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
     <symbol id="i-music" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="9.5" fill="#FF4D6D" stroke="#1D0B3F" stroke-width="2"/><path d="M16 27V12l13-3v15" stroke="#fff" stroke-width="2.6" fill="none" stroke-linejoin="round"/><circle cx="13.5" cy="27.5" r="3.6" fill="#fff"/><circle cx="26.5" cy="24.5" r="3.6" fill="#fff"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11m0 0-4.5-4.5M12 14.5l4.5-4.5M4.5 15.5v2.5A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-2.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
     <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="6" ry="5"/><circle cx="5" cy="10" r="2.4"/><circle cx="9.5" cy="6" r="2.4"/><circle cx="14.5" cy="6" r="2.4"/><circle cx="19" cy="10" r="2.4"/></symbol>
   </svg>
 
@@ -42,7 +45,7 @@
         <li><a href="#demo">Demo</a></li>
         <li><a href="#features">Features</a></li>
       </ul>
-      <p class="status-pill"><span class="dot" aria-hidden="true"></span>In development</p>
+      <a class="status-pill" href="#get"><span class="dot" aria-hidden="true"></span>Get DogBar</a>
     </nav>
 
     <div class="hero-inner" id="top">
@@ -52,10 +55,17 @@
         <p class="promise">Switch windows, not apps.</p>
         <p class="lede">The Windows-style app switcher the Mac never had. Every open window gets its own tile, its own preview and its own dot.</p>
         <div class="actions">
-          <a class="btn btn-cream" href="#demo" data-demo-start>Try the demo</a>
-          <a class="btn btn-ghost" href="#features">See how it works</a>
+          <a class="btn btn-download" data-download aria-describedby="hero-dl-note">
+            <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+            <span>Download for Mac</span>
+            <span class="dl-tag" data-download-tag>Coming soon</span>
+          </a>
+          <a class="btn btn-cream" href="#demo" data-demo-start>
+            <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-play"/></svg>
+            <span>Try the demo</span>
+          </a>
         </div>
-        <p class="avail">In development. macOS 14+</p>
+        <p class="dl-note" id="hero-dl-note" data-download-note>Public release is being prepared. macOS 14+.</p>
       </div>
 
       <section class="stage" id="demo" aria-labelledby="demo-title" tabindex="-1">
@@ -75,10 +85,10 @@
             <p class="sr-only" id="switcher-label">Window switcher</p>
             <ul class="tiles" data-tiles aria-labelledby="switcher-label"></ul>
           </div>
-          <div class="preview" data-preview hidden></div>
           <div class="dock-wrap">
             <ul class="dock" data-dock aria-label="Demo Dock"></ul>
           </div>
+          <div class="preview" id="demo-preview" data-preview hidden></div>
         </div>
 
         <div class="controls">
@@ -86,8 +96,8 @@
             <button type="button" class="chip" data-desk-btn="1" aria-pressed="true">Desktop 1</button>
             <button type="button" class="chip" data-desk-btn="2" aria-pressed="false">Desktop 2</button>
           </div>
-          <button type="button" class="chip chip-key" data-tab><kbd>⌥</kbd> Option+Tab</button>
-          <button type="button" class="chip chip-release" data-release hidden>Release <kbd>⌥</kbd></button>
+          <button type="button" class="chip chip-key" data-tab><kbd aria-hidden="true">⌥</kbd> Option+Tab</button>
+          <button type="button" class="chip chip-release" data-release hidden>Release <kbd aria-hidden="true">⌥</kbd></button>
           <button type="button" class="chip chip-quiet" data-reset hidden>Reset</button>
         </div>
         <p class="caption" data-caption aria-live="polite">Click a Dock icon for previews, or press Option+Tab.</p>
@@ -103,7 +113,7 @@
       <article class="feature">
         <figure class="art reveal">
           <img src="assets/feature-switcher.svg" width="640" height="480" loading="lazy" decoding="async"
-            alt="Option+Tab switcher showing five tiles, including two separate Safari windows. The dog's paws press the Option key.">
+            alt="Option+Tab switcher showing five tiles, including two separate Safari windows. Below the screen, the DogBar dog presses the Option and Tab keys.">
         </figure>
         <div class="feature-copy">
           <span class="num" aria-hidden="true">01</span>
@@ -115,7 +125,7 @@
       <article class="feature">
         <figure class="art reveal">
           <img src="assets/feature-desktops.svg" width="640" height="480" loading="lazy" decoding="async"
-            alt="Two desktops side by side, each with its own Dock. Finder and DogBar stay pinned on both.">
+            alt="Two desktops side by side, each with its own Dock. Finder and DogBar stay pinned on both, and the dog walks a new window over to Desktop 2.">
         </figure>
         <div class="feature-copy">
           <span class="num" aria-hidden="true">02</span>
@@ -127,7 +137,7 @@
       <article class="feature">
         <figure class="art reveal">
           <img src="assets/feature-previews.svg" width="640" height="480" loading="lazy" decoding="async"
-            alt="Hovering Safari in the Dock shows previews of two windows with traffic lights. The cursor picks one window.">
+            alt="Hovering Safari in the Dock shows previews of two windows with traffic lights. The cursor picks one window while the dog peeks up from below the screen.">
         </figure>
         <div class="feature-copy">
           <span class="num" aria-hidden="true">03</span>
@@ -139,7 +149,7 @@
       <article class="feature">
         <figure class="art reveal">
           <img src="assets/feature-dock.svg" width="640" height="480" loading="lazy" decoding="async"
-            alt="A Dock with one dot per open window and a grip on its top edge for resizing. Icons keep a fixed size.">
+            alt="A Dock with one dot per open window. The dog stands on the Dock and lifts its resize grip. Icons keep a fixed size.">
         </figure>
         <div class="feature-copy">
           <span class="num" aria-hidden="true">04</span>
@@ -168,17 +178,37 @@
       </div>
     </section>
 
-    <section class="final" aria-labelledby="final-title">
-      <img class="final-dog" src="assets/dog-640.jpg" width="640" height="640" alt="" loading="lazy" decoding="async">
-      <h2 id="final-title" class="section-title">Still in the works.</h2>
-      <p>DogBar is in active development. It needs Accessibility and Screen Recording permission to see your windows, and live behavior is still being tested. There’s no public download yet.</p>
-      <a class="btn btn-cream" href="#demo" data-demo-start>Try the demo again</a>
-      <p class="avail">In development. macOS 14+</p>
+    <section class="get" id="get" aria-labelledby="get-title">
+      <div class="get-banner reveal">
+        <img class="get-dog" src="assets/dog-640.jpg" width="640" height="640" alt="" loading="lazy" decoding="async">
+        <div class="get-copy">
+          <h2 id="get-title" class="section-title">Get DogBar for your Mac.</h2>
+          <p>A native Swift app for macOS 14 or later. It asks for Accessibility and Screen Recording permission so it can see your windows.</p>
+          <div class="actions">
+            <a class="btn btn-download" data-download aria-describedby="get-dl-note">
+              <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+              <span>Download for Mac</span>
+              <span class="dl-tag" data-download-tag>Coming soon</span>
+            </a>
+            <a class="btn btn-cream" href="#demo" data-demo-start>
+              <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-play"/></svg>
+              <span>Try the demo</span>
+            </a>
+          </div>
+          <p class="dl-note" id="get-dl-note" data-download-note>The public release is being prepared. Until then, the demo shows how it works.</p>
+          <p class="dl-hash" data-download-hash hidden>SHA-256 <code></code></p>
+        </div>
+      </div>
     </section>
   </main>
 
   <footer class="footer">
     <p><img src="assets/dog-96.png" width="24" height="24" alt=""> DogBar. A native Swift app for macOS 14+.</p>
+    <ul class="footer-links">
+      <li><a href="#demo">Demo</a></li>
+      <li><a href="#features">Features</a></li>
+      <li><a href="#get">Download</a></li>
+    </ul>
   </footer>
 </body>
 </html>
