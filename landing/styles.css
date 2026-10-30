@@ -75,31 +75,30 @@ kbd { font: inherit; }
 .chip:hover { transform: translate(-2px, -2px); box-shadow: 5px 6px 0 var(--ink); }
 .chip:active { transform: translate(2px, 3px) scale(.98); box-shadow: 0 0 0 var(--ink); }
 
-/* Download is the one primary action: brand purple, larger, inked. On the purple
-   hero a cream ring lifts it off the background like a sticker. */
+/* Yellow is reserved for the primary download action and keyboard focus. */
 .btn-download {
-  --ring: 0 0 0 4px var(--cream);
+  --ring: 0 0 0 0 transparent;
   min-height: 60px; padding: .8rem 1.5rem;
   font-size: 1.22rem;
-  color: var(--cream);
-  background: var(--purple);
+  color: var(--ink);
+  background: var(--yellow);
   box-shadow: var(--ring), 6px 7px 0 4px var(--ink);
 }
 .get .btn-download { --ring: 0 0 0 0 transparent; box-shadow: 6px 7px 0 var(--ink); }
-.btn-download[href]:hover { transform: translate(-2px, -2px); box-shadow: var(--ring), 8px 9px 0 4px var(--ink); background: var(--purple-hi); }
+.btn-download[href]:hover { transform: translate(-2px, -2px); box-shadow: var(--ring), 8px 9px 0 4px var(--ink); background: #ffda68; }
 .get .btn-download[href]:hover { box-shadow: 8px 9px 0 var(--ink); }
 .btn-download[href]:active { transform: translate(3px, 4px) scale(.98); box-shadow: var(--ring), 0 0 0 4px var(--ink); }
 .get .btn-download[href]:active { box-shadow: 0 0 0 var(--ink); }
-/* Coming soon: still the purple primary, but hatched and static, with no href, so
+/* Coming soon: the yellow action stays hatched and static, with no href, so
    it never pretends to be clickable. release.js adds href once a release verifies. */
 .btn-download:not([href]) {
   cursor: default;
-  background: repeating-linear-gradient(-45deg, var(--purple) 0 9px, #7a33ee 9px 18px);
+  background: repeating-linear-gradient(-45deg, var(--yellow) 0 9px, #ffda68 9px 18px);
 }
 .dl-tag {
   padding: .14rem .55rem;
   font-size: .72rem; font-weight: 900; letter-spacing: .04em; text-transform: uppercase;
-  color: var(--ink); background: var(--yellow); border: 2px solid var(--ink); border-radius: 999px;
+  color: var(--ink); background: var(--lav); border: 2px solid var(--ink); border-radius: 999px;
 }
 .btn-download[href] .dl-tag { background: var(--cream); }
 
@@ -109,7 +108,7 @@ kbd { font: inherit; }
   min-height: 48px; padding: .3rem .35rem;
   font-weight: 800; font-size: 1.08rem;
   text-decoration: underline; text-decoration-thickness: 3px; text-underline-offset: 6px;
-  text-decoration-color: var(--yellow);
+  text-decoration-color: var(--lav-2);
   transition: text-decoration-color .14s ease, transform .14s ease;
 }
 .btn-link .btn-ic { width: 1em; height: 1em; }
@@ -149,7 +148,7 @@ kbd { font: inherit; }
 }
 .brand img { border: 2.5px solid var(--ink); border-radius: 11px; box-shadow: 2px 3px 0 var(--ink); }
 .nav-links { display: flex; gap: 1.2rem; margin-left: auto; font-weight: 800; }
-.nav-links a { text-decoration: none; padding: .3rem .1rem; background: linear-gradient(var(--yellow), var(--yellow)) 0 100% / 0 3px no-repeat; transition: background-size .2s ease; }
+.nav-links a { text-decoration: none; padding: .3rem .1rem; background: linear-gradient(var(--cream), var(--cream)) 0 100% / 0 3px no-repeat; transition: background-size .2s ease; }
 .nav-links a:hover { background-size: 100% 3px; }
 .status-pill {
   display: inline-flex; align-items: center; gap: .45rem;
@@ -159,7 +158,7 @@ kbd { font: inherit; }
   transition: background-color .14s ease, color .14s ease;
 }
 .status-pill:hover { background: var(--cream); color: var(--ink); }
-.status-pill .dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--yellow); }
+.status-pill .dot { width: .55rem; height: .55rem; border-radius: 50%; background: var(--lav-2); }
 
 .hero-inner {
   display: grid;
@@ -190,7 +189,7 @@ kbd { font: inherit; }
   font-weight: 900; line-height: 1.1;
   max-width: 100%;
   display: inline-block;
-  background: var(--yellow); color: var(--ink);
+  background: var(--cream); color: var(--ink);
   padding: .15em .45em .2em;
   border: var(--line); border-radius: var(--wobble-sm);
   box-shadow: var(--shadow-sm);
@@ -281,20 +280,7 @@ kbd { font: inherit; }
 [data-app="slack"] .win-bar { background: #3f0e40; color: #f3e8f3; }
 [data-app="notes"] .win-bar { background: #fff1c2; }
 
-/* Safari: pull request review (fictional host) */
-.pr { display: flex; flex-direction: column; gap: .6em; padding: .9em 1em; }
-.pr-title { font-size: 1.3em; font-weight: 900; line-height: 1.15; }
-.pr-num { color: #8a7ca8; }
-.pr-meta { display: flex; flex-wrap: wrap; align-items: center; gap: .45em; font-size: .85em; font-weight: 700; color: #5b4b7a; }
-.badge { padding: .15em .6em; border-radius: 999px; background: #1f8f4e; color: #fff; font-weight: 800; }
-.pr-meta .add { color: #137a3c; } .pr-meta .del { color: #b4233a; }
-.diff { display: grid; border: 1px solid #ddd3ee; border-radius: .5em; overflow: hidden; font: 600 .82em/1.6 ui-monospace, Menlo, monospace; }
-.diff > span { display: block; padding: 0 .7em; white-space: pre; }
-.diff .hunk { background: #efe9fb; color: #7a6c99; }
-.diff .del { background: #ffe3e7; color: #a1162b; }
-.diff .add { background: #ddf6e4; color: #0f6b34; }
-
-/* Safari: the staging site being checked */
+/* Safari: a fictional hotel booking */
 .site { flex: 1; display: flex; flex-direction: column; align-items: center; gap: .55em; padding: .8em 1.1em; text-align: center; background: linear-gradient(#fff, #f5f0ff); }
 .site-logo { align-self: flex-start; font-weight: 900; color: var(--purple); }
 .site-steps { display: flex; gap: .35em; margin-top: .3em; }
@@ -302,10 +288,10 @@ kbd { font: inherit; }
 .site-steps i.on { background: var(--purple); }
 .site-h { font-size: 1.45em; font-weight: 900; line-height: 1.1; }
 .site-input, .site-btn { width: 82%; padding: .45em .7em; border-radius: .5em; font-weight: 700; }
-.site-input { text-align: left; background: #fff; border: 1.5px solid #cfc4e6; }
+.site-input { text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; background: #fff; border: 1.5px solid #cfc4e6; }
 .site-btn { background: var(--purple); color: #fff; font-weight: 800; }
 
-/* Slack: a launch channel */
+/* Slack: friends planning a trip */
 .slack { flex: 1; display: grid; grid-template-columns: 34% 1fr; }
 .sl-side { display: flex; flex-direction: column; gap: .35em; padding: .8em .7em; background: #4a154b; color: #dcc6dd; font-size: .85em; font-weight: 700; white-space: nowrap; overflow: hidden; }
 .sl-side b { margin-bottom: .3em; color: #fff; font-size: 1.1em; }
@@ -316,15 +302,15 @@ kbd { font: inherit; }
 .av { width: 2em; height: 2em; display: grid; place-items: center; border-radius: .45em; background: var(--av); color: #fff; font-weight: 900; }
 .msg b { display: block; font-weight: 900; }
 
-/* Notes: the checklist that motivates the switch */
+/* Notes: a packing checklist */
 .note { flex: 1; display: flex; flex-direction: column; gap: .5em; padding: .9em 1em; background: #fffdf5; }
 .note-h { margin-bottom: .15em; font-size: 1.25em; font-weight: 900; }
 .check { display: flex; align-items: center; gap: .5em; font-weight: 600; }
 .check i { flex: none; width: 1em; height: 1em; border: 1.5px solid #c9a227; border-radius: 50%; }
 .check.done { color: #8f8670; text-decoration: line-through; }
-.check.done i { background: var(--yellow); }
+.check.done i { background: var(--lav-2); }
 
-/* Safari on Desktop 2: weekend plans */
+/* Safari: illustrated day plans and hiking routes */
 .trip { flex: 1; display: flex; flex-direction: column; gap: .45em; padding: .8em .9em; }
 .trip-img {
   flex: 1; min-height: 3em; border-radius: .6em; border: 1px solid #e3d9f3;
@@ -341,7 +327,7 @@ kbd { font: inherit; }
 .mu-h { font-size: 1.3em; font-weight: 900; }
 .mu-row { display: grid; grid-template-columns: 2.6em 1fr; gap: .65em; align-items: center; color: #6b5d88; font-weight: 600; }
 .mu-row b { display: block; color: var(--ink); font-weight: 800; }
-.art { width: 2.6em; height: 2.6em; border-radius: .45em; border: 1px solid var(--ink); background: linear-gradient(135deg, var(--art), #1d0b3f); }
+.music .art, .album-art { width: 2.6em; height: 2.6em; border-radius: .45em; border: 1px solid var(--ink); background: linear-gradient(135deg, var(--art), #1d0b3f); }
 
 /* Dock */
 .dock-wrap { position: absolute; left: 0; right: 0; bottom: 10px; display: flex; justify-content: center; z-index: 5; pointer-events: none; }
@@ -448,7 +434,7 @@ kbd { font: inherit; }
   position: absolute; left: -12px; top: -1.35rem; z-index: 2;
   padding: .2rem .6rem;
   font-size: .8rem; font-weight: 900; white-space: nowrap;
-  background: var(--yellow); border: 2.5px solid var(--ink); border-radius: 10px 8px 11px 7px;
+  background: var(--cream); border: 2.5px solid var(--ink); border-radius: 10px 8px 11px 7px;
   box-shadow: 2px 3px 0 var(--ink);
   transform: rotate(-4deg);
   pointer-events: none;
@@ -464,9 +450,9 @@ kbd { font: inherit; }
   border-radius: 12px 10px 13px 9px / 9px 13px 10px 12px;
   box-shadow: var(--shadow-sm);
 }
-.chip[aria-pressed="true"] { background: var(--ink); color: var(--cream); box-shadow: 3px 4px 0 var(--yellow); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--cream); box-shadow: 3px 4px 0 var(--lav-2); }
 .chip small { font: inherit; font-weight: 700; opacity: .7; }
-.chip-key { background: var(--yellow); }
+.chip-key { background: var(--lav); }
 .chip-release { background: var(--lav); }
 .chip-quiet { background: transparent; color: var(--cream); border-color: var(--cream); box-shadow: none; }
 .chip kbd { display: inline-block; min-width: 1.4em; padding: 0 .25em; border: 2px solid currentColor; border-radius: 6px; line-height: 1.2; text-align: center; }
@@ -493,8 +479,9 @@ kbd { font: inherit; }
   max-width: 1140px; margin: 0 auto;
 }
 .feature + .feature { margin-top: clamp(3.5rem, 8vw, 6rem); }
-.feature:nth-of-type(even) .art { order: 2; }
-.art {
+.feature:nth-of-type(even) .feature-art { order: 2; }
+.feature-art {
+  width: 100%; height: auto; min-width: 0;
   margin: 0;
   border: 4px solid var(--ink);
   border-radius: var(--wobble);
@@ -504,9 +491,9 @@ kbd { font: inherit; }
   transform: rotate(-1.2deg);
   transition: transform .25s var(--ease-pop), box-shadow .25s ease;
 }
-.feature:nth-of-type(even) .art { transform: rotate(1.2deg); }
-.art img { width: 100%; height: auto; }
-.art:hover { transform: rotate(0) translate(-3px, -3px); box-shadow: 11px 12px 0 var(--ink); }
+.feature:nth-of-type(even) .feature-art { transform: rotate(1.2deg); }
+.feature-art img { width: 100%; height: auto; }
+.feature-art:hover { transform: rotate(0) translate(-3px, -3px); box-shadow: 11px 12px 0 var(--ink); }
 .num {
   display: inline-grid; place-items: center;
   width: 3rem; height: 3rem; margin-bottom: 1rem;
@@ -532,7 +519,7 @@ kbd { font: inherit; }
 }
 .detail > * { max-width: 560px; }
 .detail-copy { justify-self: end; }
-.detail .section-title { color: var(--yellow); text-shadow: 3px 4px 0 var(--ink); }
+.detail .section-title { color: var(--cream); text-shadow: 3px 4px 0 var(--ink); }
 .detail-copy p { margin-top: 1rem; font-size: clamp(1.05rem, 1.5vw, 1.25rem); font-weight: 600; max-width: 34ch; }
 .settings {
   position: relative;
@@ -606,7 +593,7 @@ kbd { font: inherit; }
 .js .reveal.in { opacity: 1; transform: rotate(-1.2deg); }
 .js .feature:nth-of-type(even) .reveal.in { transform: rotate(1.2deg); }
 .js .settings.reveal.in { transform: rotate(1.5deg); }
-.js .art.reveal.in:hover { transform: rotate(0) translate(-3px, -3px); }
+.js .feature-art.reveal.in:hover { transform: rotate(0) translate(-3px, -3px); }
 .js .get-banner.reveal { transform: translateY(28px); }
 .js .get-banner.reveal.in { transform: none; }
 
@@ -634,7 +621,7 @@ kbd { font: inherit; }
   .controls { justify-content: center; }
   .caption { text-align: center; }
   .feature, .detail { grid-template-columns: 1fr; }
-  .feature:nth-of-type(even) .art { order: 0; }
+  .feature:nth-of-type(even) .feature-art { order: 0; }
   .feature { max-width: 680px; }
   .feature-copy { display: grid; justify-items: start; }
   .detail-copy { justify-self: center; text-align: center; }
@@ -665,7 +652,7 @@ kbd { font: inherit; }
   .tile { width: 72px; padding: 6px 3px; }
   .tile .name { font-size: .68rem; }
   .settings-dog { right: -8px; }
-  .art, .settings { box-shadow: 5px 6px 0 var(--ink); }
+  .feature-art, .settings { box-shadow: 5px 6px 0 var(--ink); }
   .get-banner { box-shadow: 6px 7px 0 var(--ink); }
 }
 @media (max-width: 380px) {

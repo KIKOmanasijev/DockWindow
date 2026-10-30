@@ -126,20 +126,21 @@ test("CTA hierarchy: download is the primary button, the demo a secondary link",
   }
 });
 
-test("demo opens on a launch-day example: two Safari windows, picked independently", { skip }, async () => {
+test("demo opens on an everyday trip example: two Safari windows, picked independently", { skip }, async () => {
   const { w, $, $$ } = await page(json(null));
   const cap = () => $("[data-caption]").textContent;
   const dockApps = () => $$(".dock-btn").map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
 
-  // Desktop 1: Safari (PR review + staging), Slack and a Notes checklist, all fictional.
+  // Desktop 1: Safari (day plan + hotel booking), Slack with friends and a Notes packing list, all fictional.
   assert.equal($$(".win").length, 4);
   assert.equal(dockApps(), "finder:0,dockwindow:0,safari:2,slack:1,notes:1");
   assert.equal($(".win.is-front").dataset.win, "s1");
   assert.equal($("[data-front-app]").textContent, "Safari");
-  assert.match($('[data-win="s1"]').textContent, /git\.fernway\.dev[\s\S]*New onboarding flow/);
-  assert.match($('[data-win="s2"]').textContent, /staging\.fernway\.app[\s\S]*Name your workspace/);
-  assert.match($('[data-win="k1"]').textContent, /# onboarding-launch[\s\S]*check step 2/);
-  assert.match($('[data-win="n1"]').textContent, /Check step 2 on staging/);
+  assert.match($('[data-win="s1"]').textContent, /wanderly\.travel[\s\S]*A weekend in Lisbon/);
+  assert.match($('[data-win="s2"]').textContent, /casaluz-stays\.travel[\s\S]*Confirm your stay[\s\S]*Book 2 nights/);
+  assert.match($('[data-win="k1"]').textContent, /# lisbon-trip[\s\S]*Found a hotel near Alfama/);
+  assert.match($('[data-win="n1"]').textContent, /Packing list[\s\S]*Passport/);
+  assert.doesNotMatch($("[data-desk]").textContent, /\bPR\b|staging|deploy|review|diff/i, "no developer jargon in the hero");
 
   // Real app icons, served locally.
   for (const img of $$(".dock-btn img")) assert.match(img.getAttribute("src"), /^assets\/(apps\/[a-z]+|dog-96)\.png$/);
@@ -149,9 +150,9 @@ test("demo opens on a launch-day example: two Safari windows, picked independent
   assert.equal(pv.hidden, false);
   assert.equal(pv.getAttribute("aria-label"), "Safari window previews");
   assert.ok(pv.classList.contains("is-intro"));
-  assert.deepEqual($$(".pv-name").map((n) => n.textContent), ["PR #482 review", "Staging: Welcome"]);
+  assert.deepEqual($$(".pv-name").map((n) => n.textContent), ["Lisbon day plan", "Hotel booking"]);
   assert.match($(".pv-hint").textContent, /2 Safari windows/);
-  assert.ok($('.pv.is-pick [data-focus="s2"]'), "staging is the suggested pick");
+  assert.ok($('.pv.is-pick [data-focus="s2"]'), "the hotel booking is the suggested pick");
   assert.equal($('.dock-btn[data-app="safari"]').getAttribute("aria-expanded"), "true");
   assert.match(cap(), /two windows/);
   assert.equal(w.document.activeElement, w.document.body, "the example does not steal focus");
@@ -164,13 +165,13 @@ test("demo opens on a launch-day example: two Safari windows, picked independent
   $('[data-focus="s2"]').dispatchEvent(new w.FocusEvent("focusin", { bubbles: true }));
   assert.deepEqual($$(".win.peek").map((el) => el.dataset.win), ["s2"]);
 
-  // Picking staging brings forward only that window; the PR window stays open behind.
+  // Picking the booking brings forward only that window; the day plan stays open behind.
   $('[data-focus="s2"]').click();
   assert.ok(pv.hidden);
   assert.equal($(".win.is-front").dataset.win, "s2");
   assert.ok($('[data-win="s1"]') && !$('[data-win="s1"]').classList.contains("is-front"));
   assert.equal($$(".win.peek").length, 0);
-  assert.match(cap(), /Staging: Welcome.*in front\. The other Safari window stayed where it was\./);
+  assert.match(cap(), /Hotel booking.*in front\. The other Safari window stayed where it was\./);
   assert.equal(w.document.activeElement, $('.dock-btn[data-app="safari"]'));
 });
 
@@ -190,7 +191,7 @@ test("demo: switcher, previews, desktops and reset", { skip }, async () => {
   assert.ok($("[data-preview]").hidden);
   assert.ok(!$("[data-switcher]").hidden && $$(".tile").length === 4);
   assert.equal(sel(), "s2", cap());
-  assert.match(cap(), /4 tiles.*Safari, “Staging: Welcome”/);
+  assert.match(cap(), /4 tiles.*Safari, “Hotel booking”/);
   $("[data-tab]").click();
   assert.equal(sel(), "k1");
   key("ArrowRight");
@@ -236,6 +237,9 @@ test("demo: switcher, previews, desktops and reset", { skip }, async () => {
   assert.equal($('[data-desk-btn="2"]').getAttribute("aria-pressed"), "true");
   assert.equal($("[data-desk-chip]").textContent, "Desktop 2");
   assert.match(cap(), /Safari \(1 dot\), Music \(1 dot\)/);
+  assert.match($('[data-win="s3"]').textContent, /Sunday hike/);
+  assert.equal($$('[data-win="m1"] .album-art').length, 3, "album covers use their own class");
+  assert.equal($$("[data-desk] .art").length, 0, "no clash with the feature figures' .art");
   $('[data-desk-btn="1"]').click();
   assert.equal(dockApps(), "finder:0,dockwindow:0,slack:1,notes:1", "desktop 1 remembers closed windows");
 

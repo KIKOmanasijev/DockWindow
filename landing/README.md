@@ -37,23 +37,23 @@ landing/
 
 ## Visual thesis
 
-A loud purple cartoon desk: the dog mascot's violet as the primary surface, cream and lavender as relief, and inky hand-drawn borders with hard offset shadows. Inside it sits a believable Mac: real app icons and real-looking app windows, drawn in HTML and CSS and framed in the same thick ink.
+A purple cartoon desk with cream and lavender supporting surfaces, inky hand-drawn borders and hard offset shadows. Yellow is concentrated on the primary download action and keyboard focus. Inside it sits a believable Mac: real app icons and real-looking app windows, drawn in HTML and CSS and framed in the same thick ink.
 
 ## Content plan
 
 - **Hero.** The DogBar name is the loudest element. Promise: "Switch windows, not apps." One line of proof: "Cmd+Tab brings back an app. DogBar brings back the exact window you meant." The demo is the one dominant visual.
-- **Hero demo scenario.** Launch day on Desktop 1 (Work): Safari has two windows, a pull request review and the staging site, next to Slack (#onboarding-launch) and a Notes checklist that says "Check step 2 on staging". The page opens with Safari's Dock previews already showing both windows and a sticker, "2 Safari windows. Pick one.", so the benefit reads without clicking. Desktop 2 (Personal) has its own Dock: one Safari window and Music. Every name, URL and message is fictional (Fernway, Wanderly); no personal data or screenshots.
+- **Hero demo scenario.** Desktop 1 (Planning) has two Safari windows: a Lisbon day plan and a hotel booking, alongside a friends’ Slack conversation and a Notes packing list. Both Safari previews open on arrival, with Hotel booking suggested, showing exact-window selection without requiring experimentation. Desktop 2 (Personal) has a Sunday hike and Music. All sample names, URLs and messages are fictional; no personal screenshots or data.
 - **Support (features).** Four alternating rows, each with one sentence-sized idea and its own illustration. In each, the dog does the feature.
 - **Detail.** A deep-purple band about settings: scopes, previews on the native Dock, and Pause/Restore.
 - **Get DogBar.** A cream banner near the footer with the same download CTA, permissions note and demo link. The nav pill and footer link here.
 
 ## CTA hierarchy
 
-"Download for Mac" is the only button: brand purple, cream text, ink border and hard shadow, larger than anything near it. On the purple hero a cream ring sets it apart from the background; on the cream banner the purple carries it alone. "Try the demo" is a plain underlined link with a play glyph, never a second button. While unavailable, the download stays purple and dominant but hatched, with a yellow "Coming soon" tag, no hover lift, default cursor and no `href`.
+"Download for Mac" is the only primary button: yellow fill, ink text, ink border and hard shadow, larger than anything near it. Yellow is reserved mainly for this action, with cream and lavender on the slogan, demo controls and preview hint. "Try the demo" is a plain underlined link with a play glyph. While unavailable, the download stays yellow but hatched, with a lavender status tag, no hover lift, default cursor and no `href`.
 
 ## Interaction thesis
 
-1. **Entrance.** The hero mascot sticker drops in, the headline settles with a short stagger, and the suggested "Staging: Welcome" preview nudges a few times.
+1. **Entrance.** The hero mascot sticker drops in, the headline settles with a short stagger, and the suggested "Hotel booking" preview nudges a few times.
 2. **Demo state changes.** Picking a preview brings forward only that window and says the other Safari window stayed put. Hovering or focusing a preview outlines its window on the desk. Switching desktops swaps the Dock and windows while pins stay. Option+Tab pops a tile per window.
 3. **Hover and press.** The live download button and feature art lift on hover and squash on press. Feature art tilts in on scroll.
 
@@ -110,6 +110,10 @@ The page avoids claims the app has not verified. It makes no speed claims and no
 
 ### Explicit preview channel
 
-When no notarized release is available, `release.js` checks `/preview.json`. It accepts only `available: true`, `notarized: false`, `channel: "preview"`, `signing: "self-signed"`, a positive build number and an explicit `X.Y.Z-preview.N` version, with the same HTTPS origin, exact filename and SHA-256 checks. Both purple CTAs then show Preview; both status notes say Unnotarized preview. The footer exposes installation instructions and the checksum. A valid notarized release always wins and hides preview-only help.
+When no notarized release is available, `release.js` checks `/preview.json`. It accepts only `available: true`, `notarized: false`, `channel: "preview"`, `signing: "self-signed"`, a positive build number and an explicit `X.Y.Z-preview.N` version, with the same HTTPS origin, exact filename and SHA-256 checks. Both yellow CTAs then show Preview; both status notes say Unnotarized preview. The footer exposes installation instructions and the checksum. A valid notarized release always wins and hides preview-only help.
 
 The preview DMG lives in ignored `landing/downloads/` and must be included in deployment uploads. It is intentionally not committed to the private source repository. Keep older published images available in subsequent deployments. Both manifests use no-store; versioned DMGs use immutable caching and attachment disposition. Build and verification instructions are in `Docs/PreviewDistribution.md` at the repository root. The notarized build/stage workflow remains unchanged.
+
+### Feature sizing regression
+
+Feature figures use `.feature-art`; Music cover thumbnails use `.album-art`. Keep their selectors separate. Feature figures explicitly fill their grid column with automatic height, while cover thumbnails use small fixed dimensions. `tests/layout.test.cjs` checks the CSS cascade so album-cover styles cannot shrink the four feature illustrations. It uses the same optional jsdom setup as the interaction tests and does not claim browser pixel-layout validation.

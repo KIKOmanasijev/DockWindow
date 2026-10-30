@@ -122,13 +122,16 @@ test("feature art is standalone and uses a distinct mascot pose each", () => {
   assert.equal(poses.size, 4, "four different poses");
 });
 
-test("download CTA is styled as the purple primary in both states", () => {
+test("download CTA is yellow while decorative UI uses cream and lavender", () => {
   const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
   const rule = (sel) => (css.match(new RegExp(`(?:^|\\n)${sel.replace(/[.[\]()]/g, "\\$&")} \\{([^}]*)\\}`)) || [])[1] || "";
-  assert.match(rule(".btn-download"), /background: var\(--purple\)/);
-  assert.match(rule(".btn-download:not([href])"), /var\(--purple\)/, "coming soon stays purple");
+  assert.match(rule(".btn-download"), /background: var\(--yellow\)/);
+  assert.match(rule(".btn-download:not([href])"), /var\(--yellow\)/, "coming soon retains the action color");
   assert.match(rule(".btn-download:not([href])"), /cursor: default/);
   assert.doesNotMatch(css, /\.btn-download:not\(\[href\]\):hover/, "no hover lift while unavailable");
+  for (const selector of [".promise", ".pv-hint", ".chip-key", ".status-pill .dot", ".detail .section-title"]) {
+    assert.doesNotMatch(rule(selector), /var\(--yellow\)/, selector);
+  }
 });
 
 test("hero demo uses local app icons and no hosted assets", () => {

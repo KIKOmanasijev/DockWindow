@@ -19,8 +19,9 @@
   }
 
   // ---------- Demo ----------
-  // A fictional launch day: Safari holds a PR review and the staging site, next to
-  // Slack and a Notes checklist. Desktop 2 is personal. All content is made up.
+  // A fictional weekend trip: Safari holds a Lisbon day plan and a hotel booking, next
+  // to a Slack chat with friends and a Notes packing list. Desktop 2 is a quiet Sunday.
+  // All content is made up.
   const mac = document.querySelector("[data-demo]");
   if (!mac) return;
 
@@ -51,19 +52,19 @@
   const PINS = ["finder", "dockwindow"];
   const INTRO_APP = "safari";
   const INTRO_PICK = "s2";
-  const INTRO_TEXT = "Launch day: Safari has two windows open. Pick “Staging: Welcome” to bring just that one forward.";
+  const INTRO_TEXT = "Planning a trip: Safari has two windows open. Pick “Hotel booking” to bring just that one forward.";
 
   // Positions are percentages of the desk. `view` picks the window's content. The
   // top-right corner (x > 80, y < 16) stays clear for the mascot sticker.
   const initialWindows = () => ({
     1: [
-      { id: "s1", app: "safari", view: "pr", title: "PR #482 review", url: "git.fernway.dev", x: 6, y: 26, w: 48, h: 54 },
-      { id: "s2", app: "safari", view: "staging", title: "Staging: Welcome", url: "staging.fernway.app", x: 42, y: 6, w: 38, h: 56 },
-      { id: "k1", app: "slack", view: "slack", title: "#onboarding-launch", x: 2, y: 4, w: 38, h: 42 },
-      { id: "n1", app: "notes", view: "notes", title: "Launch checklist", x: 77, y: 18, w: 21, h: 54 },
+      { id: "s1", app: "safari", view: "trip", title: "Lisbon day plan", url: "wanderly.travel", x: 6, y: 26, w: 48, h: 54 },
+      { id: "s2", app: "safari", view: "booking", title: "Hotel booking", url: "casaluz-stays.travel", x: 42, y: 6, w: 38, h: 56 },
+      { id: "k1", app: "slack", view: "slack", title: "#lisbon-trip", x: 2, y: 4, w: 38, h: 42 },
+      { id: "n1", app: "notes", view: "notes", title: "Packing list", x: 77, y: 18, w: 21, h: 54 },
     ],
     2: [
-      { id: "s3", app: "safari", view: "trip", title: "Lisbon weekend", url: "wanderly.travel", x: 4, y: 8, w: 52, h: 64 },
+      { id: "s3", app: "safari", view: "hike", title: "Sunday hike", url: "trailmap.travel", x: 4, y: 8, w: 52, h: 64 },
       { id: "m1", app: "music", view: "music", title: "Up Next", x: 48, y: 19, w: 46, h: 56 },
     ],
   });
@@ -91,43 +92,44 @@
 
   // Window content, all spans so it is also valid inside preview and tile buttons.
   const VIEWS = {
-    pr: `<span class="pr">
-      <span class="pr-title">New onboarding flow <span class="pr-num">#482</span></span>
-      <span class="pr-meta"><span class="badge">Approved</span>3 files <span class="add">+214</span> <span class="del">−87</span></span>
-      <span class="diff"><span class="hunk">@@ Welcome.tsx</span><span class="del">- &lt;Steps total={3} /&gt;</span><span class="add">+ &lt;Steps total={2} /&gt;</span><span>  &lt;WorkspaceName /&gt;</span></span>
-    </span>`,
-    staging: `<span class="site">
-      <span class="site-logo">Fernway</span>
-      <span class="site-steps"><i class="on"></i><i class="on"></i></span>
-      <span class="site-h">Name your workspace</span>
-      <span class="site-input">Studio Pine</span>
-      <span class="site-btn">Continue</span>
-    </span>`,
-    slack: `<span class="slack">
-      <span class="sl-side"><b>Fernway</b><span># general</span><span class="on"># onboarding-launch</span><span># design</span></span>
-      <span class="sl-main"><span class="sl-head"># onboarding-launch</span>
-        <span class="msg"><i class="av" style="--av:#e8912d">M</i><span><b>Maya</b>Staging is up. Can someone check step 2 before 3?</span></span>
-        <span class="msg"><i class="av" style="--av:#2bac76">L</i><span><b>Leo</b>PR #482 approved.</span></span>
-      </span>
-    </span>`,
-    notes: `<span class="note">
-      <span class="note-h">Launch checklist</span>
-      <span class="check done"><i></i>Copy review</span>
-      <span class="check done"><i></i>PR #482 approved</span>
-      <span class="check"><i></i>Check step 2 on staging</span>
-      <span class="check"><i></i>Post in #onboarding-launch</span>
-    </span>`,
     trip: `<span class="trip">
       <span class="trip-img"></span>
       <span class="trip-h">A weekend in Lisbon</span>
       <span class="trip-ln">Day 1: Alfama and the 28 tram</span>
       <span class="trip-ln">Day 2: Belém and pastéis de nata</span>
     </span>`,
+    booking: `<span class="site">
+      <span class="site-logo">Casa Luz</span>
+      <span class="site-steps"><i class="on"></i><i class="on"></i></span>
+      <span class="site-h">Confirm your stay</span>
+      <span class="site-input">14–16 Nov · 3 guests</span>
+      <span class="site-btn">Book 2 nights</span>
+    </span>`,
+    slack: `<span class="slack">
+      <span class="sl-side"><b>Friends</b><span># general</span><span class="on"># lisbon-trip</span><span># photos</span></span>
+      <span class="sl-main"><span class="sl-head"># lisbon-trip</span>
+        <span class="msg"><i class="av" style="--av:#e8912d">M</i><span><b>Maya</b>Found a hotel near Alfama. Can someone book it tonight?</span></span>
+        <span class="msg"><i class="av" style="--av:#2bac76">L</i><span><b>Leo</b>Love the day plan. Tram on Saturday!</span></span>
+      </span>
+    </span>`,
+    notes: `<span class="note">
+      <span class="note-h">Packing list</span>
+      <span class="check done"><i></i>Passport</span>
+      <span class="check done"><i></i>Comfy shoes</span>
+      <span class="check"><i></i>Sunscreen</span>
+      <span class="check"><i></i>Phone charger</span>
+    </span>`,
+    hike: `<span class="trip">
+      <span class="trip-img"></span>
+      <span class="trip-h">Sunday hike: Pine Ridge loop</span>
+      <span class="trip-ln">6 km · about 2 hours</span>
+      <span class="trip-ln">Picnic spot at the lookout</span>
+    </span>`,
     music: `<span class="music">
       <span class="mu-h">Up Next</span>
-      <span class="mu-row"><i class="art" style="--art:#ff6b8b"></i><span><b>Slow Orbit</b>Juniper Lane</span></span>
-      <span class="mu-row"><i class="art" style="--art:#6e24e6"></i><span><b>Paper Boats</b>Hollow Pines</span></span>
-      <span class="mu-row"><i class="art" style="--art:#ffb020"></i><span><b>Afterglow</b>Mira Vale</span></span>
+      <span class="mu-row"><i class="album-art" style="--art:#ff6b8b"></i><span><b>Slow Orbit</b>Juniper Lane</span></span>
+      <span class="mu-row"><i class="album-art" style="--art:#6e24e6"></i><span><b>Paper Boats</b>Hollow Pines</span></span>
+      <span class="mu-row"><i class="album-art" style="--art:#ffb020"></i><span><b>Afterglow</b>Mira Vale</span></span>
     </span>`,
   };
 
