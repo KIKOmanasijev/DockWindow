@@ -9,6 +9,7 @@ staging=$(mktemp -d "$HOME/Applications/.DockWindow.XXXXXX")
 trap 'rm -rf "$staging"' EXIT
 mkdir -p "$staging/DockWindow.app/Contents/MacOS" "$staging/DockWindow.app/Contents/Resources"
 cp "$bin/DockWindow" "$staging/DockWindow.app/Contents/MacOS/"
+cp Resources/AppIcon.icns "$staging/DockWindow.app/Contents/Resources/"
 cp Resources/Info.plist "$staging/DockWindow.app/Contents/"
 if security find-identity -v -p codesigning | /usr/bin/grep -q '"DockWindow Dev"'; then
  codesign --force --deep --options runtime --sign 'DockWindow Dev' "$staging/DockWindow.app"

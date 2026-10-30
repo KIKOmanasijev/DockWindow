@@ -17,6 +17,8 @@ import Combine
     let pinnedApps = PinnedAppsStore()
     lazy var dock = DockController(tracker: tracker, actions: actions, settings: settings, pinnedApps: pinnedApps, newWindowOpener: newWindowOpener)
     lazy var previews = PreviewController(tracker: tracker, actions: actions, thumbnails: thumbnails, settings: settings, newWindowOpener: newWindowOpener)
+    lazy var settingsWindow = SettingsWindowController(settings: settings, permissions: permissions, pinnedApps: pinnedApps,
+        onRestoreNativeDock: { [weak self] in self?.restoreNativeDock() }, onShowPermissions: { [weak self] in self?.showOnboarding() })
     var desktopNumbers: [UInt64: Int] = [:]
     var nativeSessionStarted = false
     var replacementActive = false
@@ -30,7 +32,7 @@ import Combine
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         item.button?.image = NSImage(systemSymbolName: "dock.rectangle", accessibilityDescription: "DockWindow")
         let menu = NSMenu()
-        menu.addItem(withTitle: "Permissions...", action: #selector(showOnboarding), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
         menu.addItem(withTitle: "Pause DockWindow", action: #selector(togglePause), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Restore Native Dock", action: #selector(restoreNativeDock), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Debug: dump windows", action: #selector(dumpWindows), keyEquivalent: "").target = self
@@ -60,21 +62,31 @@ import Combine
         }.store(in: &subscriptions)
         switcher.onSessionEnded = { [weak self] in self?.hotkey.endSession() }
         tracker.onWindowInventoryChanged = { [weak self] in self?.thumbnails.invalidateShareableContent() }
+        tracker.$snapshot.receive(on: RunLoop.main).sink { snapshot in
+            DiagnosticsService.record("Snapshot apps=\(snapshot.apps.count) windows=\(snapshot.windows.count) activeSpaces=\(snapshot.activeSpaceIDs)")
+        }.store(in: &subscriptions)
         nativeReader.$items.receive(on: RunLoop.main).sink { [weak self] _ in
             guard let self else { return }; self.tracker.setBadges(self.nativeReader.badges)
         }.store(in: &subscriptions)
         settings.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.updatePermissions() }.store(in: &subscriptions)
+        NotificationCenter.default.publisher(for: SettingsShortcutRecording.recordingDidChange).receive(on: RunLoop.main)
+            .sink { [weak self] _ in self?.updatePermissions() }.store(in: &subscriptions)
         updatePermissions()
         Log.system.info("DockWindow launched")
     }
     private func updatePermissions() {
         permissions.refresh()
+        statusItem?.isVisible = settings.showMenuBarIcon
+        statusItem?.button?.image = NSImage(systemSymbolName: permissions.isGranted ? "dock.rectangle" : "exclamationmark.triangle", accessibilityDescription: permissions.isGranted ? "DockWindow" : "DockWindow needs permissions")
+        let subroles = Set(settings.allowedWindowSubroles)
+        if tracker.allowedSubroles != subroles { tracker.allowedSubroles = subroles }
+        DiagnosticsService.setDebugLogging(settings.debugLogging)
         statusItem?.button?.toolTip = permissions.isGranted ? "DockWindow" : "DockWindow needs permissions"
         let enabled = permissions.isGranted && !settings.isPaused && !terminating
         previews.enabled = enabled && settings.previewsEnabled
-        switcher.enabled = enabled
+        switcher.enabled = enabled && !SettingsShortcutRecording.isRecording
         var configuration = HotkeyConfiguration()
-        configuration.enabled = enabled && settings.switcherEnabled
+        configuration.enabled = enabled && settings.switcherEnabled && !SettingsShortcutRecording.isRecording
         configuration.shortcut = settings.switcherShortcut
         configuration.sameAppEnabled = settings.sameAppShortcutEnabled
         configuration.sameAppShortcut = settings.sameAppShortcut
@@ -85,9 +97,9 @@ import Combine
         hotkey.update(configuration: configuration)
         if enabled {
             tracker.start()
-            if settings.switcherEnabled && !hotkey.start() { statusItem?.button?.toolTip = "Window switcher unavailable. Check Accessibility permission." }
+            if settings.switcherEnabled && !SettingsShortcutRecording.isRecording && !hotkey.start() { statusItem?.button?.toolTip = "Window switcher unavailable. Check Accessibility permission." }
         } else { hotkey.stop(); switcher.dismiss(); tracker.stop() }
-        if !settings.switcherEnabled { hotkey.stop() }
+        if !settings.switcherEnabled || SettingsShortcutRecording.isRecording { hotkey.stop() }
         if enabled { nativeReader.start() } else { nativeReader.stop() }
         reconcileDock()
         if let item = statusItem?.menu?.items.first(where: { $0.action == #selector(togglePause) }) {
@@ -159,6 +171,7 @@ import Combine
     @objc func dumpWindows() { tracker.dumpWindows() }
     func applicationWillTerminate(_ notification: Notification) { permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); previews.dismiss(); nativeReader.stop(); dock.stop(); tracker.stop() }
     @objc func quit() { NSApp.terminate(nil) }
+    @objc func showSettings() { settingsWindow.show() }
     @objc func showOnboarding() {
         if onboarding == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 530), styleMask: [.titled, .closable], backing: .buffered, defer: false)
@@ -167,5 +180,5 @@ import Combine
         }
         onboarding?.makeKeyAndOrderFront(nil); NSApp.activate(ignoringOtherApps: true)
     }
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showOnboarding(); return true }
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
 }

@@ -96,3 +96,18 @@ Manual checks, pending user verification:
 - Open a preview and switcher concurrently, then close each independently.
 
 Nonrunning pinned apps must first launch from the Dock before New Window is enabled. Native AX selection may miss hover signals. UI parity and timing remain unverified. PreviewIntegration.md contains detailed checks.
+
+## M6: Live settings and selected app icon
+
+Added six complete settings panes with live bindings, physical shortcut recording, editable app rules, permission requests/relaunch, login registration and status errors, reset confirmation, private-symbol diagnostics and opt-in bounded file logging. The coordinator opens Settings from menu or app reopen, hides the menu icon live, applies the subrole allow-list only when changed, and suspends the event tap while recording. Preserved the parent permission repair. The user's selected cartoon dog with stacked windows is packaged as AppIcon.icns. Both original PNG concepts and their prompt set remain in Resources/IconConcepts and Docs/IconConcepts.md. All 55 tests, debug build and release bundle installation pass without warnings. Login registration and all GUI interaction still need manual verification.
+
+Manual checks, pending user verification:
+- Open Settings from the menu, resize, close and reopen through the app.
+- Change each Dock control live and compare layout, indicators and behavior.
+- Record Option+Tab or another combination without opening the switcher; cancel with Escape.
+- Add an app rule, edit menu titles/strategy/shortcut, restart and verify persistence.
+- Change switcher and preview scope, dimensions, controls and refresh interval.
+- Test theme, custom colors, material, corner radius and Reduce Motion.
+- Enable/disable login launch and check status, approval and error reporting.
+- Request permissions, relaunch through the helper and check the dog icon in Finder.
+- Reveal debug logs, inspect symbol flags, and test reset/reimport confirmations without losing recovery backups.
