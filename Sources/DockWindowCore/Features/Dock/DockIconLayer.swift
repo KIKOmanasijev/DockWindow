@@ -6,11 +6,14 @@ import AppKit
     let dots = CAShapeLayer()
     let badge = CATextLayer()
     private var cachedImage: NSImage?
+    private var cachedPixelSize = CGSize.zero
     private var lastIndicators = DotIndicators(count: 0)
     override init() {
         super.init()
         addSublayer(imageLayer); addSublayer(dots); addSublayer(badge)
         imageLayer.contentsGravity = .resizeAspect
+        imageLayer.minificationFilter = .trilinear
+        imageLayer.magnificationFilter = .linear
         badge.fontSize = 11; badge.alignmentMode = .center; badge.foregroundColor = NSColor.white.cgColor
         badge.backgroundColor = NSColor.systemRed.cgColor; badge.cornerRadius = 9
     }
@@ -20,8 +23,12 @@ import AppKit
                 position: DockPosition, scale: CGFloat, reduceMotion: Bool) {
         if reduceMotion { dots.removeAllAnimations() }
         imageLayer.frame = bounds
-        if let image, image !== cachedImage {
-            imageLayer.contents = image.cgImage(forProposedRect: nil, context: nil, hints: nil); cachedImage = image
+        let pixels = DockIconRasterizer.pixelSize(size: bounds.size, scale: scale)
+        if let image, image !== cachedImage || cachedPixelSize != pixels {
+            imageLayer.contents = DockIconRasterizer.render(image, size: bounds.size, scale: scale)
+            cachedImage = image; cachedPixelSize = pixels
+        } else if image == nil {
+            imageLayer.contents = nil; cachedImage = nil; cachedPixelSize = .zero
         }
         imageLayer.contentsScale = scale
         let text = badgeText ?? ""
@@ -66,6 +73,28 @@ import AppKit
         animation.values = [0, 22 * sign, 0, 10 * sign, 0]
         animation.keyTimes = [0, 0.3, 0.55, 0.8, 1]; animation.duration = 0.85; animation.repeatCount = .infinity
         imageLayer.add(animation, forKey: "launch")
+    }
+}
+
+/// Draws the best NSImage representation at the actual display pixel size, including Retina.
+@MainActor enum DockIconRasterizer {
+    static func pixelSize(size: CGSize, scale: CGFloat) -> CGSize {
+        CGSize(width: max(1, ceil(size.width * max(1, scale))), height: max(1, ceil(size.height * max(1, scale))))
+    }
+    static func render(_ image: NSImage, size: CGSize, scale: CGFloat) -> CGImage? {
+        guard size.width > 0, size.height > 0 else { return nil }
+        let pixels = pixelSize(size: size, scale: scale)
+        guard let context = CGContext(data: nil, width: Int(pixels.width), height: Int(pixels.height),
+                                      bitsPerComponent: 8, bytesPerRow: 0, space: CGColorSpaceCreateDeviceRGB(),
+                                      bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return nil }
+        context.scaleBy(x: pixels.width / size.width, y: pixels.height / size.height)
+        context.interpolationQuality = .high
+        NSGraphicsContext.saveGraphicsState()
+        defer { NSGraphicsContext.restoreGraphicsState() }
+        NSGraphicsContext.current = NSGraphicsContext(cgContext: context, flipped: false)
+        image.draw(in: CGRect(origin: .zero, size: size), from: .zero, operation: .copy, fraction: 1,
+                   respectFlipped: false, hints: [.interpolation: NSImageInterpolation.high])
+        return context.makeImage()
     }
 }
 

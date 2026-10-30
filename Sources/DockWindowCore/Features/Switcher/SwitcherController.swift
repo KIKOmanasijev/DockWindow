@@ -226,12 +226,13 @@ import SwiftUI
         let maxHeight = max(100, bounds.height * 0.85)
         let width = min(max(64, settings.switcherThumbnailWidth), maxWidth - 56)
         let height = min(max(48, settings.switcherThumbnailHeight), maxHeight - 104)
-        let columns = max(1, min(max(1, settings.switcherMaxTilesPerRow), max(1, presentation.session.items.count), Int((maxWidth - 28) / (width + 28))))
+        let tileSize = SwitcherTileMetrics.size(thumbnail: CGSize(width: width, height: height))
+        let columns = max(1, min(max(1, settings.switcherMaxTilesPerRow), max(1, presentation.session.items.count), Int((maxWidth - 28) / (tileSize.width + 12))))
         let rows = max(1, (presentation.session.items.count + columns - 1) / columns)
         presentation.columns = columns
         presentation.thumbnailSize = CGSize(width: width, height: height)
-        presentation.size = CGSize(width: min(maxWidth, CGFloat(columns) * (width + 16) + CGFloat(columns - 1) * 12 + 40),
-                                   height: min(maxHeight, CGFloat(rows) * (height + 64) + CGFloat(rows - 1) * 12 + 40))
+        presentation.size = CGSize(width: min(maxWidth, CGFloat(columns) * tileSize.width + CGFloat(columns - 1) * 12 + 40),
+                                   height: min(maxHeight, CGFloat(rows) * tileSize.height + CGFloat(rows - 1) * 12 + 40))
         positionPanel()
     }
     private func positionPanel() {

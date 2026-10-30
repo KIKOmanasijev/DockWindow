@@ -127,7 +127,7 @@ import Combine
             hideTask?.cancel(); hideTask = nil; view.stopTracking()
         }
         screen = nextScreen
-        shownFrame = DockLayout.panelFrame(screen: nextScreen.frame, position: settings.dockPosition, depth: settings.dockPosition == .bottom ? max(210, settings.magnificationSize + 85) : max(360, settings.magnificationSize + 220))
+        shownFrame = DockLayout.panelFrame(screen: nextScreen.frame, position: settings.dockPosition, depth: settings.dockPosition == .bottom ? max(210, settings.iconSize + 85) : max(360, settings.iconSize + 220))
         if !settings.autohide { hidden = false; hideTask?.cancel(); hideTask = nil }
         panel.setFrame(hidden ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame, display: true)
         let options = DockCompositionOptions(scope: settings.dockScope, currentSpaceIDs: spaces, otherDesktopApps: settings.otherDesktopApps,

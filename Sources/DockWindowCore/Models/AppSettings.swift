@@ -85,7 +85,7 @@ public final class AppSettings: ObservableObject {
         set { write("iconSize", value: newValue) }
     }
     public var magnificationEnabled: Bool {
-        get { read("magnificationEnabled", fallback: true) }
+        get { read("magnificationEnabled", fallback: false) }
         set { write("magnificationEnabled", value: newValue) }
     }
     public var magnificationSize: Double {
@@ -317,7 +317,7 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "dockPosition": encoded(DockPosition.bottom),
             keyPrefix + "dockDisplay": encoded(DisplaySelection.main),
             keyPrefix + "iconSize": encoded(48 as Double),
-            keyPrefix + "magnificationEnabled": encoded(true as Bool),
+            keyPrefix + "magnificationEnabled": encoded(false as Bool),
             keyPrefix + "magnificationSize": encoded(96 as Double),
             keyPrefix + "autohide": encoded(false as Bool),
             keyPrefix + "autohideDelay": encoded(0.5 as Double),

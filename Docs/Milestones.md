@@ -137,3 +137,16 @@ Consolidated manual checklist, all pending user verification:
 - Compare exact native Dock preferences after disable/Pause/Restore/Quit and next-launch crash recovery, then measure all performance budgets with effective permissions and a realistic 30-window workload.
 
 Known limits remain: exact native Liquid Glass requires a newer SDK; no third-party screen-space reservation; minimize animations target the hidden native Dock; third-party app-specific Dock menus are unavailable; remote AX discovery is bounded; capture can fail for protected/minimized surfaces; app Space assignments can defeat opening/focus intent. Crash recovery occurs on the next launch. The complete Definition of Done is not signed off until permission and manual/performance checks pass.
+
+## Follow-up: fixed Dock icons and smaller switcher cards
+
+Removed pointer magnification and its settings controls. Fixed icon sizing applies even when an older stored preference enabled magnification. Pointer movement now redraws on events without a display link. Icon images are rendered from the best NSImage representation at the display's pixel scale and cached by source and pixel dimensions. Moving to a different scale or changing icon size invalidates that raster. Entire Option+Tab cards, including header and padding, render at 90 percent of the previous dimensions; panel and grid calculations use the same scaled sizes. Existing user thumbnail settings are preserved.
+
+Debug build and all 71 tests pass without warnings. Four new tests verify fixed pointer geometry, physical pixel dimensions, selection of a distinct Retina representation, cache invalidation, clearing absent icons and full-card scaling for default/custom sizes.
+
+Manual checks:
+- Sweep the pointer across the Dock and verify every icon keeps its size and position.
+- Confirm hover labels, previews, clicks and drag reorder still work without magnification.
+- Compare icon sharpness at small and large settings on Retina and non-Retina displays.
+- Move the Dock between mixed-scale displays and check icons rerender sharply.
+- Open Option+Tab with window and windowless cards, check smaller headers/thumbnails, selection and scrolling.

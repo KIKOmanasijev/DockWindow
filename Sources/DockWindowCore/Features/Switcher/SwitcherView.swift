@@ -6,6 +6,7 @@ import SwiftUI
     @Published var apps: [TrackedApp] = []
     @Published var columns = 1
     @Published var thumbnailSize = CGSize(width: 320, height: 200)
+    var tileSize: CGSize { SwitcherTileMetrics.size(thumbnail: thumbnailSize) }
     @Published var size = CGSize(width: 360, height: 280)
     @Published var revealed = false
     @Published var message: String?
@@ -30,9 +31,11 @@ import SwiftUI
                         Button("Dismiss", action: presentation.dismiss).buttonStyle(.bordered)
                     }.padding(24)
                 }
-                LazyVGrid(columns: Array(repeating: GridItem(.fixed(presentation.thumbnailSize.width + 16), spacing: 12), count: presentation.columns), spacing: 12) {
+                LazyVGrid(columns: Array(repeating: GridItem(.fixed(presentation.tileSize.width), spacing: 12), count: presentation.columns), spacing: 12) {
                     ForEach(presentation.session.items, id: \.tileID) { item in
-                        tile(item).id(item.tileID)
+                        tile(item).fixedSize().scaleEffect(SwitcherTileMetrics.scale)
+                            .frame(width: presentation.tileSize.width, height: presentation.tileSize.height)
+                            .id(item.tileID)
                     }
                 }.padding(20)
             }

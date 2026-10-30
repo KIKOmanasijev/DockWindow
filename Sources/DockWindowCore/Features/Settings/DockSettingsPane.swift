@@ -12,8 +12,6 @@ import SwiftUI
                 SettingsChoice(title: "Position", description: "Place the replacement Dock on a screen edge.", value: $settings.dockPosition)
                 SettingsChoice(title: "Display", description: "Choose the display that hosts the replacement Dock.", value: $settings.dockDisplay, choices: [.main, .withMouse])
                 SettingsSlider(title: "Icon size", description: "Set the base size of Dock icons.", value: $settings.iconSize, range: 16...128, step: 1, unit: "pt")
-                Toggle("Magnification", isOn: $settings.magnificationEnabled).settingsDescription("Enlarge icons near the pointer.")
-                SettingsSlider(title: "Magnified size", description: "Set the maximum size of a magnified icon.", value: $settings.magnificationSize, range: 48...128, step: 1, unit: "pt")
                 Toggle("Automatically hide Dock", isOn: $settings.autohide).settingsDescription("Reveal the Dock when the pointer reaches its screen edge.")
                 SettingsSlider(title: "Autohide delay", description: "Wait this long before hiding the Dock.", value: $settings.autohideDelay, range: 0...3, step: 0.05, unit: "s")
             }.disabled(!settings.useDockWindowDock)

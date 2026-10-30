@@ -4,7 +4,8 @@
 
 - Native Swift package, Swift 5 language mode, deployment target macOS 14, no dependencies.
 - Debug build and release bundle build pass without warnings.
-- All 67 tests pass. Tests have no database integration.
+- All 71 tests pass. Tests have no database integration.
+- Dock magnification is removed. Icon rasterization chooses Retina representations and updates for size or display-scale changes. Whole switcher cards render at 90 percent of their previous dimensions.
 - App installed at ~/Applications/DockWindow.app and fresh process launched.
 - Signature integrity verifies. Signing is ad-hoc, with no valid DockWindow Dev identity installed.
 - Selected dog AppIcon.icns and CFBundleIconFile are packaged.

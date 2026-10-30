@@ -1,7 +1,7 @@
 import AppKit
 import QuartzCore
 
-/// Layer-backed Dock surface. The display link exists only while the pointer tracks the Dock.
+/// Layer-backed Dock surface with fixed icon sizes and event-driven pointer tracking.
 @MainActor final class DockView: NSView, NSDraggingSource {
     static let itemType = NSPasteboard.PasteboardType("com.dockwindow.dock-item")
     var items: [DockItem] = []
@@ -20,7 +20,6 @@ import QuartzCore
     private var layers: [String: DockIconLayer] = [:]
     private var separators: [String: CALayer] = [:]
     private let label = NSTextField(labelWithString: "")
-    private var link: CADisplayLink?
     private var pointer: CGPoint?
     private var hoverID: String?
     private var backingStyle: String?
@@ -55,30 +54,24 @@ import QuartzCore
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func layout() { super.layout(); render() }
     func stopTracking() {
-        link?.invalidate(); link = nil; pointer = nil
+        pointer = nil
         longPress?.cancel(); longPress = nil; pressed = nil
         hoverID = nil; onHover?(nil, .zero); render()
         for icon in layers.values { icon.removeAllAnimations(); icon.imageLayer.removeAllAnimations(); icon.dots.removeAllAnimations() }
     }
     func track(_ point: CGPoint?) {
+        guard pointer != point else { return }
         pointer = point
-        if point != nil {
-            if link == nil {
-                let next = displayLink(target: self, selector: #selector(tick(_:)))
-                next.add(to: .main, forMode: .common); link = next
-            }
-        } else if link != nil {
-            link?.invalidate(); link = nil; hoverID = nil; onHover?(nil, .zero); render()
-        }
+        if point == nil { hoverID = nil; onHover?(nil, .zero) }
+        render()
     }
-    @objc private func tick(_ link: CADisplayLink) { render() }
     func render() {
         guard layer != nil else { return }
         let kinds = items.map(\.kind)
         geometry = DockLayout(kinds: kinds, bounds: bounds, position: settings.dockPosition, baseSize: settings.iconSize,
-                              maximumSize: settings.magnificationEnabled ? settings.magnificationSize : settings.iconSize,
+                              maximumSize: settings.iconSize,
                               pointer: dragged == nil ? pointer : nil)
-        let duration = link == nil && !Theme.reducesMotion(settings) ? 0.12 : 0
+        let duration = pointer == nil && !Theme.reducesMotion(settings) ? 0.12 : 0
         CATransaction.begin(); CATransaction.setDisableActions(duration == 0); CATransaction.setAnimationDuration(duration)
         background.frame = geometry.background
         let style = "\(settings.panelMaterial.rawValue):\(settings.theme.rawValue):\(settings.iconSize)"
@@ -189,7 +182,7 @@ import QuartzCore
         }
         if operation.isEmpty { items = preDragItems }
         preDragItems = []; dragged = nil; dropID = nil
-        link?.invalidate(); link = nil; pointer = nil; render()
+        pointer = nil; render()
     }
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation { draggingUpdated(sender) }
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
@@ -208,7 +201,7 @@ import QuartzCore
         return target?.kind == .trash || target?.app?.bundleURL != nil || target?.pinnedApp != nil ? .copy : []
     }
     override func draggingExited(_ sender: NSDraggingInfo?) { dropID = nil; render() }
-    deinit { link?.invalidate(); longPress?.cancel() }
+    deinit { longPress?.cancel() }
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         if sender.draggingPasteboard.string(forType: Self.itemType) != nil { return dragged != nil }
         guard let target = item(at: convert(sender.draggingLocation, from: nil)),
