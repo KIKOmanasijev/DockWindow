@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
-const { verifyRelease, macOSLabel } = require("../release.js");
+const { verifyRelease, verifyPreview, macOSLabel } = require("../release.js");
 
 const ROOT = path.join(__dirname, "..");
 const PAGE = "https://dogbar.hristijan.dev/";
@@ -76,6 +76,13 @@ test("shipped release.json follows the contract", () => {
   else assert.equal(verifyRelease(data, PAGE), null);
 });
 
+test("shipped preview manifest uses the explicit unnotarized channel", () => {
+  const data = JSON.parse(fs.readFileSync(path.join(ROOT, "preview.json"), "utf8"));
+  assert.equal(data.notarized, false);
+  assert.equal(verifyRelease(data, PAGE), null);
+  assert.ok(verifyPreview(data, PAGE));
+});
+
 test("page ships download CTAs in the unavailable state", () => {
   const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
   const ctas = html.match(/<a\b[^>]*\bdata-download\b[^>]*>/g) || [];
@@ -87,12 +94,12 @@ test("page ships download CTAs in the unavailable state", () => {
     assert.ok(described && html.includes(`id="${described[1]}"`), "status note is linked");
   }
   assert.doesNotMatch(html, /\.dmg/, "no artifact path in markup");
-  assert.doesNotMatch(html, /notari[sz]ed/i, "no notarization claim in markup");
+  assert.match(html, /Apple has not notarized this preview/, "preview status is disclosed");
   assert.match(html, /<script src="release\.js" defer><\/script>/);
 });
 
 test("no em dashes in landing sources", () => {
-  for (const file of ["index.html", "styles.css", "script.js", "release.js", "README.md", "tools/build-art.mjs", "tools/png.mjs", "tests/dom.test.cjs", "tests/release.test.cjs"]) {
+  for (const file of ["index.html", "styles.css", "script.js", "release.js", "README.md", "tools/build-art.mjs", "tools/png.mjs", "tools/app-icons.mjs", "tests/dom.test.cjs", "tests/release.test.cjs"]) {
     assert.doesNotMatch(fs.readFileSync(path.join(ROOT, file), "utf8"), /\u2014/, file);
   }
 });
@@ -113,4 +120,41 @@ test("feature art is standalone and uses a distinct mascot pose each", () => {
     assert.doesNotMatch(svg, /DockWindow/, `${file} uses the DogBar brand`);
   }
   assert.equal(poses.size, 4, "four different poses");
+});
+
+test("download CTA is styled as the purple primary in both states", () => {
+  const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+  const rule = (sel) => (css.match(new RegExp(`(?:^|\\n)${sel.replace(/[.[\]()]/g, "\\$&")} \\{([^}]*)\\}`)) || [])[1] || "";
+  assert.match(rule(".btn-download"), /background: var\(--purple\)/);
+  assert.match(rule(".btn-download:not([href])"), /var\(--purple\)/, "coming soon stays purple");
+  assert.match(rule(".btn-download:not([href])"), /cursor: default/);
+  assert.doesNotMatch(css, /\.btn-download:not\(\[href\]\):hover/, "no hover lift while unavailable");
+});
+
+test("hero demo uses local app icons and no hosted assets", () => {
+  const script = fs.readFileSync(path.join(ROOT, "script.js"), "utf8");
+  const icons = [...script.matchAll(/img: "(assets\/[^"]+)"/g)].map((m) => m[1]);
+  assert.ok(icons.length >= 5);
+  for (const icon of icons) {
+    const buf = fs.readFileSync(path.join(ROOT, icon));
+    assert.equal(buf.subarray(1, 4).toString(), "PNG", icon);
+    assert.ok(buf.length < 20000, `${icon} stays small`);
+  }
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+  const localMarkup = html.replace(/<(?:link rel="canonical"|meta property="og:[a-z:]+")[^>]*>/g, "")
+    .replace(/<a\b[^>]*href="https:\/\/support\.apple\.com\/102445"[^>]*>/g, "");
+  for (const [file, text] of [["index.html", localMarkup], ["styles.css", css], ["script.js", script]]) {
+    assert.doesNotMatch(text, /(?:src|href)="https?:|url\(["']?https?:|@import/, `${file} loads nothing remote`);
+  }
+});
+
+test("only an explicit self-signed preview manifest enables preview downloads", () => {
+  const preview = valid({ version: "0.1.0-preview.1", url: "/downloads/DogBar-0.1.0-preview.1-arm64.dmg", notarized: false, channel: "preview", signing: "self-signed", build: "2" });
+  assert.equal(verifyRelease(preview, PAGE), null);
+  assert.equal(verifyPreview(preview, PAGE).channel, "preview");
+  for (const over of [{ notarized: true }, { notarized: "false" }, { channel: "release" }, { signing: "adhoc" }, { signing: undefined }, { build: "" }, { build: 2 }, { version: "0.1.0" }, { url: "https://evil.example/test.dmg" }, { sha256: "bad" }]) {
+    assert.equal(verifyPreview({ ...preview, ...over }, PAGE), null, JSON.stringify(over));
+  }
+  assert.equal(verifyPreview(preview, "http://dogbar.hristijan.dev"), null);
 });

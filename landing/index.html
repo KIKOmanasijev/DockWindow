@@ -23,13 +23,8 @@
 <body>
   <a class="skip" href="#main">Skip to content</a>
 
-  <!-- App icon symbols shared by the demo and the settings sketch. -->
+  <!-- UI glyphs for buttons and the demo menu bar. -->
   <svg width="0" height="0" class="sr-only" aria-hidden="true" focusable="false">
-    <symbol id="i-finder" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="9.5" fill="#BFE3FF"/><path d="M10 1.5h12c-3 8-4 16-3 24 2 0 3 0 4 .5-1 4-1 8 0 13H10A9 9 0 0 1 1.5 30V10A9 9 0 0 1 10 1.5z" fill="#3B9BFF"/><rect x="1" y="1" width="38" height="38" rx="9.5" fill="none" stroke="#1D0B3F" stroke-width="2"/><path d="M12 13v5M29 13v5M11 27c5 4 14 4 19 0" stroke="#1D0B3F" stroke-width="2.4" stroke-linecap="round" fill="none"/></symbol>
-    <symbol id="i-safari" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="9.5" fill="#F4F8FF" stroke="#1D0B3F" stroke-width="2"/><circle cx="20" cy="20" r="14" fill="#2F8CFF" stroke="#1D0B3F" stroke-width="2"/><path d="M26 14 21.5 21.5 14 26 18.5 18.5z" fill="#fff" stroke="#1D0B3F" stroke-width="1.4" stroke-linejoin="round"/><path d="M26 14 21.5 21.5 18.5 18.5z" fill="#FF4F5E"/></symbol>
-    <symbol id="i-notes" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="9.5" fill="#FFFDF5" stroke="#1D0B3F" stroke-width="2"/><path d="M1.5 12V10A8.5 8.5 0 0 1 10 1.5h20A8.5 8.5 0 0 1 38.5 10v2z" fill="#FFC93C"/><path d="M1.5 12h37" stroke="#1D0B3F" stroke-width="1.6"/><path d="M8 19h24M8 25h24M8 31h16" stroke="#C9C2B0" stroke-width="2" stroke-linecap="round"/></symbol>
-    <symbol id="i-terminal" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="9.5" fill="#25223A" stroke="#1D0B3F" stroke-width="2"/><path d="M9 14l7 5-7 5M19 27h11" stroke="#7CF29A" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/></symbol>
-    <symbol id="i-music" viewBox="0 0 40 40"><rect x="1" y="1" width="38" height="38" rx="9.5" fill="#FF4D6D" stroke="#1D0B3F" stroke-width="2"/><path d="M16 27V12l13-3v15" stroke="#fff" stroke-width="2.6" fill="none" stroke-linejoin="round"/><circle cx="13.5" cy="27.5" r="3.6" fill="#fff"/><circle cx="26.5" cy="24.5" r="3.6" fill="#fff"/></symbol>
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11m0 0-4.5-4.5M12 14.5l4.5-4.5M4.5 15.5v2.5A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-2.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
     <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="6" ry="5"/><circle cx="5" cy="10" r="2.4"/><circle cx="9.5" cy="6" r="2.4"/><circle cx="14.5" cy="6" r="2.4"/><circle cx="19" cy="10" r="2.4"/></symbol>
@@ -53,14 +48,14 @@
         <p class="eyebrow">Window switcher &amp; Dock manager for macOS</p>
         <h1 class="brand-title">DogBar</h1>
         <p class="promise">Switch windows, not apps.</p>
-        <p class="lede">The Windows-style app switcher the Mac never had. Every open window gets its own tile, its own preview and its own dot.</p>
+        <p class="lede">Cmd+Tab brings back an app. DogBar brings back the exact window you meant.</p>
         <div class="actions">
           <a class="btn btn-download" data-download aria-describedby="hero-dl-note">
             <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
             <span>Download for Mac</span>
             <span class="dl-tag" data-download-tag>Coming soon</span>
           </a>
-          <a class="btn btn-cream" href="#demo" data-demo-start>
+          <a class="btn-link" href="#demo" data-demo-start>
             <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-play"/></svg>
             <span>Try the demo</span>
           </a>
@@ -78,6 +73,7 @@
             <span class="menubar-right">
               <svg class="menubar-paw"><use href="#i-paw"/></svg>
               <span class="desk-chip" data-desk-chip>Desktop 1</span>
+              <span class="menubar-clock">Thu 2:41 PM</span>
             </span>
           </div>
           <div class="desk" data-desk aria-hidden="true"></div>
@@ -93,14 +89,14 @@
 
         <div class="controls">
           <div class="seg" role="group" aria-label="Desktop">
-            <button type="button" class="chip" data-desk-btn="1" aria-pressed="true">Desktop 1</button>
-            <button type="button" class="chip" data-desk-btn="2" aria-pressed="false">Desktop 2</button>
+            <button type="button" class="chip" data-desk-btn="1" aria-pressed="true">Desktop 1 <small>Work</small></button>
+            <button type="button" class="chip" data-desk-btn="2" aria-pressed="false">Desktop 2 <small>Personal</small></button>
           </div>
           <button type="button" class="chip chip-key" data-tab><kbd aria-hidden="true">⌥</kbd> Option+Tab</button>
           <button type="button" class="chip chip-release" data-release hidden>Release <kbd aria-hidden="true">⌥</kbd></button>
           <button type="button" class="chip chip-quiet" data-reset hidden>Reset</button>
         </div>
-        <p class="caption" data-caption aria-live="polite">Click a Dock icon for previews, or press Option+Tab.</p>
+        <p class="caption" data-caption aria-live="polite">Launch day: Safari has two windows open. Pick “Staging: Welcome” to bring just that one forward.</p>
         <noscript><p class="caption">The live demo needs JavaScript. The feature pictures below show the same ideas.</p></noscript>
       </section>
     </div>
@@ -190,13 +186,18 @@
               <span>Download for Mac</span>
               <span class="dl-tag" data-download-tag>Coming soon</span>
             </a>
-            <a class="btn btn-cream" href="#demo" data-demo-start>
+            <a class="btn-link" href="#demo" data-demo-start>
               <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-play"/></svg>
               <span>Try the demo</span>
             </a>
           </div>
           <p class="dl-note" id="get-dl-note" data-download-note>The public release is being prepared. Until then, the demo shows how it works.</p>
           <p class="dl-hash" data-download-hash hidden>SHA-256 <code></code></p>
+          <details class="install-note" id="install" data-preview-help hidden>
+            <summary>Installing this unnotarized preview</summary>
+            <p>Apple has not notarized this preview. Open the DMG and drag DogBar to Applications. If macOS blocks opening it, review the app and use System Settings → Privacy &amp; Security → Open Anyway. Then grant Accessibility and Screen Recording when requested.</p>
+            <p><a href="https://support.apple.com/102445" target="_blank" rel="noopener noreferrer">Apple’s first-launch instructions</a></p>
+          </details>
         </div>
       </div>
     </section>
