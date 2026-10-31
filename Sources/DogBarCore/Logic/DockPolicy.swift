@@ -8,8 +8,9 @@ public struct DockCompositionOptions {
     public var includeMinimized: Bool
     public var showWindowlessAppsOnLastActiveDesktop: Bool
     public var showTrash: Bool
-    public init(scope: WindowScope = .currentDesktop, currentSpaceIDs: Set<UInt64> = [], otherDesktopApps: OtherDesktopApps = .hidden, includeMinimized: Bool = true, showWindowlessAppsOnLastActiveDesktop: Bool = true, showTrash: Bool = true) {
-        self.scope = scope; self.currentSpaceIDs = currentSpaceIDs; self.otherDesktopApps = otherDesktopApps; self.includeMinimized = includeMinimized; self.showWindowlessAppsOnLastActiveDesktop = showWindowlessAppsOnLastActiveDesktop; self.showTrash = showTrash
+    public var displayFrame: CGRect?
+    public init(scope: WindowScope = .currentDesktop, currentSpaceIDs: Set<UInt64> = [], otherDesktopApps: OtherDesktopApps = .hidden, includeMinimized: Bool = true, showWindowlessAppsOnLastActiveDesktop: Bool = true, showTrash: Bool = true, displayFrame: CGRect? = nil) {
+        self.scope = scope; self.currentSpaceIDs = currentSpaceIDs; self.otherDesktopApps = otherDesktopApps; self.includeMinimized = includeMinimized; self.showWindowlessAppsOnLastActiveDesktop = showWindowlessAppsOnLastActiveDesktop; self.showTrash = showTrash; self.displayFrame = displayFrame
     }
 }
 /// Finder, ordered pins, scoped running apps, dimmed apps, then separator and Trash.
@@ -27,9 +28,10 @@ public enum DockCompositionPolicy {
             let key = app.bundleIdentifier ?? "pid:\(app.pid)"
             guard seen.insert(key).inserted else { continue }
             let all = snapshot.windows.filter { $0.pid == app.pid }
-            let visible = WindowFilter(scope: options.scope, currentSpaceIDs: options.currentSpaceIDs, includeMinimized: options.includeMinimized).apply(to: all)
+            let visible = WindowFilter(scope: options.scope, currentSpaceIDs: options.currentSpaceIDs, includeMinimized: options.includeMinimized, displayFrame: options.displayFrame).apply(to: all)
+            if let frame = options.displayFrame, !all.isEmpty, !all.contains(where: { $0.frame.intersects(frame) }) { continue }
             let windowlessHere = all.isEmpty && options.showWindowlessAppsOnLastActiveDesktop && (app.lastActiveSpaceIDs.isEmpty || options.currentSpaceIDs.isEmpty || !options.currentSpaceIDs.isDisjoint(with: app.lastActiveSpaceIDs))
-            if options.scope == .allDesktops || !visible.isEmpty || windowlessHere {
+            if (options.scope == .allDesktops && options.displayFrame == nil) || !visible.isEmpty || windowlessHere {
                 result.append(DockItem(id: key, app: app))
             } else if options.otherDesktopApps == .dimmed {
                 dimmed.append(DockItem(id: key, app: app, isDimmed: true))

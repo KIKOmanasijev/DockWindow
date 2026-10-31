@@ -154,9 +154,12 @@ import SwiftUI
             currentSpaces = SpacePolicy.dockSpaceIDs(snapshot: snapshot, displayID: Self.displayIdentifier(screen), separateSpaces: NSScreen.screensHaveSeparateSpaces,
                 displayScope: settings.dockDisplayScope, connectedDisplayIDs: Set(NSScreen.screens.compactMap(Self.displayIdentifier)))
         }
+        let localDisplayFrame: CGRect? = !native && settings.dockDisplayScope == .currentDisplay
+            ? CGRect(x: screen.frame.minX, y: (NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY) - screen.frame.maxY,
+                     width: screen.frame.width, height: screen.frame.height) : nil
         if let app {
             presentation.windows = WindowFilter(scope: settings.previewScope, currentSpaceIDs: currentSpaces,
-                includeMinimized: settings.previewIncludeMinimized, includeHiddenApps: true, pid: app.pid).apply(to: snapshot.windows)
+                includeMinimized: settings.previewIncludeMinimized, includeHiddenApps: true, pid: app.pid, displayFrame: localDisplayFrame).apply(to: snapshot.windows)
         } else { presentation.windows = [] }
         if presentation.windows.isEmpty, !pinned, !settings.previewShowEmptyApps {
             dismiss(); return

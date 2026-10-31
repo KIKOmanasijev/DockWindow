@@ -177,6 +177,11 @@ import ApplicationServices
         // The first screen is the menu-bar/primary display. NSScreen.main follows key-window focus.
         return NSScreen.screens.first
     }
+    private var windowDisplayFrame: CGRect? {
+        guard settings.dockDisplayScope == .currentDisplay, let screen else { return nil }
+        let top = NSScreen.screens.first?.frame.maxY ?? screen.frame.maxY
+        return CGRect(x: screen.frame.minX, y: top - screen.frame.maxY, width: screen.frame.width, height: screen.frame.height)
+    }
     private var spaces: Set<UInt64> { currentSpaces(snapshot: tracker.snapshot) }
     private func currentSpaces(snapshot: WindowSnapshot) -> Set<UInt64> {
         let displayID = screen.flatMap(Self.displayUUID)
@@ -317,7 +322,7 @@ import ApplicationServices
         }
         let options = DockCompositionOptions(scope: settings.dockScope, currentSpaceIDs: spaces, otherDesktopApps: settings.otherDesktopApps,
                                               includeMinimized: settings.includeMinimizedInDock,
-                                              showWindowlessAppsOnLastActiveDesktop: settings.showWindowlessAppsOnLastActiveDesktop, showTrash: settings.showTrash)
+                                              showWindowlessAppsOnLastActiveDesktop: settings.showWindowlessAppsOnLastActiveDesktop, showTrash: settings.showTrash, displayFrame: windowDisplayFrame)
         var items = DockCompositionPolicy.items(snapshot: snapshot, pinned: pins.apps, options: options)
         for app in pendingLaunches.values.sorted(by: { $0.pid < $1.pid }) {
             let id = app.bundleIdentifier ?? "pid:\(app.pid)"
@@ -346,7 +351,7 @@ import ApplicationServices
                 guard !existing.contains(pin.id), !removedRunning.contains(pin.id) else { return false }
                 guard let app = snapshot.apps.first(where: { $0.bundleIdentifier == pin.id }) else { return true }
                 let windows = snapshot.windows.filter { $0.pid == app.pid }
-                return windows.isEmpty || settings.dockScope == .allDesktops || !WindowFilter(scope: settings.dockScope, currentSpaceIDs: spaces, includeMinimized: settings.includeMinimizedInDock).apply(to: windows).isEmpty
+                return windows.isEmpty || !WindowFilter(scope: settings.dockScope, currentSpaceIDs: spaces, includeMinimized: settings.includeMinimizedInDock, displayFrame: windowDisplayFrame).apply(to: windows).isEmpty
             }.map { pin in DockItem(id: pin.id, app: snapshot.apps.first { $0.bundleIdentifier == pin.id }, pinnedApp: pin) }
             if !extra.isEmpty {
                 let index = items.firstIndex { $0.kind == .separator && $0.id == "separator:trash" } ?? items.count
@@ -386,7 +391,7 @@ import ApplicationServices
             }
             if item.kind == .trash { view.images[item.id] = trashImages[trashFull] }
             view.indicators[item.id] = DotPolicy.indicators(windows: snapshot.windows,
-                filter: WindowFilter(scope: settings.dockScope, currentSpaceIDs: spaces, includeMinimized: settings.includeMinimizedInCount, pid: item.app?.pid ?? -1),
+                filter: WindowFilter(scope: settings.dockScope, currentSpaceIDs: spaces, includeMinimized: settings.includeMinimizedInCount, pid: item.app?.pid ?? -1, displayFrame: windowDisplayFrame),
                 style: settings.indicatorStyle, maxDots: settings.maxDots, isRunning: item.app != nil, showRunningState: settings.showRunningState)
             if let app = item.app, NSRunningApplication(processIdentifier: app.pid)?.isFinishedLaunching == true { launching.remove(item.id) }
         }
@@ -508,15 +513,16 @@ import ApplicationServices
     }
     private func localWindows(_ item: DockItem) -> [TrackedWindow] {
         guard let pid = item.app?.pid else { return [] }
-        return WindowFilter(currentSpaceIDs: spaces, pid: pid).apply(to: tracker.snapshot.windows)
+        return WindowFilter(currentSpaceIDs: spaces, pid: pid, displayFrame: windowDisplayFrame).apply(to: tracker.snapshot.windows)
     }
     private func click(_ item: DockItem) {
         onIconClicked?(); onItemClicked?()
         if item.kind == .trash { NSWorkspace.shared.open(trashURL); return }
-        switch DockClickPolicy.action(app: item.app, windows: tracker.snapshot.windows, currentSpaceIDs: spaces, activeBehavior: settings.activeAppClickBehavior) {
+        let eligible = windowDisplayFrame.map { frame in tracker.snapshot.windows.filter { $0.frame.intersects(frame) } } ?? tracker.snapshot.windows
+        switch DockClickPolicy.action(app: item.app, windows: eligible, currentSpaceIDs: spaces, activeBehavior: settings.activeAppClickBehavior) {
         case .focus(let id): focus(id)
         case .cycle:
-            if let pid = item.app?.pid, let id = DockClickPolicy.cycleTarget(windows: tracker.snapshot.windows, pid: pid, currentSpaceIDs: spaces, focusedWindowID: localWindows(item).first?.id) { focus(id) }
+            if let pid = item.app?.pid, let id = DockClickPolicy.cycleTarget(windows: eligible, pid: pid, currentSpaceIDs: spaces, focusedWindowID: localWindows(item).first?.id) { focus(id) }
         case .openNewWindowHere: openNew(item)
         case .launch: launch(item)
         case .minimize: if let window = localWindows(item).first { actions.minimize(window) }
