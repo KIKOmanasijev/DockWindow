@@ -36,6 +36,9 @@ struct PermissionsView: View {
             }
             Text("Relaunch waits for DogBar to quit and restore the native Dock before starting a fresh process.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            Divider()
+            Label("DogBar sends anonymous usage counts, such as whether setup finished and which features you use, so we know what to improve. Never window titles, app names or files. Turn it off any time in Settings → General → Privacy.", systemImage: "hand.raised")
+                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(28)

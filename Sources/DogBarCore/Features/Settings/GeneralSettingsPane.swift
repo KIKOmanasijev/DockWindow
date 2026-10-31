@@ -45,6 +45,10 @@ import SwiftUI
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
+            SettingsSection("Privacy") {
+                Toggle("Share anonymous usage data", isOn: $settings.telemetryEnabled)
+                    .settingsDescription("Helps decide what to improve. DogBar sends a random install ID, app and macOS version, whether setup finished, and which features were used each day. Never window titles, app names, files or anything you type.")
+            }
             SettingsSection("Session") {
                 Toggle("Pause DogBar", isOn: $settings.isPaused)
                     .settingsDescription("Suspend features and restore the native Dock while paused.")

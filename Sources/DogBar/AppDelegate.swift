@@ -16,6 +16,7 @@ import Combine
     let nativeDock = NativeDockController()
     let nativeReader = NativeDockReader()
     let pinnedApps = PinnedAppsStore()
+    lazy var telemetry = TelemetryService(settings: settings)
     lazy var dock = DockController(tracker: tracker, actions: actions, settings: settings, pinnedApps: pinnedApps, newWindowOpener: newWindowOpener)
     lazy var previews = PreviewController(tracker: tracker, actions: actions, thumbnails: thumbnails, settings: settings, newWindowOpener: newWindowOpener)
     lazy var settingsWindow = SettingsWindowController(settings: settings, permissions: permissions, pinnedApps: pinnedApps,
@@ -78,7 +79,17 @@ import Combine
         dock.onShowWindows = { [weak self] item, anchor, screen in self?.previews.showWindows(item: item, anchor: anchor, screen: screen) }
         dock.onIconClicked = { [weak self] in self?.previews.dismiss() }
         dock.onContextMenuTrackingChanged = { [weak self] in self?.previews.contextMenuTracking = $0 }
-        previews.onVisibilityChanged = { [weak self] visible in self?.dock.previewVisible = visible }
+        previews.onVisibilityChanged = { [weak self] visible in
+            self?.dock.previewVisible = visible
+            if visible { self?.telemetry.featureUsed(.dockPreview) }
+        }
+        dock.onItemClicked = { [weak self] in self?.telemetry.featureUsed(.dockClick) }
+        switcher.$isActive.removeDuplicates().filter { $0 }.sink { [weak self] _ in self?.telemetry.featureUsed(.switcher) }.store(in: &subscriptions)
+        tracker.$snapshot.map(\.activeSpaceIDs).removeDuplicates().dropFirst().filter { !$0.isEmpty }.sink { [weak self] _ in
+            self?.telemetry.featureUsed(.desktopSwitch)
+        }.store(in: &subscriptions)
+        settings.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.telemetry.settingsChanged() }.store(in: &subscriptions)
+        telemetry.start()
         previews.desktopNumber = { [weak self] in self?.desktopNumbers[$0] }
         tracker.$snapshot.map(\.activeSpaceIDs).removeDuplicates().receive(on: RunLoop.main).sink { [weak self] _ in
             Task { @MainActor [weak self] in
@@ -120,6 +131,7 @@ import Combine
     private func updateFeatureState() {
         if previouslyGranted == true && !permissions.isGranted && !terminating { showOnboarding() }
         if permissions.hasCheckedPermissions { previouslyGranted = permissions.isGranted }
+        if permissions.isGranted { telemetry.permissionsGranted() }
         if lastDockMode != settings.useDogBarDock {
             previews.dismiss()
             lastDockMode = settings.useDogBarDock

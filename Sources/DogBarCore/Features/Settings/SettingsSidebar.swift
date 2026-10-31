@@ -16,7 +16,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     }
     var searchTerms: String {
         switch self {
-        case .general: return "startup login permissions accessibility screen recording pause reset menu bar"
+        case .general: return "startup login permissions accessibility screen recording pause reset menu bar privacy analytics telemetry usage data"
         case .dock: return "icons size resize hide pinned recent trash desktop windows click scroll"
         case .switcher: return "shortcut keyboard alt tab option command apps windows native minimized hidden thumbnails"
         case .previews: return "hover delay preview cpu ram memory new window performance"

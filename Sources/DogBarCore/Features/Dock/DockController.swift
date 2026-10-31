@@ -10,6 +10,8 @@ import ApplicationServices
     /// Requests a preview pinned open from the context menu.
     public var onShowWindows: ((DockItem, CGRect, NSScreen) -> Void)?
     public var onIconClicked: (() -> Void)?
+    /// An item was clicked (not a resize). Used for anonymous feature counts.
+    public var onItemClicked: (() -> Void)?
     /// Suppresses pending and new previews for the complete context-menu session.
     public var onContextMenuTrackingChanged: ((Bool) -> Void)?
     /// If absent, actionable failures appear in an NSAlert.
@@ -415,7 +417,7 @@ import ApplicationServices
         return WindowFilter(currentSpaceIDs: spaces, pid: pid).apply(to: tracker.snapshot.windows)
     }
     private func click(_ item: DockItem) {
-        onIconClicked?()
+        onIconClicked?(); onItemClicked?()
         if item.kind == .trash { NSWorkspace.shared.open(trashURL); return }
         switch DockClickPolicy.action(app: item.app, windows: tracker.snapshot.windows, currentSpaceIDs: spaces, activeBehavior: settings.activeAppClickBehavior) {
         case .focus(let id): focus(id)

@@ -344,6 +344,11 @@ public final class AppSettings: ObservableObject {
         get { read("reduceAnimations", fallback: false) }
         set { write("reduceAnimations", value: newValue) }
     }
+    /// Anonymous usage counts (see TelemetryService). On by default, disclosed in onboarding and Settings.
+    public var telemetryEnabled: Bool {
+        get { read("telemetryEnabled", fallback: true) }
+        set { write("telemetryEnabled", value: newValue) }
+    }
     public var debugLogging: Bool {
         get { read("debugLogging", fallback: false) }
         set { write("debugLogging", value: newValue) }
@@ -423,6 +428,7 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "panelCornerRadius": encoded(26 as Double),
             keyPrefix + "panelMaterial": encoded(PanelMaterial.hudWindow),
             keyPrefix + "reduceAnimations": encoded(false as Bool),
+            keyPrefix + "telemetryEnabled": encoded(true as Bool),
             keyPrefix + "debugLogging": encoded(false as Bool),
             keyPrefix + "allowedWindowSubroles": encoded(["AXStandardWindow", "AXDialog"] as [String])
         ]
