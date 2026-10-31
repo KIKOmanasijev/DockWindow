@@ -14,11 +14,12 @@ cp Resources/Info.plist "$staging/DogBar.app/Contents/"
 # Self-signed development identities can sign stable designated requirements even
 # when system trust policy excludes them from find-identity's valid-only results.
 if security find-identity -p codesigning | /usr/bin/grep -q '"DockWindow Dev"'; then
- codesign --force --deep --entitlements Resources/DogBar.entitlements --options runtime --sign 'DockWindow Dev' "$staging/DogBar.app"
+ codesign --force --deep --entitlements Resources/DogBar.entitlements --options runtime --timestamp=none --sign 'DockWindow Dev' "$staging/DogBar.app"
 else
  print -u2 'WARNING: DockWindow Dev signing identity unavailable. Ad-hoc signing can reset permissions on rebuild.'
  codesign --force --deep --entitlements Resources/DogBar.entitlements --sign - "$staging/DogBar.app"
 fi
+codesign --verify --deep --strict "$staging/DogBar.app"
 # One-time migration: builds before the rename installed DockWindow.app (bundle ID
 # com.dockwindow.app). Quit it first so it restores the native Dock, then leave it for
 # you to delete. Its permissions and settings do not carry over to the new bundle ID.
