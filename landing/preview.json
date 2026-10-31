@@ -3,10 +3,10 @@
   "notarized": false,
   "channel": "preview",
   "signing": "self-signed",
-  "version": "0.1.0-preview.1",
-  "build": "2",
-  "url": "/downloads/DogBar-0.1.0-preview.1-arm64.dmg",
-  "sha256": "1d914c181344b0628c508cff843682fc18a0ca6b5e976c2924eabb95c01f922c",
+  "version": "0.1.0-preview.3",
+  "build": "4",
+  "url": "/downloads/DogBar-0.1.0-preview.3-arm64.dmg",
+  "sha256": "0e2d0693c067c3800c782b4c1e51ff5e199194a1532039d095504146b2b3d2cb",
   "architecture": "arm64",
   "minimumMacOS": "14.0"
 }
