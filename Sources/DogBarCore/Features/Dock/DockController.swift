@@ -26,7 +26,6 @@ import ApplicationServices
     private var localMonitor: Any?
     private var globalMonitor: Any?
     private var screenObserver: NSObjectProtocol?
-    private var launchObserver: NSObjectProtocol?
     private var workspaceObservers: [NSObjectProtocol] = []
     private var lifecycleGeneration: UInt64 = 0
     private var screen: NSScreen?
@@ -40,6 +39,10 @@ import ApplicationServices
     private var hideTask: Task<Void, Never>?
     private var openingTasks: [String: Task<Void, Never>] = [:]
     private var launching: Set<String> = []
+    // Workspace announces launches before the AX inventory knows about their windows.
+    // Keep only that short gap visible; this is not a second running-app inventory.
+    private var pendingLaunches: [pid_t: TrackedApp] = [:]
+    private var pendingLaunchTasks: [pid_t: Task<Void, Never>] = [:]
     private var removedRunning: Set<String> = []
     private var runningOrder: [String] = []
     private var scrollState: (id: String, index: Int, time: TimeInterval)?
@@ -75,8 +78,19 @@ import ApplicationServices
         screenObserver = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screen = nil; self?.reload() }
         }
-        launchObserver = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak self] _ in
-            MainActor.assumeIsolated { self?.reload() }
+        for name in [NSWorkspace.willLaunchApplicationNotification, NSWorkspace.didLaunchApplicationNotification, NSWorkspace.didTerminateApplicationNotification] {
+            workspaceObservers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
+                MainActor.assumeIsolated {
+                    guard let self, self.started,
+                          let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
+                    if notification.name == NSWorkspace.didTerminateApplicationNotification {
+                        self.clearPendingLaunch(pid: app.processIdentifier)
+                    } else {
+                        self.trackPendingLaunch(app)
+                    }
+                    self.reload()
+                }
+            })
         }
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.didWakeNotification, NSWorkspace.accessibilityDisplayOptionsDidChangeNotification] {
             workspaceObservers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
@@ -104,8 +118,8 @@ import ApplicationServices
         for monitor in [localMonitor, globalMonitor].compactMap({ $0 }) { NSEvent.removeMonitor(monitor) }
         localMonitor = nil; globalMonitor = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }; screenObserver = nil
-        if let launchObserver { NSWorkspace.shared.notificationCenter.removeObserver(launchObserver) }; launchObserver = nil
         for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }; workspaceObservers = []
+        for task in pendingLaunchTasks.values { task.cancel() }; pendingLaunchTasks.removeAll(); pendingLaunches.removeAll()
         subscriptions.removeAll(); view.launching = []; view.stopTracking(); panel.orderOut(nil); panel.ignoresMouseEvents = true
         launching.removeAll(); removedRunning.removeAll(); hoverItem = nil; hidden = false; previewVisible = false; scrollState = nil
     }
@@ -125,10 +139,36 @@ import ApplicationServices
         }
         return SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: displayID, separateSpaces: NSScreen.screensHaveSeparateSpaces)
     }
+    private func trackPendingLaunch(_ app: NSRunningApplication) {
+        let pid = app.processIdentifier
+        guard pid > 0, app.activationPolicy == .regular, !app.isTerminated,
+              pendingLaunches[pid] == nil,
+              !tracker.snapshot.windows.contains(where: { $0.pid == pid }) else { return }
+        let spaces = Array(currentSpaces(snapshot: tracker.snapshot))
+        pendingLaunches[pid] = TrackedApp(pid: pid, bundleIdentifier: app.bundleIdentifier,
+            name: app.localizedName ?? "Application", bundleURL: app.bundleURL,
+            isHidden: app.isHidden, isFrontmost: app.isActive, lastActiveSpaceIDs: spaces)
+        // A one-shot deadline also handles apps that finish launching without a window.
+        // Do not extend it on didLaunch after willLaunch, or poll while waiting for AX.
+        pendingLaunchTasks[pid] = Task { @MainActor [weak self] in
+            do { try await Task.sleep(for: .seconds(8)) } catch { return }
+            guard let self, self.started else { return }
+            self.clearPendingLaunch(pid: pid)
+            self.reload()
+        }
+    }
+    private func clearPendingLaunch(pid: pid_t) {
+        pendingLaunchTasks.removeValue(forKey: pid)?.cancel()
+        pendingLaunches.removeValue(forKey: pid)
+    }
     private func reload(snapshot incoming: WindowSnapshot? = nil) {
         // @Published delivers before the property changes. Render its supplied value synchronously.
         let snapshot = incoming ?? tracker.snapshot
         guard started else { return }
+        // Hand off to the normal composition/scope rules as soon as AX has a window.
+        for pid in Array(pendingLaunches.keys) where snapshot.windows.contains(where: { $0.pid == pid }) {
+            clearPendingLaunch(pid: pid)
+        }
         guard settings.useDogBarDock, !settings.isPaused else {
             hideTask?.cancel(); hideTask = nil
             for task in openingTasks.values { task.cancel() }; openingTasks.removeAll()
@@ -148,7 +188,15 @@ import ApplicationServices
                                               includeMinimized: settings.includeMinimizedInDock,
                                               showWindowlessAppsOnLastActiveDesktop: settings.showWindowlessAppsOnLastActiveDesktop, showTrash: settings.showTrash)
         var items = DockCompositionPolicy.items(snapshot: snapshot, pinned: pins.apps, options: options)
-        let runningIDs = Set(snapshot.apps.map { $0.bundleIdentifier ?? "pid:\($0.pid)" })
+        for app in pendingLaunches.values.sorted(by: { $0.pid < $1.pid }) {
+            let id = app.bundleIdentifier ?? "pid:\(app.pid)"
+            if let index = items.firstIndex(where: { $0.id == id }) {
+                if items[index].app == nil { items[index].app = app }
+            } else {
+                items.append(DockItem(id: id, app: app))
+            }
+        }
+        let runningIDs = Set((snapshot.apps + Array(pendingLaunches.values)).map { $0.bundleIdentifier ?? "pid:\($0.pid)" })
         removedRunning.formIntersection(runningIDs)
         items.removeAll { !$0.isPinned && removedRunning.contains($0.id) }
         let unpinned = items.filter { $0.kind == .application && !$0.isPinned }.sorted {
@@ -180,6 +228,7 @@ import ApplicationServices
             // Permanent pins stay launchable even when their app has no windows.
             guard !item.isPinned, settings.hideWindowlessApps else { return false }
             guard let pid = item.app?.pid else { return true }
+            if pendingLaunches[pid] != nil { return false }
             return !snapshot.windows.contains { $0.pid == pid }
         }
         // Do not leave a leading or duplicate divider after filtering apps.
@@ -524,10 +573,10 @@ import ApplicationServices
     }
     deinit {
         hideTask?.cancel()
+        for task in pendingLaunchTasks.values { task.cancel() }
         for task in openingTasks.values { task.cancel() }
         for monitor in [localMonitor, globalMonitor].compactMap({ $0 }) { NSEvent.removeMonitor(monitor) }
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
-        if let launchObserver { NSWorkspace.shared.notificationCenter.removeObserver(launchObserver) }
         for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
         let surface = view
         Task { @MainActor in surface.stopTracking() }
