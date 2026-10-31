@@ -384,11 +384,10 @@ test("guided tour autoplays on screen, stays quiet for screen readers and never 
   assert.equal(w.document.activeElement, w.document.body, "the tour does not move focus");
   assert.equal($$(".reveal.in").length, $$(".reveal").length, "reveals still run");
 
-  // Using the demo hands it over for good: spotlight, pointer and announcements reset.
+  // Using the demo hands it over for good: pointer and announcements reset.
   $('.dock-btn[data-app="slack"]').dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true }));
   assert.equal($("#demo").dataset.tour, "stopped");
   assert.equal($("[data-cam]").style.transform, "", "the screen is never zoomed");
-  assert.ok(!$("[data-dock]").classList.contains("is-spot"));
   assert.ok(!$("[data-cursor]").classList.contains("is-on"));
   assert.ok($("[data-keys]").hidden);
   assert.equal($("[data-caption]").getAttribute("aria-live"), "polite");
@@ -411,8 +410,7 @@ test("tour steps can be chosen and the tour paused; reduced motion never autopla
   await pause(w, 2000);
   assert.equal($("[data-desk]").dataset.wall, "2", "the swipe switched desktops");
   assert.equal($("[data-cam]").style.transform, "", "no zoom, so nothing is cropped");
-  assert.ok($("[data-dock]").classList.contains("is-spot"), "the Dock is spotlit");
-  assert.ok($("[data-demo]").classList.contains("is-focus"), "the desktop dims");
+  assert.ok(!$("[data-demo]").classList.contains("is-focus"), "nothing dims; the Dock change speaks for itself");
   assert.equal($$dockApps(w), "finder:0,dockwindow:0,safari:1,music:1", "the Dock changed with the desktop");
   $("[data-tour-toggle]").click();
   assert.equal($("#demo").dataset.tour, "stopped");

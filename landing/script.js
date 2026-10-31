@@ -514,7 +514,7 @@
   showIntro();
 
   // ---------- Guided tour ----------
-  // Plays the three ideas with a pointer, a swipe HUD and a soft spotlight. It uses
+  // Plays the three ideas with a pointer, a swipe HUD and a light dim. It uses
   // the same functions as the hands-on demo, never moves focus, and stops for good as
   // soon as someone uses the demo. It starts only while the demo is on screen and never
   // on its own under reduced motion.
@@ -534,13 +534,6 @@
     for (let n = el; n && n !== cam; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
     if (preview.contains(el)) x -= preview.offsetWidth / 2;
     return { x, y };
-  }
-  // Draws the eye to the Dock: the desktop dims and the Dock glows. No zoom, so
-  // nothing is ever cropped.
-  function spotlightDock(on) {
-    mac.classList.toggle("is-focus", on);
-    dock.classList.remove("is-spot");
-    if (on) { void dock.offsetWidth; dock.classList.add("is-spot"); }
   }
   const point = (el) => {
     const p = spot(el);
@@ -588,8 +581,8 @@
       releaseSwitcher({ focus: false });
       await wait(1700);
     } },
-    // A swipe to Desktop 2, a spotlight on its Dock, and back.
-    { ms: 8600, run: async (wait) => {
+    // A swipe to Desktop 2 and back. The Dock visibly changes with the desktop.
+    { ms: 7000, run: async (wait) => {
       closeAll();
       if (state.desk !== 1) setDesk(1, { hud: false });
       pointer.classList.remove("is-on");
@@ -598,19 +591,11 @@
       showSwipe(2, 1);
       await wait(700);
       setDesk(2, { hud: false });
-      await wait(600);
-      spotlightDock(true);
-      await wait(2600);
-      spotlightDock(false);
-      await wait(600);
+      await wait(2900);
       showSwipe(1, -1);
       await wait(700);
       setDesk(1, { hud: false });
-      await wait(600);
-      spotlightDock(true);
-      await wait(2000);
-      spotlightDock(false);
-      await wait(400);
+      await wait(2300);
     } },
   ];
 
@@ -632,7 +617,6 @@
     caption.setAttribute("aria-live", on ? "off" : "polite"); // no running commentary for screen readers
     tourBtn.setAttribute("aria-label", on ? "Pause the demo" : "Play the demo");
     if (!on) {
-      dock.classList.remove("is-spot");
       mac.classList.toggle("is-focus", state.mode === "preview");
       pointer.classList.remove("is-on", "press");
       keys.hidden = true;

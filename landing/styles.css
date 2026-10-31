@@ -248,15 +248,14 @@ html:not(.js) .tour { display: none; }
 @container (max-width: 760px) { .menubar-menus span:nth-child(n+5) { display: none; } }
 @container (max-width: 600px) { .menubar-menus span:nth-child(n+4), .mb-search { display: none; } }
 @container (max-width: 470px) { .menubar-menus span:nth-child(n+3), .mb-battery { display: none; } }
-/* Everything on the screen. While previews are open, or the tour points at the Dock, the
-   desktop dims so the Dock and previews stand out. A peeked window sits above the dim. */
+/* Everything on the screen. While previews are open the desktop dims so the previews
+   stand out. A peeked window sits above the dim. */
 .cam { position: absolute; inset: 0; }
 .cam::before {
   content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
   background: rgba(18, 8, 40, .3); opacity: 0; transition: opacity .35s ease;
 }
 .mac.is-focus .cam::before { opacity: 1; }
-.dock.is-spot { animation: dock-spot 1.3s ease-out 2; }
 .cursor {
   position: absolute; left: 0; top: 0; z-index: 9; width: 22px; height: 22px;
   opacity: 0; pointer-events: none;
@@ -801,10 +800,6 @@ html:not(.js) .tour { display: none; }
 @keyframes slide-in { from { transform: translateX(calc(var(--dir, 1) * 100%)); } }
 @keyframes slide-out { to { transform: translateX(calc(var(--dir, 1) * -100%)); } }
 @keyframes swipe-arrow { from { opacity: 0; transform: translateX(calc(var(--dir, 1) * 18px)) scaleX(var(--dir, 1)); } }
-@keyframes dock-spot {
-  0% { box-shadow: 0 12px 30px -12px rgba(26, 16, 51, .4), 0 0 0 0 rgba(255, 255, 255, .85); }
-  100% { box-shadow: 0 12px 30px -12px rgba(26, 16, 51, .4), 0 0 0 12px rgba(255, 255, 255, 0); }
-}
 @keyframes hud { from { opacity: 0; transform: translate(-50%, -50%) scale(.94); } }
 @keyframes win-flash { from { transform: scale(.985); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(110, 36, 230, .45); } 100% { box-shadow: 0 0 0 9px rgba(110, 36, 230, 0); } }
