@@ -46,6 +46,14 @@ import QuartzCore
     private var cancelMonitor: Any?
     /// Item order at the last render; a change means apps came, went or the desktop changed.
     private var renderedIDs: [String] = []
+    var reservedScreenDepth: CGFloat {
+        guard !geometry.background.isEmpty else { return 0 }
+        switch settings.dockPosition {
+        case .bottom: return geometry.background.maxY - bounds.minY + 4
+        case .left: return geometry.background.maxX - bounds.minX + 4
+        case .right: return bounds.maxX - geometry.background.minX + 4
+        }
+    }
     var displayedIconSize: CGFloat { resizeSession?.currentSize ?? CGFloat(settings.iconSize) }
     var isDragging: Bool { dragged != nil || resizeMouseDown }
     var ownsMouseSequence: Bool { pressed != nil || isDragging }

@@ -87,6 +87,8 @@ DogBar saves your original Dock settings before hiding Apple’s Dock and puts t
 
 Apps without open windows and DogBar’s own Dock icon are hidden by default. Both options are available in **Settings → Dock**. The windowless filter applies to unpinned running and recent apps. Pinned apps stay available even with no open windows.
 
+Maximized windows are adjusted to leave space above or beside the replacement Dock. This is enabled by default under **Settings → Dock → Keep maximized windows clear of the Dock**. Autohiding Docks and true full-screen windows are unaffected.
+
 ## Updates
 
 Choose **Check for Updates…** from the paw menu or the DogBar app menu. DogBar checks the website's release feeds, offers a newer compatible installer, verifies its SHA-256, and opens the DMG. Quit DogBar, drag the new copy into Applications, and reopen it. This first version does not replace the running app automatically. **About DogBar** shows the installed version, build revision and running path.

@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import ApplicationServices
 
 /// Replacement Dock presentation and interactions. The coordinator owns permissions and native Dock restoration.
 @MainActor public final class DockController {
@@ -32,6 +33,9 @@ import Combine
     private var shownFrame = CGRect.zero
     private var menuVisible = false
     private var hidden = false
+    private var clearanceGeometry = ""
+    private var clearanceCancellation = OperationCancellation()
+    private var clearanceRequests: [CGWindowID: (CGRect, Date)] = [:]
     private var started = false
     private var hideTask: Task<Void, Never>?
     private var openingTasks: [String: Task<Void, Never>] = [:]
@@ -57,6 +61,7 @@ import Combine
     /// Call only after the coordinator has enabled the native Dock mitigation and permission gates.
     public func start() {
         guard !started else { return }; started = true; lifecycleGeneration &+= 1
+        clearanceCancellation = OperationCancellation()
         tracker.$snapshot.sink { [weak self] snapshot in self?.reload(snapshot: snapshot) }.store(in: &subscriptions)
         settings.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.reload() }.store(in: &subscriptions)
         pins.$apps.receive(on: RunLoop.main).sink { [weak self] _ in self?.reload() }.store(in: &subscriptions)
@@ -93,6 +98,7 @@ import Combine
     /// Cancels pending UI work and opening sequences. Does not stop shared services or restore native preferences.
     public func stop() {
         guard started else { return }; started = false; lifecycleGeneration &+= 1
+        clearanceCancellation.cancel(); clearanceRequests.removeAll()
         hideTask?.cancel(); hideTask = nil
         for task in openingTasks.values { task.cancel() }; openingTasks.removeAll()
         for monitor in [localMonitor, globalMonitor].compactMap({ $0 }) { NSEvent.removeMonitor(monitor) }
@@ -213,8 +219,63 @@ import Combine
         }
         view.images = view.images.filter { key, _ in items.contains { $0.id == key } }
         view.launching = launching; view.render()
+        keepMaximizedWindowsClear(snapshot: snapshot, screen: nextScreen)
         if !panel.isVisible { panel.orderFrontRegardless() }
         updatePointer()
+    }
+    private func keepMaximizedWindowsClear(snapshot: WindowSnapshot, screen: NSScreen) {
+        guard settings.keepMaximizedWindowsClear, !settings.autohide, !view.isDragging,
+              let primary = NSScreen.screens.first else {
+            clearanceCancellation.cancel(); clearanceCancellation = OperationCancellation()
+            clearanceRequests.removeAll(); clearanceGeometry = ""
+            return
+        }
+        let signature = "\(screen.frame):\(screen.visibleFrame):\(settings.dockPosition):\(view.reservedScreenDepth)"
+        if signature != clearanceGeometry {
+            clearanceCancellation.cancel(); clearanceCancellation = OperationCancellation()
+            clearanceRequests.removeAll(); clearanceGeometry = signature
+        }
+        let top = primary.frame.maxY
+        func axRect(_ rect: CGRect) -> CGRect {
+            CGRect(x: rect.minX, y: top - rect.maxY, width: rect.width, height: rect.height)
+        }
+        let visible = axRect(screen.visibleFrame), display = axRect(screen.frame)
+        let spaces = currentSpaces(snapshot: snapshot)
+        let cancellation = clearanceCancellation
+        let alive = Set(snapshot.windows.map(\.id))
+        clearanceRequests = clearanceRequests.filter { alive.contains($0.key) }
+        for window in snapshot.windows where !window.isFullscreen && !window.isMinimized && !window.isAppHidden {
+            guard window.pid != ProcessInfo.processInfo.processIdentifier,
+                  !spaces.isDisjoint(with: window.spaceIDs),
+                  display.contains(CGPoint(x: window.frame.midX, y: window.frame.midY)),
+                  let target = DockWindowClearance.adjustedFrame(window.frame, visible: visible, screen: display,
+                       edge: settings.dockPosition, depth: view.reservedScreenDepth) else { continue }
+            if let (frame, date) = clearanceRequests[window.id], frame == window.frame, Date().timeIntervalSince(date) < 2 { continue }
+            clearanceRequests[window.id] = (window.frame, Date())
+            let expected = window.frame
+            tracker.perform(windowID: window.id) { element in
+                guard !cancellation.isCancelled,
+                      AXRead.value(element, "AXFullScreen") as? Bool == false,
+                      AXRead.value(element, kAXMinimizedAttribute) as? Bool != true,
+                      AXRead.value(element, kAXSubroleAttribute) as? String == kAXStandardWindowSubrole,
+                      let live = AXRead.frame(element), abs(live.minX - expected.minX) < 2,
+                      abs(live.minY - expected.minY) < 2, abs(live.width - expected.width) < 2,
+                      abs(live.height - expected.height) < 2 else { return }
+                var sizeSettable = DarwinBoolean(false), positionSettable = DarwinBoolean(false)
+                guard AXUIElementIsAttributeSettable(element, kAXSizeAttribute as CFString, &sizeSettable) == .success,
+                      sizeSettable.boolValue else { return }
+                if target.origin != live.origin {
+                    guard AXUIElementIsAttributeSettable(element, kAXPositionAttribute as CFString, &positionSettable) == .success,
+                          positionSettable.boolValue else { return }
+                }
+                var size = target.size, point = target.origin
+                guard let sizeValue = AXValueCreate(.cgSize, &size), !cancellation.isCancelled else { return }
+                guard AXUIElementSetAttributeValue(element, kAXSizeAttribute as CFString, sizeValue) == .success else { return }
+                if target.origin != live.origin, !cancellation.isCancelled, let positionValue = AXValueCreate(.cgPoint, &point) {
+                    AXUIElementSetAttributeValue(element, kAXPositionAttribute as CFString, positionValue)
+                }
+            }
+        }
     }
     /// Runs synchronously in event tracking mode without rebuilding the app list, reading
     /// icons, publishing settings or waiting for a default-mode Combine delivery.

@@ -92,6 +92,10 @@ public final class AppSettings: ObservableObject {
         get { read("magnificationSize", fallback: 96) }
         set { write("magnificationSize", value: newValue) }
     }
+    public var keepMaximizedWindowsClear: Bool {
+        get { read("keepMaximizedWindowsClear", fallback: true) }
+        set { write("keepMaximizedWindowsClear", value: newValue) }
+    }
     public var autohide: Bool {
         get { read("autohide", fallback: false) }
         set { write("autohide", value: newValue) }
@@ -331,6 +335,7 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "iconSize": encoded(48 as Double),
             keyPrefix + "magnificationEnabled": encoded(false as Bool),
             keyPrefix + "magnificationSize": encoded(96 as Double),
+            keyPrefix + "keepMaximizedWindowsClear": encoded(true as Bool),
             keyPrefix + "autohide": encoded(false as Bool),
             keyPrefix + "autohideDelay": encoded(0.5 as Double),
             keyPrefix + "dockScope": encoded(WindowScope.currentDesktop),
