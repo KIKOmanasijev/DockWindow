@@ -1,8 +1,8 @@
 # DogBar direct distribution
 
-Notarized releases are currently blocked because the owner is not enrolled in the Apple Developer Program. The local DockWindow Dev self-signed certificate provides no Apple-verified public trust. An explicitly labelled [unnotarized preview](PreviewDistribution.md) is offered through a separate build and `landing/preview.json`. The strict notarized-release manifest, `landing/release.json`, intentionally remains unavailable.
+Notarized releases require an authorized Apple Developer Program team and its Developer ID Application identity. No public signing team is configured yet. The local DockWindow Dev self-signed certificate provides no Apple-verified public trust. An explicitly labelled [unnotarized preview](PreviewDistribution.md) is offered through a separate build and `landing/preview.json`. The strict notarized-release manifest, `landing/release.json`, intentionally remains unavailable.
 
-The owner must enroll personally at [Apple Developer Program](https://developer.apple.com/programs/enroll/). Enrollment, payment, certificate issuance, and credential entry are owner actions. These scripts do not perform them, ask for secrets, export keys, alter trust, clear permissions, bypass quarantine, or disable Gatekeeper.
+Releases can be published by your own enrolled team or another team that explicitly authorizes distributing DogBar under its publisher identity. The team’s Account Holder controls Developer ID certificate issuance. Enrollment, team authorization, certificate issuance, and credential entry are owner actions. These scripts do not perform them, ask for secrets, export keys, alter trust, clear permissions, bypass quarantine, or disable Gatekeeper.
 
 ## One-time owner setup
 

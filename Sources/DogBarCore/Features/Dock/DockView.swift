@@ -201,7 +201,7 @@ import QuartzCore
             icon.update(image: images[item.id], badgeText: item.app?.badgeLabel, indicators: indicators[item.id] ?? .init(count: 0), color: color,
                         position: settings.dockPosition, scale: scale, reduceMotion: Theme.reducesMotion(settings))
             icon.setPressed(pressed?.id == item.id && dragged == nil)
-            icon.bounce(position: settings.dockPosition, enabled: launching.contains(item.id) && settings.bounceOnLaunch && !Theme.reducesMotion(settings))
+            icon.bounce(position: settings.dockPosition, enabled: launching.contains(item.id) && settings.bounceOnLaunch, reduceMotion: Theme.reducesMotion(settings))
         }
         if resizePill.superlayer == nil { layer?.addSublayer(resizePill) }
         if edgeRim.superlayer == nil {

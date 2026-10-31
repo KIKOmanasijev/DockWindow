@@ -80,15 +80,39 @@ import AppKit
         shade.isHidden = !pressed
         CATransaction.commit()
     }
-    func bounce(position: DockPosition, enabled: Bool) {
-        guard enabled else { imageLayer.removeAnimation(forKey: "launch"); return }
+    func bounce(position: DockPosition, enabled: Bool, reduceMotion: Bool = false) {
+        let keyPath = position == .bottom ? "transform.translation.y" : "transform.translation.x"
+        guard enabled, !reduceMotion else {
+            guard imageLayer.animation(forKey: "launch") != nil else {
+                if reduceMotion { imageLayer.removeAnimation(forKey: "launch-settle") }
+                return
+            }
+            let transform = imageLayer.presentation()?.transform ?? CATransform3DIdentity
+            let offset = position == .bottom ? transform.m42 : transform.m41
+            imageLayer.removeAnimation(forKey: "launch")
+            // Finish gently when the process is ready, rather than snapping down mid-jump.
+            if !reduceMotion, abs(offset) > 0.1 {
+                let settle = CABasicAnimation(keyPath: keyPath)
+                settle.fromValue = offset; settle.toValue = 0; settle.duration = 0.18
+                settle.timingFunction = CAMediaTimingFunction(name: .easeOut)
+                imageLayer.add(settle, forKey: "launch-settle")
+            }
+            return
+        }
         guard imageLayer.animation(forKey: "launch") == nil else { return }
-        let animation = CAKeyframeAnimation(keyPath: position == .bottom ? "transform.translation.y" : "transform.translation.x")
+        imageLayer.removeAnimation(forKey: "launch-settle")
+        let animation = CAKeyframeAnimation(keyPath: keyPath)
         let sign: CGFloat = position == .right ? -1 : 1
-        animation.values = [0, 22 * sign, 0, 10 * sign, 0]
-        animation.keyTimes = [0, 0.3, 0.55, 0.8, 1]; animation.duration = 0.85; animation.repeatCount = .infinity
+        // One consistent jump and a short rest; no alternating large/fast, small/slow cycles.
+        animation.values = [0, 16 * sign, 0, 0]
+        animation.keyTimes = [0, 0.4, 0.8, 1]
+        animation.timingFunctions = [CAMediaTimingFunction(name: .easeOut),
+                                     CAMediaTimingFunction(name: .easeIn),
+                                     CAMediaTimingFunction(name: .linear)]
+        animation.duration = 1.25; animation.repeatCount = .infinity
         imageLayer.add(animation, forKey: "launch")
     }
+
 }
 
 /// Draws the best NSImage representation at the actual display pixel size, including Retina.
