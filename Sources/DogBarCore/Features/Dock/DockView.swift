@@ -20,6 +20,7 @@ import QuartzCore
     var onFiles: (([URL], DockItem) -> Void)?
     private let provider: any DockBackgroundProvider
     private let background: NSView
+    private let iconSurface = DockIconSurface()
     private var layers: [String: DockIconLayer] = [:]
     private var separators: [String: CALayer] = [:]
     private let label = NSTextField(labelWithString: "")
@@ -56,6 +57,13 @@ import QuartzCore
         self.settings = settings; provider = DockBackgroundProviders.preferred(); background = provider.makeBackgroundView()
         super.init(frame: .zero)
         wantsLayer = true; addSubview(background)
+        iconSurface.wantsLayer = true
+        if background.responds(to: NSSelectorFromString("setContentView:")) {
+            // Glass must own its content, so its sampling excludes our icons.
+            background.setValue(iconSurface, forKey: "contentView")
+        } else {
+            addSubview(iconSurface)
+        }
         label.lineBreakMode = .byTruncatingMiddle
         label.font = .systemFont(ofSize: 13, weight: .medium); label.alignment = .center
         label.wantsLayer = true; label.layer?.cornerRadius = 7; label.layer?.masksToBounds = true
@@ -112,6 +120,13 @@ import QuartzCore
         CATransaction.begin(); CATransaction.setDisableActions(true)
         background.frame = geometry.background
         background.layoutSubtreeIfNeeded()
+        if iconSurface.superview === self {
+            iconSurface.frame = bounds
+        } else {
+            iconSurface.frame = background.bounds
+        }
+        // Keep the existing Dock coordinate system inside the glass content view.
+        iconSurface.bounds = iconSurface.superview === self ? bounds : geometry.background
         CATransaction.commit()
         if structural, let backing = background.layer, previousBackground != geometry.background {
             let move = CABasicAnimation(keyPath: "position")
@@ -145,14 +160,14 @@ import QuartzCore
             let frame = geometry.iconFrames[index]
             if item.kind == .separator {
                 let line = separators[item.id] ?? CALayer(); separators[item.id] = line
-                if line.superlayer == nil { layer?.addSublayer(line) }
+                if line.superlayer == nil { iconSurface.layer?.addSublayer(line) }
                 line.backgroundColor = NSColor.separatorColor.cgColor
                 line.frame = settings.dockPosition == .bottom ? CGRect(x: frame.midX, y: frame.minY, width: 1, height: frame.height) : CGRect(x: frame.minX, y: frame.midY, width: frame.width, height: 1)
                 continue
             }
             let icon = layers[item.id] ?? DockIconLayer()
             let isNew = layers[item.id] == nil
-            if isNew { layer?.addSublayer(icon); layers[item.id] = icon }
+            if isNew { iconSurface.layer?.addSublayer(icon); layers[item.id] = icon }
             if isNew, structural {
                 // A layer added in this transaction has no on-screen state to animate from,
                 // so grow it in explicitly.
@@ -180,7 +195,7 @@ import QuartzCore
             icon.bounce(position: settings.dockPosition, enabled: launching.contains(item.id) && settings.bounceOnLaunch && !Theme.reducesMotion(settings))
         }
         if resizePill.superlayer == nil { layer?.addSublayer(resizePill) }
-        if resizeGrip.superlayer == nil { layer?.addSublayer(resizeGrip) }
+        if resizeGrip.superlayer == nil { iconSurface.layer?.addSublayer(resizeGrip) }
         let resizeArmed = dockHeld || resizeSession != nil || (!resizeMouseDown && pointer.map { geometry.containsResizeTarget($0, kinds: kinds) } == true)
         let accent = NSColor.systemPurple
         let edge = geometry.resizeEdge
@@ -372,4 +387,9 @@ import QuartzCore
               let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty else { return false }
         onFiles?(urls, target); dropID = nil; render(); return true
     }
+}
+
+/// Event routing stays on DockView; this view only establishes correct glass content.
+@MainActor private final class DockIconSurface: NSView {
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
