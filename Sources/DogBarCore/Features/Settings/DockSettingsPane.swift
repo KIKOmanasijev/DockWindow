@@ -7,7 +7,7 @@ import SwiftUI
             SettingsSection("Dock mode") {
                 Toggle("Show DogBar in the Dock", isOn: $settings.showDogBarInDock).settingsDescription("Show DogBar’s own icon in the replacement Dock and Apple’s Dock. Settings remain available from the paw menu when hidden.")
                 Toggle("Use DogBar Dock", isOn: $settings.useDogBarDock).settingsDescription("Replace the native Dock while enabled and not paused.")
-                if !settings.useDogBarDock { Text("Native Dock mode supports previews and the switcher. Dock layout, window dots and desktop filtering require the replacement Dock.").font(.caption).foregroundStyle(.secondary) }
+                if !settings.useDogBarDock { SettingsDescriptionText("Native Dock mode supports previews and the switcher. Dock layout, window dots and desktop filtering require the replacement Dock.") }
             }
             SettingsSection("Layout") {
                 SettingsChoice(title: "Position", description: "Place the replacement Dock on a screen edge.", value: $settings.dockPosition)

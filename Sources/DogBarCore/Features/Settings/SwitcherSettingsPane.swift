@@ -9,14 +9,14 @@ import SwiftUI
                     Text("Windows").tag(SwitcherMode.windows)
                     Text("Apps").tag(SwitcherMode.apps)
                     Text("macOS default").tag(SwitcherMode.native)
-                }.pickerStyle(.segmented)
-                Text(modeDescription).font(.callout).foregroundStyle(.secondary)
+                }.pickerStyle(.segmented).labelsHidden()
+                    .settingsDescription(modeDescription)
             }
             if settings.switcherMode != .native {
             SettingsSection("Shortcuts") {
-                HStack { Text("Shortcut"); Spacer(); ShortcutRecorder(shortcut: $settings.switcherShortcut) }.settingsDescription("Click to record a modifier and physical key. Default: Option+Tab. Esc cancels.")
+                SettingsRow("Shortcut", description: "Click to record a modifier and physical key. Default: Option+Tab. Esc cancels.") { ShortcutRecorder(shortcut: $settings.switcherShortcut) }
                 Toggle("Enable same-app shortcut", isOn: $settings.sameAppShortcutEnabled).settingsDescription("Switch only between windows belonging to the active app.")
-                HStack { Text("Same-app shortcut"); Spacer(); ShortcutRecorder(shortcut: $settings.sameAppShortcut) }.disabled(!settings.sameAppShortcutEnabled).settingsDescription("Record the same-app shortcut. Default: Command+grave accent.")
+                SettingsRow("Same-app shortcut", description: "Record the same-app shortcut. Default: Command+grave accent.") { ShortcutRecorder(shortcut: $settings.sameAppShortcut) }.disabled(!settings.sameAppShortcutEnabled)
             }
             if settings.switcherMode == .windows {
             SettingsSection("Windows") {

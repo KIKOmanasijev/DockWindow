@@ -47,7 +47,18 @@ import ApplicationServices
     private var runningOrder: [String] = []
     private var scrollState: (id: String, index: Int, time: TimeInterval)?
     private var hoverItem: DockItem?
-        private let trashURL = FileManager.default.urls(for: .trashDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".Trash")
+    private let trashURL = FileManager.default.urls(for: .trashDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".Trash")
+    private var trashFull = false
+    private var trashTimer: Timer?
+    /// Loaded once. A new image per reload missed the icon layer's raster cache every time.
+    private lazy var trashImages: [Bool: NSImage] = {
+        let resources = URL(fileURLWithPath: "/System/Library/CoreServices/Dock.app/Contents/Resources")
+        func load(_ name: String) -> NSImage? {
+            NSImage(contentsOf: resources.appendingPathComponent(name + "@2x.png")) ?? NSImage(contentsOf: resources.appendingPathComponent(name + ".png"))
+                ?? NSImage(systemSymbolName: "trash", accessibilityDescription: "Trash")
+        }
+        return [true: load("trashfull"), false: load("trashempty")].compactMapValues { $0 }
+    }()
 
     public init(tracker: WindowTracker, actions: WindowActions, settings: AppSettings,
                 pinnedApps: PinnedAppsStore, newWindowOpener: NewWindowOpener) {
@@ -107,12 +118,28 @@ import ApplicationServices
                 }
             })
         }
+        trashFull = readTrashFull()
+        // Tracker snapshots no longer republish unchanged state, so Trash needs its own check.
+        trashTimer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in
+            MainActor.assumeIsolated { self?.refreshTrash() }
+        }
+        trashTimer?.tolerance = 0.5
         reload(); updatePointer()
+    }
+    private func readTrashFull() -> Bool {
+        ((try? FileManager.default.contentsOfDirectory(atPath: trashURL.path)) ?? []).contains { $0 != ".DS_Store" }
+    }
+    private func refreshTrash() {
+        guard started, settings.showTrash, settings.useDogBarDock, !settings.isPaused else { return }
+        let full = readTrashFull()
+        guard full != trashFull else { return }
+        trashFull = full; reload()
     }
     /// Cancels pending UI work and opening sequences. Does not stop shared services or restore native preferences.
     public func stop() {
         guard started else { return }; started = false; lifecycleGeneration &+= 1
         clearanceCancellation.cancel(); clearanceRequests.removeAll()
+        trashTimer?.invalidate(); trashTimer = nil
         hideTask?.cancel(); hideTask = nil
         for task in openingTasks.values { task.cancel() }; openingTasks.removeAll()
         for monitor in [localMonitor, globalMonitor].compactMap({ $0 }) { NSEvent.removeMonitor(monitor) }
@@ -262,14 +289,7 @@ import ApplicationServices
                 if let path { view.images[item.id] = NSWorkspace.shared.icon(forFile: path.path) }
                 else if let icon = item.app?.icon { view.images[item.id] = icon }
             }
-            if item.kind == .trash {
-                let full = ((try? FileManager.default.contentsOfDirectory(atPath: trashURL.path)) ?? []).contains { $0 != ".DS_Store" }
-                let name = full ? "trashfull" : "trashempty"
-                let resources = URL(fileURLWithPath: "/System/Library/CoreServices/Dock.app/Contents/Resources")
-                view.images[item.id] = NSImage(contentsOf: resources.appendingPathComponent(name + "@2x.png"))
-                    ?? NSImage(contentsOf: resources.appendingPathComponent(name + ".png"))
-                    ?? NSImage(systemSymbolName: "trash", accessibilityDescription: "Trash")
-            }
+            if item.kind == .trash { view.images[item.id] = trashImages[trashFull] }
             view.indicators[item.id] = DotPolicy.indicators(windows: snapshot.windows,
                 filter: WindowFilter(scope: settings.dockScope, currentSpaceIDs: spaces, includeMinimized: settings.includeMinimizedInCount, pid: item.app?.pid ?? -1),
                 style: settings.indicatorStyle, maxDots: settings.maxDots, isRunning: item.app != nil, showRunningState: settings.showRunningState)

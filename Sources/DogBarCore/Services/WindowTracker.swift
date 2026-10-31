@@ -36,20 +36,20 @@ import Combine
                 guard let self, self.started, self.generation == session else { return }
                 let previous = Set(self.snapshot.windows.map(\.id))
                 self.eventState.inventory(snapshot, revision: revision, activationRevision: activationRevision)
-                self.snapshot = self.eventState.snapshot
+                self.publishEventState()
                 if previous != Set(self.snapshot.windows.map(\.id)) { self.onWindowInventoryChanged?() }
             }
         }, focus: { [weak self] id, pid, date in
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.started, self.generation == session,
                       self.eventState.focused(id: id, pid: pid, at: date) else { return }
-                self.snapshot = self.eventState.snapshot
+                self.publishEventState()
             }
         }, spaces: { [weak self] state, revision, date in
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.started, self.generation == session else { return }
                 self.eventState.spaces(state.activeSpaceIDs, membership: state.membership, revision: revision, at: date)
-                self.snapshot = self.eventState.snapshot
+                self.publishEventState()
             }
         })
         let center = NSWorkspace.shared.notificationCenter
@@ -68,7 +68,7 @@ import Combine
                             ?? TrackedApp(pid: app.processIdentifier, bundleIdentifier: app.bundleIdentifier,
                                           name: app.localizedName ?? "Application", bundleURL: app.bundleURL)
                         self.eventState.activate(tracked, at: date, includeInInventory: app.activationPolicy == .regular)
-                        self.snapshot = self.eventState.snapshot
+                        self.publishEventState()
                         self.worker.requestFocus(pid: app.processIdentifier, at: date)
                     }
                     if name == NSWorkspace.activeSpaceDidChangeNotification || name == NSWorkspace.didActivateApplicationNotification {
@@ -94,6 +94,12 @@ import Combine
         timer.resume()
         self.timer = timer
         refresh()
+    }
+    /// Spaces are polled every 1.5 s and usually unchanged. Every publication rebuilds the Dock,
+    /// an open preview and the switcher, so only publish values that differ.
+    private func publishEventState() {
+        let next = eventState.snapshot
+        if next != snapshot { snapshot = next }
     }
     public func stop() {
         actionCancellation.cancel()
@@ -166,7 +172,7 @@ private final class WindowTrackingWorker: @unchecked Sendable {
     private var focusRequest: (pid: pid_t, date: Date)?
     private var focusScheduled = false
     private var focusSession = 0
-    private var refreshPending = false
+    private var refreshDeadline: DispatchTime?
     private var badges: [String: String] = [:]
     private var focusedID: CGWindowID?
     private var scanRetries: [pid_t: Int] = [:]
@@ -197,9 +203,12 @@ private final class WindowTrackingWorker: @unchecked Sendable {
                     self?.requestFocus(pid: pid, at: Date())
                     return
                 }
+                // Moves and resizes stream continuously while a window is dragged. A full
+                // inventory scan per event is wasted work; a few per second keeps frames current.
+                let geometryOnly = notification == kAXWindowMovedNotification || notification == kAXWindowResizedNotification
                 self?.queue.async { [weak self] in
                     guard let self, self.publish != nil, self.session == generation else { return }
-                    self.scheduleRefresh()
+                    self.scheduleRefresh(afterMilliseconds: geometryOnly ? 200 : 20)
                 }
             }
         }
@@ -210,13 +219,13 @@ private final class WindowTrackingWorker: @unchecked Sendable {
             self.session += 1; self.publish = nil; self.hub?.stop(); self.hub = nil
             self.windows.removeAll(); self.elements.removeAll(); self.apps.removeAll()
             self.cursors.removeAll(); self.lastScan.removeAll(); self.scanRetries.removeAll(); self.activated.removeAll(); self.focusedID = nil; self.observedPIDs.removeAll()
-            self.refreshPending = false; self.retryScheduled = false; self.active = [:]; self.spaceDate = .distantPast
+            self.refreshDeadline = nil; self.retryScheduled = false; self.active = [:]; self.spaceDate = .distantPast
             self.spaceLock.lock(); self.pollingSession = self.session; self.polledIDs = []; self.publishSpaces = nil; self.spaceLock.unlock()
         }
     }
     func setSubroles(_ value: Set<String>) { queue.async { self.subroles = value } }
     func setBadges(_ value: [String: String]) {
-        queue.async { self.badges = value; self.emit() }
+        queue.async { guard self.badges != value else { return }; self.badges = value; self.emit() }
     }
     func refresh(apps: [TrackedApp], activationRevision: UInt64) {
         let requested = Date()
@@ -229,13 +238,17 @@ private final class WindowTrackingWorker: @unchecked Sendable {
             self.apps = apps; self.activationRevision = activationRevision; self.scheduleRefresh()
         }
     }
-    private func scheduleRefresh() {
-        guard !refreshPending, publish != nil else { return }
-        refreshPending = true
+    /// Coalesces scans. An earlier request replaces a later pending one; a later request
+    /// joins whichever scan is already pending.
+    private func scheduleRefresh(afterMilliseconds delay: Int = 20) {
+        guard publish != nil else { return }
+        let deadline = DispatchTime.now() + .milliseconds(delay)
+        if let pending = refreshDeadline, pending <= deadline { return }
+        refreshDeadline = deadline
         let generation = session
-        queue.asyncAfter(deadline: .now() + .milliseconds(20)) {
-            guard self.session == generation else { return }
-            self.refreshPending = false; self.enumerate()
+        queue.asyncAfter(deadline: deadline) {
+            guard self.session == generation, self.refreshDeadline == deadline else { return }
+            self.refreshDeadline = nil; self.enumerate()
         }
     }
     func perform(windowID: CGWindowID, ifMissing: @escaping () -> Void, action: @escaping (AXUIElement) -> Void) {

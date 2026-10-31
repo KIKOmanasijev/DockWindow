@@ -37,8 +37,7 @@ import UniformTypeIdentifiers
             }
             if let rule = selectedRule {
                 SettingsChoice(title: "Strategy", description: "Try this strategy first, followed by the remaining fallbacks.", value: rule.strategy)
-                HStack { Text("New window shortcut"); Spacer(); ShortcutRecorder(shortcut: rule.shortcut) }
-                    .settingsDescription("Record a modifier and physical key to send to this application.")
+                SettingsRow("New window shortcut", description: "Record a modifier and physical key to send to this application.") { ShortcutRecorder(shortcut: rule.shortcut) }
                 TextField("Localized menu titles", text: $menuTitlesText, axis: .vertical)
                     .onChange(of: menuTitlesText) { _, text in
                         rule.wrappedValue.menuTitles = text.split(separator: ";").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }

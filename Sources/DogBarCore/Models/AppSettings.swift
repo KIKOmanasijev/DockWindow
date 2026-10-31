@@ -9,6 +9,9 @@ public final class AppSettings: ObservableObject {
     public let defaults: UserDefaults
     private var observer: NSObjectProtocol?
     private var cachedValues: [String: Any] = [:]
+    /// Decoded values by setting name. The Dock reads several settings per icon on every
+    /// pointer move; without this each read is a defaults lookup and often a JSON decode.
+    private var decodedValues: [String: Any] = [:]
     public static let keyPrefix = "DogBar."
     public init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
@@ -29,13 +32,18 @@ public final class AppSettings: ObservableObject {
         return (try? encoder.encode(value)) ?? Data()
     }
     private func read<T: Codable>(_ name: String, fallback: T) -> T {
+        if let cached = decodedValues[name] as? T { return cached }
         let value = defaults.object(forKey: Self.keyPrefix + name)
-        if let data = value as? Data, let decoded = try? JSONDecoder().decode(T.self, from: data) { return decoded }
-        return value as? T ?? fallback
+        let result: T
+        if let data = value as? Data, let decoded = try? JSONDecoder().decode(T.self, from: data) { result = decoded }
+        else { result = value as? T ?? fallback }
+        decodedValues[name] = result
+        return result
     }
     private func write<T: Codable>(_ name: String, value: T) {
         objectWillChange.send()
         defaults.set(Self.encoded(value), forKey: Self.keyPrefix + name)
+        decodedValues.removeAll()
         cachedValues = currentValues()
     }
     private func currentValues() -> [String: Any] {
@@ -45,12 +53,13 @@ public final class AppSettings: ObservableObject {
     public func refresh() {
         let values = currentValues()
         if !NSDictionary(dictionary: values).isEqual(to: cachedValues) {
-            objectWillChange.send(); cachedValues = values
+            objectWillChange.send(); decodedValues.removeAll(); cachedValues = values
         }
     }
     public func reset() {
         objectWillChange.send()
         for key in Self.registeredDefaults.keys { defaults.removeObject(forKey: key) }
+        decodedValues.removeAll()
         cachedValues = currentValues()
     }
     public func newWindowRule(for bundleIdentifier: String) -> NewWindowRule {

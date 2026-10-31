@@ -19,7 +19,7 @@ public struct TrackedApp: Identifiable, Hashable {
 }
 
 /// One immutable publication from the tracker, with current Spaces keyed by display UUID.
-public struct WindowSnapshot {
+public struct WindowSnapshot: Equatable {
     public var apps: [TrackedApp]
     public var windows: [TrackedWindow]
     public var activeSpaceIDs: [String: UInt64]
