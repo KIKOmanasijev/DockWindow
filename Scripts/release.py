@@ -229,7 +229,7 @@ def build_release(args):
     shutil.copy2(bin_dir / 'DogBar', app / 'Contents/MacOS/DogBar')
     shutil.copy2(ROOT / 'Resources/AppIcon.icns', app / 'Contents/Resources/AppIcon.icns')
     info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())
-    info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar', CFBundleName='DogBar', CFBundleDisplayName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=b, LSMinimumSystemVersion='14.0')
+    info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar', CFBundleName='DogBar', CFBundleDisplayName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=b, LSMinimumSystemVersion='14.0', DogBarBuildChannel='release')
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps(info))
     # Never sign --deep. The current product has one executable, no nested code.
     run('codesign', '--force', '--sign', selected, '--options', 'runtime', '--timestamp', '--entitlements', entitlements, app)

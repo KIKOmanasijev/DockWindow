@@ -109,7 +109,7 @@ def verify_app(app, identity, value, build):
     expected = dict(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                     CFBundleName='DogBar', CFBundleDisplayName='DogBar',
                     CFBundleShortVersionString=value.split('-')[0], DogBarPreviewVersion=value,
-                    CFBundleVersion=build, LSMinimumSystemVersion='14.0')
+                    CFBundleVersion=build, LSMinimumSystemVersion='14.0', DogBarBuildChannel='preview')
     require(all(info.get(key) == item for key, item in expected.items()), 'Preview app metadata mismatch')
     require(run('xcrun', 'lipo', '-archs', app / 'Contents/MacOS/DogBar').strip() == 'arm64', 'Preview executable must be arm64 only')
     verify_signature(app, identity, app=True)
@@ -194,7 +194,7 @@ def build_preview(args):
     info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                 CFBundleName='DogBar', CFBundleDisplayName='DogBar',
                 CFBundleShortVersionString=value.split('-')[0], DogBarPreviewVersion=value,
-                CFBundleVersion=build, LSMinimumSystemVersion='14.0')
+                CFBundleVersion=build, LSMinimumSystemVersion='14.0', DogBarBuildChannel='preview')
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps(info))
     run('codesign', '--force', '--sign', identity, '--options', 'runtime', '--timestamp=none', '--entitlements', entitlements, app)
     verify_app(app, identity, value, build)

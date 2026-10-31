@@ -151,7 +151,8 @@ public struct TelemetryEvent: Equatable, Sendable {
 public struct TelemetryContext: Sendable {
     public var appVersion: String
     public var build: String
-    /// "preview" for published builds, "development" for local installs, so your own Mac can be filtered out.
+    /// From `DogBarBuildChannel`, stamped by each build script: "development" (Scripts/run.sh),
+    /// "preview" or "release". Unstamped builds count as development.
     public var channel: String
     public var osVersion: String
     public var architecture: String
@@ -161,6 +162,7 @@ public struct TelemetryContext: Sendable {
     public static var current: TelemetryContext {
         let info = Bundle.main.infoDictionary ?? [:]
         let preview = info["DogBarPreviewVersion"] as? String
+        let channel = info["DogBarBuildChannel"] as? String
         let os = ProcessInfo.processInfo.operatingSystemVersion
         #if arch(arm64)
         let architecture = "arm64"
@@ -169,7 +171,7 @@ public struct TelemetryContext: Sendable {
         #endif
         return TelemetryContext(appVersion: preview ?? info["CFBundleShortVersionString"] as? String ?? "0",
                                 build: info["CFBundleVersion"] as? String ?? "0",
-                                channel: preview == nil ? "development" : "preview",
+                                channel: channel ?? "development",
                                 osVersion: "\(os.majorVersion).\(os.minorVersion)",
                                 architecture: architecture,
                                 isReleaseBundle: Bundle.main.bundleURL.pathExtension == "app")

@@ -12,6 +12,8 @@ cp "$bin/DogBar" "$staging/DogBar.app/Contents/MacOS/"
 cp Resources/AppIcon.icns "$staging/DogBar.app/Contents/Resources/"
 cp Resources/Info.plist "$staging/DogBar.app/Contents/"
 /usr/libexec/PlistBuddy -c "Add :DogBarBuildRevision string $(git rev-parse --short HEAD)" "$staging/DogBar.app/Contents/Info.plist"
+# Telemetry tags events with this, so local installs can be filtered out of real usage.
+/usr/libexec/PlistBuddy -c "Add :DogBarBuildChannel string development" "$staging/DogBar.app/Contents/Info.plist"
 # Self-signed development identities can sign stable designated requirements even
 # when system trust policy excludes them from find-identity's valid-only results.
 if security find-identity -p codesigning | /usr/bin/grep -q '"DockWindow Dev"'; then
