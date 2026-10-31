@@ -39,7 +39,8 @@ import QuartzCore
     private var resizeMouseDown = false
     private var dockHeld = false
     private var resizeHandle = CGRect.zero
-    private let resizeGrip = CALayer()
+    private let edgeRim = CAGradientLayer()
+    private let edgeMask = CAShapeLayer()
     private let resizePill = CALayer()
     private var resizeCuePoint = CGPoint.zero
     private var cancelMonitor: Any?
@@ -161,8 +162,8 @@ import QuartzCore
             if item.kind == .separator {
                 let line = separators[item.id] ?? CALayer(); separators[item.id] = line
                 if line.superlayer == nil { iconSurface.layer?.addSublayer(line) }
-                line.backgroundColor = NSColor.separatorColor.cgColor
-                line.frame = settings.dockPosition == .bottom ? CGRect(x: frame.midX, y: frame.minY, width: 1, height: frame.height) : CGRect(x: frame.minX, y: frame.midY, width: frame.width, height: 1)
+                line.backgroundColor = NSColor.labelColor.withAlphaComponent(0.22).cgColor
+                line.frame = settings.dockPosition == .bottom ? CGRect(x: frame.midX, y: frame.minY, width: 1 / scale, height: frame.height) : CGRect(x: frame.minX, y: frame.midY, width: frame.width, height: 1 / scale)
                 continue
             }
             let icon = layers[item.id] ?? DockIconLayer()
@@ -195,9 +196,26 @@ import QuartzCore
             icon.bounce(position: settings.dockPosition, enabled: launching.contains(item.id) && settings.bounceOnLaunch && !Theme.reducesMotion(settings))
         }
         if resizePill.superlayer == nil { layer?.addSublayer(resizePill) }
-        if resizeGrip.superlayer == nil { iconSurface.layer?.addSublayer(resizeGrip) }
+        if edgeRim.superlayer == nil {
+            edgeRim.mask = edgeMask; edgeRim.zPosition = 90
+            edgeRim.startPoint = CGPoint(x: 0.35, y: 1)
+            edgeRim.endPoint = CGPoint(x: 0.65, y: 0)
+            layer?.addSublayer(edgeRim)
+        }
+        // A specular edge only. The surface inside remains native Liquid Glass.
+        edgeRim.frame = bounds
+        edgeRim.colors = [NSColor.white.withAlphaComponent(0.48).cgColor,
+                          NSColor.white.withAlphaComponent(0.08).cgColor,
+                          NSColor.white.withAlphaComponent(0.24).cgColor]
+        edgeRim.locations = [0, 0.5, 1]
+        edgeMask.frame = bounds
+        edgeMask.fillColor = NSColor.clear.cgColor
+        edgeMask.strokeColor = NSColor.white.cgColor
+        edgeMask.lineWidth = 0.75
+        let rimRect = geometry.background.insetBy(dx: 0.375, dy: 0.375)
+        let radius = max(0, min(30, displayedIconSize * 0.3) - 0.375)
+        edgeMask.path = CGPath(roundedRect: rimRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
         let resizeArmed = dockHeld || resizeSession != nil || (!resizeMouseDown && pointer.map { geometry.containsResizeTarget($0, kinds: kinds) } == true)
-        let accent = NSColor.systemPurple
         let edge = geometry.resizeEdge
         let length: CGFloat = 28
         let thickness: CGFloat = 3
@@ -214,15 +232,6 @@ import QuartzCore
         resizePill.backgroundColor = NSColor.white.cgColor
         resizePill.cornerRadius = thickness / 2
         resizePill.isHidden = !resizeArmed
-        let hasSeparator = kinds.contains(.separator)
-        let vertical = hasSeparator ? settings.dockPosition == .bottom : settings.dockPosition != .bottom
-        resizeGrip.frame = CGRect(x: resizeHandle.midX - (vertical ? 1.5 : min(24, resizeHandle.width) / 2),
-                                  y: resizeHandle.midY - (vertical ? min(24, resizeHandle.height) / 2 : 1.5),
-                                  width: vertical ? 3 : min(24, resizeHandle.width),
-                                  height: vertical ? min(24, resizeHandle.height) : 3)
-        resizeGrip.cornerRadius = 1.5
-        resizeGrip.isHidden = resizeHandle.isEmpty
-        resizeGrip.backgroundColor = (resizeArmed ? accent : NSColor.labelColor.withAlphaComponent(0.3)).cgColor
         CATransaction.commit()
         let hovered = !resizeMouseDown ? pointer.flatMap { geometry.containsResizeTarget($0, kinds: kinds) ? nil : geometry.hitTest($0, kinds: kinds) } : nil
         let item = hovered.map { items[$0] }
