@@ -36,7 +36,14 @@ SIGNALS = [
 ]
 MIN_SCORE = 4
 # Another developer announcing their own app: competitor news, not a thread to reply in.
-LAUNCH_POST = re.compile(r"\bI(?:'ve| have)? (?:built|made|created|released)\b|\bdeveloper of\b|\bintroducing\b|\bmy (?:new )?app\b", re.IGNORECASE)
+LAUNCH_POST = re.compile(
+    r"\bI(?:'ve| have)? (?:just )?(?:built|made|created|released|launched)\b|\bmade an? (?:free |small |tiny )?app\b"
+    r"|\bdeveloper of\b|\bintroducing\b|\bmy (?:new |all-in-one )?(?:mac )?(?:app|utility)\b|\b(?:no subscription|\d+-day trial|\$\d+)",
+    re.IGNORECASE)
+# Announcement titles read "AppName - what it does" or "AppName: what it does".
+LAUNCH_TITLE = re.compile(r"^[\w.+ ]{2,24}?\s*[-\u2013\u2014\u2022|:]\s+\S")
+# A question is never an announcement, whatever its punctuation.
+QUESTION = re.compile(r"^(?:question|help|request|looking for|recommendations?|psa|q)\b|\?", re.IGNORECASE)
 STATE = Path.home() / ".dogbar-monitor" / "seen.json"
 ATOM = "{http://www.w3.org/2005/Atom}"
 USER_AGENT = "Mozilla/5.0 (Macintosh) DogBarMonitor/0.1 (+https://dogbar.hristijan.dev)"
@@ -98,7 +105,8 @@ def main() -> int:
                 continue
             link = entry.find(f"{ATOM}link").get("href", "")
             found.append({"id": post_id, "sub": sub, "title": title, "body": body[:600],
-                          "launch": bool(LAUNCH_POST.search(f"{title} {body[:300]}")),
+                          "launch": bool(LAUNCH_POST.search(f"{title} {body[:300]}")
+                                         or (LAUNCH_TITLE.search(title) and not QUESTION.search(title))),
                           "link": link, "score": points, "hits": hits, "updated": updated})
         time.sleep(8)  # Reddit rate-limits anonymous feed reads; space them out
 
