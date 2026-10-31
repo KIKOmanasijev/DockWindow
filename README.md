@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="landing/assets/dog-640.jpg" alt="DogBar app icon: a cartoon dog holding two windows" width="128" height="128">
+  <img src=".github/readme/dogbar-icon.png" alt="DogBar app icon: a cartoon dog holding two windows" width="128" height="128">
 </p>
 
 <h1 align="center">DogBar</h1>
@@ -126,7 +126,7 @@ The development certificate is for local builds. Public distribution uses the se
 <details>
 <summary>Why do some paths and identifiers still say DockWindow?</summary>
 
-DogBar is the product and app display name. Its bundle ID `com.dockwindow.app`, executable `DockWindow`, development install path `~/Applications/DockWindow.app`, settings keys and `DockWindow Dev` certificate name remain unchanged to preserve existing identity and local state. The Swift package and GitHub repository also retain their existing names.
+DogBar is the product, app display name and Swift package name. The bundle ID `com.dockwindow.app`, executable and targets (`DockWindow`, `DockWindowCore`), development install path `~/Applications/DockWindow.app`, settings keys and `DockWindow Dev` certificate name stay unchanged on purpose. Keeping the bundle ID, signing identity and settings keys stable preserves permission matching and access to existing preferences. The GitHub repository also keeps its name.
 
 </details>
 
