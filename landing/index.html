@@ -37,6 +37,7 @@
     <symbol id="i-wifi" viewBox="0 0 20 16"><path d="M10 13.6 7.7 11.3a3.3 3.3 0 0 1 4.6 0zM4.9 8.5a7.3 7.3 0 0 1 10.2 0l-1.6 1.6a5 5 0 0 0-7 0zM2.1 5.7a11.3 11.3 0 0 1 15.8 0l-1.6 1.6a9 9 0 0 0-12.6 0z" fill="currentColor"/></symbol>
     <symbol id="i-search" viewBox="0 0 16 16"><circle cx="6.6" cy="6.6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m10.1 10.1 4.1 4.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
     <symbol id="i-control" viewBox="0 0 18 16"><rect x="1" y="1.5" width="16" height="5.4" rx="2.7" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="13.9" cy="4.2" r="1.7" fill="currentColor"/><rect x="1" y="9.1" width="16" height="5.4" rx="2.7" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="4.1" cy="11.8" r="1.7" fill="currentColor"/></symbol>
+    <symbol id="i-swipe" viewBox="0 0 64 24"><path d="M58 12H8m0 0 8-8m-8 8 8 8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><path d="M36 5h14M40 19h12" stroke="currentColor" stroke-opacity=".4" stroke-width="2.4" stroke-linecap="round"/></symbol>
     <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5 3.5 19 12l-6.4 1.4L9.6 20z" fill="#1a1033" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   </svg>
 
@@ -79,7 +80,7 @@
       <section class="stage" id="demo" aria-labelledby="demo-title" aria-describedby="demo-keys" tabindex="-1">
         <h2 id="demo-title" class="sr-only">Interactive DogBar demo</h2>
         <div class="mac" data-demo>
-          <!-- The camera wraps the whole screen so the tour can zoom into the Dock. -->
+          <!-- Everything on the screen; the pointer is positioned in these coordinates. -->
           <div class="cam" data-cam>
             <div class="menubar" aria-hidden="true">
               <span class="menubar-left">
@@ -109,7 +110,7 @@
           </div>
           <p class="keys" data-keys aria-hidden="true" hidden><kbd>⌥ Option</kbd> + <kbd>⇥ Tab</kbd></p>
           <div class="swipe" data-swipe aria-hidden="true" hidden>
-            <span class="swipe-pad"><i></i><i></i><i></i></span>
+            <svg class="swipe-arrow" focusable="false"><use href="#i-swipe"/></svg>
             <span class="swipe-label" data-swipe-label>Desktop 2</span>
             <span class="swipe-dots"><i data-swipe-dot="1"></i><i data-swipe-dot="2"></i></span>
           </div>

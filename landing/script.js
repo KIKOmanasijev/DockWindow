@@ -295,6 +295,7 @@
           <span class="pv-name">${w.title}</span></div>`).join("")
         : `<p class="pv-empty">No open windows on this desktop</p>`);
     preview.hidden = false;
+    mac.classList.add("is-focus");
     placePreview(btn);
     if (intro) say(INTRO_TEXT);
     else if (announce) {
@@ -333,6 +334,7 @@
     state.previewApp = null;
     state.intro = false;
     preview.hidden = true;
+    mac.classList.remove("is-focus");
     preview.innerHTML = "";
     preview.classList.remove("is-intro");
     dock.querySelectorAll(".dock-btn").forEach((b) => b.setAttribute("aria-expanded", "false"));
@@ -512,7 +514,7 @@
   showIntro();
 
   // ---------- Guided tour ----------
-  // Plays the three ideas with a pointer, a swipe HUD and a camera that zooms in. It uses
+  // Plays the three ideas with a pointer, a swipe HUD and a soft spotlight. It uses
   // the same functions as the hands-on demo, never moves focus, and stops for good as
   // soon as someone uses the demo. It starts only while the demo is on screen and never
   // on its own under reduced motion.
@@ -524,23 +526,22 @@
   const tour = { run: 0, scene: 0, playing: false, userTook: false };
   const STOP = Symbol("tour stopped");
 
-  // Centre of an element in the camera's own (unzoomed) coordinates. Layout offsets
-  // ignore transforms, so the preview's translateX(-50%) is corrected by hand.
-  function spot(el, { bottom = false } = {}) {
+  // Centre of an element in screen coordinates. Layout offsets ignore transforms, so
+  // the preview's translateX(-50%) is corrected by hand.
+  function spot(el) {
     let x = el.offsetWidth / 2;
-    let y = bottom ? el.offsetHeight : el.offsetHeight / 2;
+    let y = el.offsetHeight / 2;
     for (let n = el; n && n !== cam; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
     if (preview.contains(el)) x -= preview.offsetWidth / 2;
     return { x, y };
   }
-  function zoom(scale, el, opts) {
-    if (scale === 1 || !el) { cam.style.transform = ""; return; }
-    const p = spot(el, opts);
-    cam.style.transformOrigin = `${p.x}px ${p.y}px`;
-    cam.style.transform = `scale(${scale})`;
+  // Draws the eye to the Dock: the desktop dims and the Dock glows. No zoom, so
+  // nothing is ever cropped.
+  function spotlightDock(on) {
+    mac.classList.toggle("is-focus", on);
+    dock.classList.remove("is-spot");
+    if (on) { void dock.offsetWidth; dock.classList.add("is-spot"); }
   }
-  // Zoom as far as asked, but never so far that the element spills off a narrow screen.
-  const fit = (scale, el) => (el.offsetWidth ? Math.max(1, Math.min(scale, (cam.clientWidth * 0.94) / el.offsetWidth)) : scale);
   const point = (el) => {
     const p = spot(el);
     pointer.style.transform = `translate(${p.x}px, ${p.y}px)`;
@@ -563,7 +564,6 @@
       await wait(1100);
       point(dock.querySelector('[data-app="safari"]'));
       await wait(1000);
-      zoom(fit(1.55, dock), dock, { bottom: true });
       openPreview("safari");
       await wait(1500);
       const shot = preview.querySelector('[data-focus="s2"]');
@@ -571,7 +571,6 @@
       await wait(1300);
       press();
       focusWindow("s2");
-      zoom(1);
       await wait(2700);
     } },
     // Option+Tab over a single window: step to the Slack chat, let go, and it replaces
@@ -582,17 +581,15 @@
       pointer.classList.remove("is-on");
       keys.hidden = false;
       openSwitcher();
-      zoom(1.2, switcher);
       await wait(1500);
       stepSwitcher(1);
       await wait(2400);
       keys.hidden = true;
       releaseSwitcher({ focus: false });
-      zoom(1);
       await wait(1700);
     } },
-    // A three-finger swipe to Desktop 2, then a close look at its Dock, and back.
-    { ms: 9200, run: async (wait) => {
+    // A swipe to Desktop 2, a spotlight on its Dock, and back.
+    { ms: 8600, run: async (wait) => {
       closeAll();
       if (state.desk !== 1) setDesk(1, { hud: false });
       pointer.classList.remove("is-on");
@@ -601,19 +598,19 @@
       showSwipe(2, 1);
       await wait(700);
       setDesk(2, { hud: false });
-      await wait(700);
-      zoom(fit(1.8, dock), dock, { bottom: true });
+      await wait(600);
+      spotlightDock(true);
       await wait(2600);
-      zoom(1);
-      await wait(900);
+      spotlightDock(false);
+      await wait(600);
       showSwipe(1, -1);
       await wait(700);
       setDesk(1, { hud: false });
-      await wait(700);
-      zoom(fit(1.8, dock), dock, { bottom: true });
+      await wait(600);
+      spotlightDock(true);
       await wait(2000);
-      zoom(1);
-      await wait(500);
+      spotlightDock(false);
+      await wait(400);
     } },
   ];
 
@@ -635,7 +632,8 @@
     caption.setAttribute("aria-live", on ? "off" : "polite"); // no running commentary for screen readers
     tourBtn.setAttribute("aria-label", on ? "Pause the demo" : "Play the demo");
     if (!on) {
-      zoom(1);
+      dock.classList.remove("is-spot");
+      mac.classList.toggle("is-focus", state.mode === "preview");
       pointer.classList.remove("is-on", "press");
       keys.hidden = true;
       swipeHud.hidden = true;
