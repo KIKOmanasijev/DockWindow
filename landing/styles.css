@@ -295,8 +295,17 @@ html:not(.js) .tour { display: none; }
   position: relative; display: flex; justify-content: center; align-items: center; gap: 6px;
   width: 92px; height: 58px; border: 1.5px solid rgba(255, 255, 255, .45); border-radius: 10px;
 }
-.swipe-pad i { width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(255, 255, 255, .18); }
-.swipe.go .swipe-pad i { animation: fingers .7s cubic-bezier(.65, 0, .35, 1) both; }
+/* Three separate fingertips glide across the pad and lift off, leaving a short trail
+   that shows the direction. They never rest against the pad's edge. */
+.swipe-pad { overflow: hidden; gap: 8px; }
+.swipe-pad i { position: relative; z-index: 1; width: 8px; height: 8px; border-radius: 50%; background: #fff; opacity: 0; }
+.swipe-pad::before {
+  content: ""; position: absolute; top: 50%; left: 50%; width: 54px; height: 8px; margin: -4px 0 0 -27px;
+  border-radius: 4px; opacity: 0;
+  background: linear-gradient(calc(var(--dir, 1) * -90deg), rgba(255, 255, 255, 0), rgba(255, 255, 255, .35));
+}
+.swipe.go .swipe-pad i { animation: fingers .9s cubic-bezier(.45, 0, .25, 1) .1s both; }
+.swipe.go .swipe-pad::before { animation: trail .9s cubic-bezier(.45, 0, .25, 1) .1s both; }
 .swipe-label { font-size: .85rem; font-weight: 650; }
 .swipe-dots { display: flex; gap: 5px; }
 .swipe-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .35); }
@@ -793,7 +802,17 @@ html:not(.js) .tour { display: none; }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, 8px); } }
 @keyframes slide-in { from { transform: translateX(calc(var(--dir, 1) * 100%)); } }
 @keyframes slide-out { to { transform: translateX(calc(var(--dir, 1) * -100%)); } }
-@keyframes fingers { from { transform: translateX(calc(var(--dir, 1) * 16px)); } to { transform: translateX(calc(var(--dir, 1) * -16px)); } }
+@keyframes fingers {
+  0% { opacity: 0; transform: translateX(calc(var(--dir, 1) * 14px)); }
+  20% { opacity: 1; transform: translateX(calc(var(--dir, 1) * 12px)); }
+  75% { opacity: 1; transform: translateX(calc(var(--dir, 1) * -12px)); }
+  100% { opacity: 0; transform: translateX(calc(var(--dir, 1) * -14px)); }
+}
+@keyframes trail {
+  0%, 20% { opacity: 0; transform: translateX(calc(var(--dir, 1) * 8px)) scaleX(.3); }
+  70% { opacity: 1; transform: translateX(0) scaleX(1); }
+  100% { opacity: 0; transform: translateX(calc(var(--dir, 1) * -10px)) scaleX(1); }
+}
 @keyframes hud { from { opacity: 0; transform: translate(-50%, -50%) scale(.94); } }
 @keyframes win-flash { from { transform: scale(.985); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(110, 36, 230, .45); } 100% { box-shadow: 0 0 0 9px rgba(110, 36, 230, 0); } }
@@ -802,6 +821,8 @@ html:not(.js) .tour { display: none; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation-duration: .001ms !important; animation-delay: 0s !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; transition-delay: 0s !important; }
   .js .reveal, .js .reveal.in, .js .compare.reveal .is-dogbar .fx-tile { opacity: 1; transform: none; }
+  .swipe.go .swipe-pad i { animation: none !important; opacity: 1; }
+  .swipe.go .swipe-pad::before { animation: none !important; }
 }
 
 /* ---------- Responsive ---------- */
