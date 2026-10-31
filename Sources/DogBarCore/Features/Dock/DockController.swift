@@ -267,7 +267,8 @@ import ApplicationServices
             if let app = item.app, NSRunningApplication(processIdentifier: app.pid)?.isFinishedLaunching == true { launching.remove(item.id) }
         }
         view.images = view.images.filter { key, _ in items.contains { $0.id == key } }
-        view.launching = launching; view.render()
+        // External launches (Spotlight/Finder) deserve the same launch feedback as clicks.
+        view.launching = launching.union(pendingLaunches.values.map { $0.bundleIdentifier ?? "pid:\($0.pid)" }); view.render()
         keepMaximizedWindowsClear(snapshot: snapshot, screen: nextScreen)
         if !panel.isVisible { panel.orderFrontRegardless() }
         updatePointer()
@@ -438,7 +439,8 @@ import ApplicationServices
     private func launch(_ item: DockItem) {
         guard let url = item.pinnedApp?.url ?? item.app?.bundleURL else { report("This application's location is unavailable. Pin it again from Finder."); return }
         guard !launching.contains(item.id) else { return }
-        launching.insert(item.id); view.launching = launching; view.render()
+        launching.insert(item.id)
+        view.launching = launching.union(pendingLaunches.values.map { $0.bundleIdentifier ?? "pid:\($0.pid)" }); view.render()
         let token = lifecycleGeneration
         let configuration = NSWorkspace.OpenConfiguration(); configuration.activates = true
         NSWorkspace.shared.openApplication(at: url, configuration: configuration) { [weak self] _, error in

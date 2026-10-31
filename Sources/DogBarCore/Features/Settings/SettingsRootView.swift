@@ -65,7 +65,8 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                     Text((pane ?? .general).rawValue).font(.system(size: 24, weight: .semibold))
                     Text((pane ?? .general).detail).font(.callout).foregroundStyle(.secondary)
                 }.padding(.horizontal, 28).padding(.top, 24).padding(.bottom, 8)
-                Form {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
                     switch pane ?? .general {
                     case .general: general
                     case .dock: DockSettingsPane(settings: settings)
@@ -74,15 +75,16 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                     case .appearance: AppearanceSettingsPane(settings: settings)
                     case .advanced: advanced
                     }
-                }.formStyle(.grouped).scrollContentBackground(.hidden)
-                    // Each pane owns an independent form tree. Do not diff unrelated rows
+                    }.padding(28).frame(maxWidth: .infinity, alignment: .leading)
+                }
+                    // Each pane owns an independent scroll tree. Do not diff unrelated rows
                     // (or animate their removal/insertion) when navigating between panes.
                     .id(pane ?? .general)
                     .transaction { $0.animation = nil }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
-        .toggleStyle(.switch)
+        .toggleStyle(SettingsToggleStyle())
         .controlSize(.regular)
         .onChange(of: pane) { _, _ in SettingsShortcutRecording.activeRecorder?.finish() }
         .task(id: visibility.isVisible) {
@@ -158,7 +160,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
 
     private var general: some View {
         Group {
-            Section("Startup") {
+            SettingsSection("Startup") {
                 Toggle("Launch at login", isOn: Binding(get: { settings.launchAtLogin }, set: { setLogin($0) }))
                     .disabled(loginBusy || loginStatusChecking).settingsDescription("Start DogBar when you sign in. Status: \(loginStatusText).")
                 if loginStatus == .requiresApproval {
@@ -168,7 +170,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                 Toggle("Show menu bar icon", isOn: $settings.showMenuBarIcon)
                     .settingsDescription("Open Settings by launching DogBar again if the icon is hidden.")
             }
-            Section("Permissions") {
+            SettingsSection("Permissions") {
                 permissionRow("Accessibility", granted: permissions.accessibility, description: "Allows window focus, controls and keyboard shortcuts.", action: permissions.openAccessibility)
                 permissionRow("Screen Recording", granted: permissions.screenRecording, description: "Allows window thumbnails. A relaunch may be needed after granting access.", action: permissions.openScreenRecording)
                 Button("Show permission setup", action: onShowPermissions)
@@ -181,7 +183,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                         .font(.caption).foregroundStyle(.secondary)
                 }
             }
-            Section("Session") {
+            SettingsSection("Session") {
                 Toggle("Pause DogBar", isOn: $settings.isPaused)
                     .settingsDescription("Suspend features and restore the native Dock while paused.")
                 Button("Restore Native Dock", action: onRestoreNativeDock)
@@ -240,7 +242,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
     }
     private var advanced: some View {
         Group {
-            Section("Private API availability") {
+            SettingsSection("Private API availability") {
                 ForEach(DiagnosticsService.privateAPIAvailability.keys.sorted(), id: \.self) { symbol in
                     Label(symbol, systemImage: DiagnosticsService.privateAPIAvailability[symbol] == true ? "checkmark.circle.fill" : "xmark.circle.fill")
                         .foregroundStyle(DiagnosticsService.privateAPIAvailability[symbol] == true ? Color.green : Color.red)
@@ -248,7 +250,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                 }
                 Text("Symbol presence enables a capability but does not guarantee every call succeeds.").font(.caption).foregroundStyle(.secondary)
             }
-            Section("Diagnostics") {
+            SettingsSection("Diagnostics") {
                 Toggle("Debug logging", isOn: Binding(get: { settings.debugLogging }, set: { settings.debugLogging = $0; DiagnosticsService.setDebugLogging($0) }))
                     .settingsDescription("Write extra diagnostics to the local log file.")
                 Button("Reveal log file") { DiagnosticsService.revealLogFile() }

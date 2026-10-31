@@ -4,7 +4,7 @@ import SwiftUI
     @ObservedObject var settings: AppSettings
     var body: some View {
         Group {
-            Section("Dock previews") {
+            SettingsSection("Dock previews") {
                 Toggle("Enable Dock previews", isOn: $settings.previewsEnabled).settingsDescription("Show window thumbnails when hovering either Dock.")
                 SettingsSlider(title: "Hover delay", description: "Wait this long before opening a preview.", value: $settings.previewHoverDelay, range: 0...1, step: 0.01, unit: "s")
                 SettingsSlider(title: "Preview height", description: "Set the height of each preview thumbnail.", value: $settings.previewThumbnailHeight, range: 80...400, step: 1, unit: "pt")

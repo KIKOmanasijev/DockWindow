@@ -61,3 +61,30 @@ func settingsLabel(_ raw: String) -> String {
         })).settingsDescription(description)
     }
 }
+
+/// Lightweight native controls avoid the grouped Form's row reconciliation and layout.
+@MainActor struct SettingsSection<Content: View>: View {
+    let title: String
+    let content: Content
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title; self.content = content()
+    }
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) { content }
+                .padding(16).frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.primary.opacity(0.035), in: RoundedRectangle(cornerRadius: 12))
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+@MainActor struct SettingsToggleStyle: ToggleStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        HStack {
+            configuration.label
+            Spacer(minLength: 20)
+            Toggle("", isOn: configuration.$isOn).labelsHidden().toggleStyle(.switch)
+        }
+    }
+}

@@ -12,6 +12,7 @@ import Combine
     private let worker = WindowTrackingWorker()
     private var tokens: [NSObjectProtocol] = []
     private var timer: DispatchSourceTimer?
+    private var launchRefreshTasks: [pid_t: Task<Void, Never>] = [:]
     private var started = false
     internal var isRunning: Bool { started }
     internal private(set) var actionCancellation = OperationCancellation()
@@ -20,6 +21,7 @@ import Combine
     public init() {}
     deinit {
         actionCancellation.cancel()
+        for task in launchRefreshTasks.values { task.cancel() }
         timer?.cancel(); worker.stop()
         for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token); NotificationCenter.default.removeObserver(token) }
     }
@@ -72,6 +74,13 @@ import Combine
                     if name == NSWorkspace.activeSpaceDidChangeNotification || name == NSWorkspace.didActivateApplicationNotification {
                         self.worker.requestSpaces()
                     }
+                    if let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication {
+                        if name == NSWorkspace.didLaunchApplicationNotification ||
+                           (name == NSWorkspace.didActivateApplicationNotification && !self.snapshot.windows.contains(where: { $0.pid == app.processIdentifier })) {
+                            self.refreshAfterLaunch(pid: app.processIdentifier)
+                        }
+                        if name == NSWorkspace.didTerminateApplicationNotification { self.launchRefreshTasks.removeValue(forKey: app.processIdentifier)?.cancel() }
+                    }
                     self.refresh()
                 }
             })
@@ -88,10 +97,26 @@ import Combine
     }
     public func stop() {
         actionCancellation.cancel()
+        for task in launchRefreshTasks.values { task.cancel() }; launchRefreshTasks.removeAll()
         started = false; generation += 1; eventState = DockFocusSnapshotPolicy()
         timer?.cancel(); timer = nil
         for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token); NotificationCenter.default.removeObserver(token) }
         tokens.removeAll(); worker.stop()
+    }
+    /// Close the startup gap where a process is running before its first AX window exists.
+    /// A bounded retry sequence, not a permanent inventory polling loop.
+    private func refreshAfterLaunch(pid: pid_t) {
+        guard launchRefreshTasks[pid] == nil else { return }
+        launchRefreshTasks[pid] = Task { @MainActor [weak self] in
+            defer { self?.launchRefreshTasks.removeValue(forKey: pid) }
+            for delay in [150, 300, 600, 1200, 2000, 3000] {
+                do { try await Task.sleep(for: .milliseconds(delay)) } catch { return }
+                guard let self, self.started,
+                      NSRunningApplication(processIdentifier: pid)?.isTerminated == false else { return }
+                if self.snapshot.windows.contains(where: { $0.pid == pid && !$0.spaceIDs.isEmpty }) { return }
+                self.refresh()
+            }
+        }
     }
     public func refresh() {
         guard started else { return }
@@ -325,6 +350,9 @@ private final class WindowTrackingWorker: @unchecked Sendable {
         }
         let running = Set(apps.map(\.pid))
         for pid in observedPIDs.subtracting(running) { hub?.remove(pid: pid) }
+        // Register before the first query: the app may create its first window while
+        // AXWindows is empty (or not yet responding) during startup.
+        for pid in running.subtracting(observedPIDs) { hub?.update(pid: pid, windows: []) }
         observedPIDs = running
         let scanDeadline = ProcessInfo.processInfo.systemUptime + 0.25
         var hasGaps = false

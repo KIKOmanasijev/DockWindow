@@ -4,7 +4,7 @@ import SwiftUI
     @ObservedObject var settings: AppSettings
     var body: some View {
         Group {
-            Section("Appearance") {
+            SettingsSection("Appearance") {
                 SettingsChoice(title: "Theme", description: "Follow macOS appearance or choose light or dark panels.", value: $settings.theme)
                 Toggle("Custom selection highlight", isOn: $settings.useCustomSelectionColor).settingsDescription("Use a chosen color instead of the system accent color.")
                 SettingsColorPicker(title: "Selection color", description: "Choose the selected window highlight color.", value: $settings.selectionColor).disabled(!settings.useCustomSelectionColor)
