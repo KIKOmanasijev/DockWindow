@@ -154,14 +154,14 @@ kbd { font: inherit; }
 .headline {
   margin-top: .8rem;
   font-family: var(--display);
-  font-size: clamp(2.4rem, 4.2vw, 3.75rem);
+  font-size: clamp(2.25rem, 3.7vw, 3.35rem);
   font-weight: 750;
   letter-spacing: -.035em;
-  line-height: 1.02;
+  line-height: 1.04;
   text-wrap: balance;
 }
 .lede {
-  max-width: 48ch; margin-top: 1.2rem;
+  max-width: 46ch; margin-top: 1.2rem;
   font-size: clamp(1.05rem, 1.5vw, 1.2rem);
   color: rgba(255, 255, 255, .84);
   text-wrap: pretty;
@@ -688,6 +688,68 @@ html:not(.js) .tour { display: none; }
 .fx-legend-row { flex-wrap: wrap; justify-content: center; gap: .3rem 1rem; }
 .fx-legend-row b { color: var(--ink); }
 
+/* ---------- A Dock per desktop, alt-tab and the familiar Dock ---------- */
+.feature-copy > p.feature-aside {
+  margin-top: 1rem; max-width: 44ch;
+  font-size: .95rem; font-weight: 600; color: var(--purple-600);
+}
+/* The second wide feature mirrors the first: art on the left, copy on the right. */
+.feature-wide + .feature-wide { margin-top: clamp(4.5rem, 9vw, 7rem); }
+.feature-wide.is-flip { grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); }
+.feature-wide.is-flip .feature-copy { order: 2; }
+
+/* Two desktops, each with its own wallpaper and its own Dock. */
+.desks-art {
+  display: grid; gap: 14px;
+  padding: clamp(1rem, 2.4vw, 1.6rem);
+  background:
+    radial-gradient(70% 80% at 15% 15%, #f2eaff 0%, rgba(242, 234, 255, 0) 60%),
+    linear-gradient(150deg, #ddd0ff 0%, #f1eaff 55%, #ffe6ee 100%);
+}
+.desks-art-row { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; gap: 10px; }
+.desk-screen {
+  position: relative;
+  display: grid; justify-items: center; align-content: space-between; gap: 8px;
+  aspect-ratio: 16 / 11;
+  padding: 10px 8px 8px;
+  background: #c9b8ff url("assets/wallpaper-1.svg") center / cover;
+  border: 4px solid #0e0c13; border-radius: 12px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .5), 0 18px 36px -18px rgba(20, 4, 60, .55);
+  overflow: hidden;
+}
+.desk-screen[data-wall="2"] { background: #bfe8e6 url("assets/wallpaper-2.svg") center / cover; }
+.desk-screen-name {
+  justify-self: start;
+  padding: .15rem .5rem;
+  font-size: .72rem; font-weight: 700; color: var(--ink);
+  background: rgba(255, 255, 255, .72); border-radius: 999px;
+}
+.desk-screen-win { width: 62%; box-shadow: 0 0 0 .5px rgba(0, 0, 0, .2), 0 12px 22px -10px rgba(16, 6, 46, .5); }
+/* Seven icons per Dock: they shrink with the desktop so the Dock never overflows it. */
+.desk-screen { container-type: inline-size; }
+.desk-screen .fx-dock { gap: 2px; padding: 4px 5px 3px; border-radius: 12px; }
+.desk-screen .fx-dock-app { padding: 2px 1px 0; }
+.desk-screen .fx-dock-app img { width: min(26px, 9.6cqi); height: min(26px, 9.6cqi); }
+.desk-screen .fx-sep { margin-inline: 2px; }
+.desk-screen .fx-dots { height: 4px; gap: 3px; }
+.desk-screen .fx-dots i { width: 4px; height: 4px; }
+.desks-art-swipe { width: 34px; height: 14px; color: var(--purple); transform: scaleX(-1); }
+.desks-art-legend { justify-content: center; }
+
+/* A small Music window for Desktop 2, drawn like the other CSS thumbnails. */
+.thumb-music {
+  background-image:
+    linear-gradient(#ff6b8b, #ff6b8b), linear-gradient(#6e24e6, #6e24e6), linear-gradient(#ffb020, #ffb020),
+    linear-gradient(#5c5378, #5c5378), linear-gradient(#cbc4da, #cbc4da), linear-gradient(#cbc4da, #cbc4da);
+  background-size: 14% 16%, 14% 16%, 14% 16%, 40% 7%, 44% 6%, 36% 6%;
+  background-position: 10% 30%, 10% 56%, 10% 82%, 70% 28%, 74% 56%, 64% 82%;
+}
+
+/* The familiar-Dock group: a short heading over the three Dock cards. */
+.familiar-head { max-width: 640px; margin: clamp(5rem, 10vw, 7.5rem) auto 0; text-align: center; }
+.familiar-head > p:last-child { margin-top: 1rem; font-size: clamp(1rem, 1.3vw, 1.125rem); color: var(--muted); text-wrap: pretty; }
+.familiar-head + .feature-grid { margin-top: clamp(2.5rem, 5vw, 3.5rem); }
+
 /* ---------- Dock modes ---------- */
 .modes { padding: clamp(4rem, 8vw, 6rem) var(--gutter); background: var(--surface); border-block: 1px solid var(--line); }
 .modes-head { max-width: 640px; margin: 0 auto; text-align: center; }
@@ -818,6 +880,8 @@ html:not(.js) .tour { display: none; }
   .feature-wide { grid-template-columns: 1fr; max-width: 640px; }
   .feature-grid { grid-template-columns: 1fr; max-width: 560px; }
   .steps { grid-template-columns: 1fr; max-width: 480px; margin-inline: auto; }
+  .feature-wide.is-flip { grid-template-columns: 1fr; max-width: 640px; }
+  .feature-wide.is-flip .feature-copy { order: 0; }
 }
 @media (max-width: 640px) {
   .nav { gap: .8rem; }
@@ -848,6 +912,10 @@ html:not(.js) .tour { display: none; }
   /* The switcher fills a phone screen; show compact keys over the menu bar instead. */
   .keys { top: 2px; z-index: 11; gap: .25rem; padding: .1rem .4rem; font-size: .66rem; border-radius: 7px; }
   .keys kbd { padding: 0 .3rem; border-radius: 4px; }
+}
+@media (max-width: 560px) {
+  .desks-art-row { grid-template-columns: 1fr; justify-items: stretch; }
+  .desks-art-swipe { justify-self: center; transform: rotate(-90deg); }
 }
 @media (max-width: 380px) {
   .btn { width: 100%; }

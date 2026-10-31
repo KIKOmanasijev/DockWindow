@@ -19,7 +19,7 @@ test("feature illustrations never inherit album-cover dimensions", { skip: !JSDO
     style.textContent = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
     document.head.append(style);
     const figures = [...document.querySelectorAll(".feature figure")];
-    assert.equal(figures.length, 4);
+    assert.equal(figures.length, 5);
     for (const figure of figures) {
       assert.ok(figure.classList.contains("feature-art"));
       assert.equal(figure.matches(".music .art, .album-art"), false);
@@ -29,7 +29,7 @@ test("feature illustrations never inherit album-cover dimensions", { skip: !JSDO
       assert.equal(computed.height, "auto", "grow with the visual inside");
     }
     // App icons inside the feature visuals keep their own fixed sizes.
-    const icon = document.querySelector(".fx-dock-app img");
+    const icon = document.querySelector(".feature-grid .fx-dock-app img");
     assert.equal(dom.window.getComputedStyle(icon).width, "34px");
     // Cmd+Tab icons scale by width and keep their square shape instead of stretching.
     const appIcon = dom.window.getComputedStyle(document.querySelector(".fx-app img"));

@@ -141,7 +141,7 @@ test("hero leads with a benefit, and the dog stays a brand mark", { skip }, asyn
 test("feature visuals are labelled pictures that never collide with demo hooks", { skip }, async () => {
   const { $$ } = await page(json(null));
   const figures = $$("#features figure.feature-art");
-  assert.equal(figures.length, 4);
+  assert.equal(figures.length, 5);
   for (const fig of figures) {
     assert.equal(fig.getAttribute("role"), "img");
     assert.ok((fig.getAttribute("aria-label") || "").length > 40, "each visual has a text equivalent");

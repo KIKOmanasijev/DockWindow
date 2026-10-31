@@ -2,7 +2,8 @@
 // macOS only: AppKit draws each installed app's icon (osascript, JavaScript for
 // Automation), then png.mjs re-encodes it at 96px. No dependencies, nothing hosted.
 //
-//   node landing/tools/app-icons.mjs
+//   node landing/tools/app-icons.mjs            every icon
+//   node landing/tools/app-icons.mjs tv mail    only the named ones
 //
 // Icons belong to their makers; the page shows them only to depict those apps.
 import { execFileSync } from "node:child_process";
@@ -18,6 +19,14 @@ const APPS = {
   slack: "/Applications/Slack.app",
   notes: "/System/Applications/Notes.app",
   music: "/System/Applications/Music.app",
+  // The work and personal Docks in the per-desktop pictures.
+  figma: "/Applications/Figma.app",
+  mail: "/System/Applications/Mail.app",
+  calendar: "/System/Applications/Calendar.app",
+  chrome: "/Applications/Google Chrome.app",
+  tv: "/System/Applications/TV.app",
+  photos: "/System/Applications/Photos.app",
+  messages: "/System/Applications/Messages.app",
 };
 
 // Draws the icon at 2x the target into an RGBA bitmap and writes it as PNG.
@@ -37,7 +46,10 @@ function run(argv) {
 }`;
 
 mkdirSync(OUT, { recursive: true });
+const only = process.argv.slice(2);
+for (const key of only) if (!APPS[key]) throw new Error(`Unknown app: ${key}`);
 for (const [key, app] of Object.entries(APPS)) {
+  if (only.length && !only.includes(key)) continue;
   const file = fileURLToPath(new URL(`${key}.png`, OUT));
   // Resolve symlinks (Safari lives in a cryptex), or AppKit adds an alias arrow.
   execFileSync("osascript", ["-l", "JavaScript", "-e", JXA, realpathSync(app), file, String(SIZE * 2)]);

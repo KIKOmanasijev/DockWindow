@@ -50,7 +50,7 @@
       "license": "https://github.com/KIKOmanasijev/DockWindow/blob/main/LICENSE",
       "sameAs": "https://github.com/KIKOmanasijev/DockWindow",
       "featureList": [
-        "One preview tile per window in the Option+Tab switcher",
+        "One preview tile per window in the window switcher",
         "Window previews when hovering the Dock",
         "A separate Dock for each desktop",
         "Window-count indicators",
@@ -87,7 +87,7 @@
           "name": "Do I have to replace Apple’s Dock?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Native Dock mode keeps Apple’s Dock and still adds window previews and the better alt-tab."
+            "text": "No. Native Dock mode keeps Apple’s Dock and still adds window previews and better window switching."
           }
         },
         {
@@ -108,10 +108,18 @@
         },
         {
           "@type": "Question",
-          "name": "How do I alt-tab with DogBar?",
+          "name": "How do I switch windows with DogBar?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Hold Option and tap Tab. Add Shift to go back, or use the arrow keys. Let go of Option to switch, or press Escape to cancel."
+            "text": "Press the switcher shortcut and keep holding its modifier key. Tap again to move on, add Shift to go back, or use the arrow keys. Let go to switch, or press Escape to cancel."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I change the window switching shortcut?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. It’s Option+Tab by default. Record a different one in Settings → Switcher. You can also have the switcher show apps instead of windows, or turn it off and keep Apple’s Cmd+Tab."
           }
         }
       ]
@@ -159,14 +167,14 @@
 
     <div class="hero-inner">
       <div class="hero-copy" id="top">
-        <p class="eyebrow">A better alt-tab and Dock for Mac</p>
-        <h1 class="headline">Window management your Mac should have shipped with.</h1>
-        <p class="lede">DogBar is a window switcher and Dock for macOS. See every window, preview it from the Dock, and switch straight to the one you need.</p>
+        <p class="eyebrow">A familiar Dock and window switcher for Mac</p>
+        <h1 class="headline">A separate Dock for every desktop, and better window switching.</h1>
+        <p class="lede">DogBar gives each desktop its own Mac-style Dock with just the apps open there. Hover an app to preview its windows, or switch straight to the one you need.</p>
         <ul class="scribbles" aria-label="What DogBar gives you">
-          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>see every window when you alt-tab, not just apps</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>each desktop’s Dock shows only its own apps</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>feels like the Dock you already know</li>
           <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>hover an app in the Dock to preview its windows</li>
-          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>get a separate Dock on every desktop</li>
-          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>see how many windows each app has, right in the Dock</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>switch to any window, not just any app</li>
         </ul>
         <div class="actions">
           <a class="btn btn-download" data-download aria-describedby="hero-dl-note">
@@ -221,7 +229,7 @@
         <div class="tour" role="group" aria-label="Demo chapters">
           <ol class="tour-steps">
             <li><button type="button" class="tour-step" data-tour-step="0">Preview from the Dock<i class="tour-bar" aria-hidden="true"></i></button></li>
-            <li><button type="button" class="tour-step" data-tour-step="1">Alt-tab to any window<i class="tour-bar" aria-hidden="true"></i></button></li>
+            <li><button type="button" class="tour-step" data-tour-step="1">Switch to any window<i class="tour-bar" aria-hidden="true"></i></button></li>
             <li><button type="button" class="tour-step" data-tour-step="2">A Dock per desktop<i class="tour-bar" aria-hidden="true"></i></button></li>
           </ol>
           <button type="button" class="tour-toggle" data-tour-toggle aria-label="Play the demo">
@@ -231,7 +239,7 @@
         </div>
         <p class="caption" data-caption>Safari has two windows open, but you can only see one. DogBar’s Dock preview shows both.</p>
         <noscript><p class="caption">The demo needs JavaScript. The pictures below show the same ideas.</p></noscript>
-        <p class="sr-only" id="demo-desc">A short looping animation of DogBar on a Mac. First, hovering Safari in the Dock shows previews of its two windows, and clicking “Hotel booking” brings just that window forward. Next, Option+Tab shows one tile per window and switches to a Slack chat. Last, swiping to Desktop 2 shows a Dock with only that desktop’s apps.</p>
+        <p class="sr-only" id="demo-desc">A short looping animation of DogBar on a Mac. First, hovering Safari in the Dock shows previews of its two windows, and clicking “Hotel booking” brings just that window forward. Next, the window switcher shows one tile per window and switches to a Slack chat. Last, swiping to Desktop 2 shows a Dock with only that desktop’s apps.</p>
       </section>
     </div>
   </header>
@@ -240,11 +248,54 @@
     <section class="features" id="features" aria-labelledby="features-title">
       <article class="feature feature-wide">
         <div class="feature-copy">
-          <p class="kicker">Alt-tab, done right</p>
-          <h2 id="features-title" class="section-title">Alt-tab to any window, not just any app.</h2>
-          <p>On a Mac, Cmd+Tab shows one icon per app, so two Safari windows look like one. DogBar gives every window its own tile, with its name and a preview. Hold Option, tap Tab, let go.</p>
+          <p class="kicker">A Dock per desktop</p>
+          <h2 id="features-title" class="section-title">Each desktop gets a Dock with just its apps.</h2>
+          <p>Keep work on one desktop and personal stuff on another. When you swipe between them, the Dock changes too, so it only shows what’s open where you are. Your pinned apps stay on every Dock.</p>
+          <p class="feature-aside">Rather see everything? Settings can show windows from all desktops instead.</p>
         </div>
-        <figure class="feature-art compare reveal" role="img" aria-label="Comparison. macOS Cmd+Tab shows one icon each for Safari, Slack and Notes. DogBar Option+Tab shows four named window tiles, each with its app icon: Lisbon day plan and Hotel booking from Safari, lisbon-trip from Slack, and Packing list from Notes.">
+        <figure class="feature-art reveal desks-art" role="img" aria-label="Two Mac desktops side by side, each with a different Dock. Desktop 1, Work, shows a Slack window, and its Dock has Slack, Figma, Mail, Calendar and Notes. Desktop 2, Personal, shows a Music window, and its Dock has Chrome, TV, Music, Photos and Messages. Finder and DogBar are pinned on both.">
+          <div class="desks-art-row">
+            <div class="desk-screen" data-wall="1">
+              <span class="desk-screen-name">Desktop 1 · Work</span>
+              <span class="desk-screen-win thumb thumb-slack"></span>
+              <div class="fx-dock">
+                <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
+                <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
+                <span class="fx-sep"></span>
+                <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/figma.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/mail.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/calendar.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/notes.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+              </div>
+            </div>
+            <svg class="desks-art-swipe" aria-hidden="true" focusable="false"><use href="#i-swipe"/></svg>
+            <div class="desk-screen" data-wall="2">
+              <span class="desk-screen-name">Desktop 2 · Personal</span>
+              <span class="desk-screen-win thumb thumb-music"></span>
+              <div class="fx-dock">
+                <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
+                <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
+                <span class="fx-sep"></span>
+                <span class="fx-dock-app"><img src="assets/apps/chrome.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/tv.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/music.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/photos.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/messages.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+              </div>
+            </div>
+          </div>
+          <p class="fx-legend desks-art-legend"><span class="fx-pin-key"></span>Pinned on every desktop. Everything else belongs to that desktop.</p>
+        </figure>
+      </article>
+
+      <article class="feature feature-wide is-flip">
+        <div class="feature-copy">
+          <p class="kicker">Window switching, done right</p>
+          <h2 class="section-title">Switch to any window, not just any app.</h2>
+          <p>On a Mac, Cmd+Tab shows one icon per app, so two Safari windows look like one. DogBar gives every window its own tile, with its name and a preview, so you land on the exact one you want.</p>
+        </div>
+        <figure class="feature-art compare reveal" role="img" aria-label="Comparison. macOS Cmd+Tab shows one icon each for Safari, Slack and Notes. DogBar’s window switcher shows four named window tiles, each with its app icon: Lisbon day plan and Hotel booking from Safari, lisbon-trip from Slack, and Packing list from Notes.">
           <div class="compare-col">
             <p class="compare-label">macOS Cmd+Tab</p>
             <div class="fx-switch fx-switch-apps">
@@ -255,7 +306,7 @@
             <p class="compare-note">One icon per app. Which Safari window will you get?</p>
           </div>
           <div class="compare-col is-dogbar">
-            <p class="compare-label">DogBar Option+Tab</p>
+            <p class="compare-label">DogBar window switcher</p>
             <div class="fx-switch">
               <span class="fx-tile"><span class="thumb thumb-trip"></span><img class="fx-badge" src="assets/apps/safari.png" width="96" height="96" alt=""><span class="fx-name">Lisbon day plan</span></span>
               <span class="fx-tile is-on"><span class="thumb thumb-booking"></span><img class="fx-badge" src="assets/apps/safari.png" width="96" height="96" alt=""><span class="fx-name">Hotel booking</span></span>
@@ -266,6 +317,12 @@
           </div>
         </figure>
       </article>
+
+      <div class="familiar-head">
+        <p class="kicker">A Dock you already know</p>
+        <h2 class="section-title">Feels like the Mac Dock, with the parts it’s missing.</h2>
+        <p>Pinned apps, a divider and running dots sit where you expect them. DogBar adds window previews, a dot for every open window and a Dock for each desktop.</p>
+      </div>
 
       <div class="feature-grid">
         <article class="feature">
@@ -289,39 +346,6 @@
         </article>
 
         <article class="feature">
-          <figure class="feature-art reveal" role="img" aria-label="Two desktops with different Docks. Desktop 1 shows Safari, Slack and Notes. Desktop 2 shows Safari and Music. Finder and DogBar are pinned on both.">
-            <div class="fx-stage fx-desks">
-              <div class="fx-desk">
-                <p class="fx-desk-name">Desktop 1 · Planning</p>
-                <div class="fx-dock">
-                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
-                  <span class="fx-sep"></span>
-                  <span class="fx-dock-app"><img src="assets/apps/safari.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app"><img src="assets/apps/notes.png" width="96" height="96" alt=""></span>
-                </div>
-              </div>
-              <div class="fx-desk">
-                <p class="fx-desk-name">Desktop 2 · Personal</p>
-                <div class="fx-dock">
-                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
-                  <span class="fx-sep"></span>
-                  <span class="fx-dock-app"><img src="assets/apps/safari.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app"><img src="assets/apps/music.png" width="96" height="96" alt=""></span>
-                </div>
-              </div>
-              <p class="fx-legend"><span class="fx-pin-key"></span>Pinned on every desktop</p>
-            </div>
-          </figure>
-          <div class="feature-copy">
-            <h3>Get a separate Dock on every desktop.</h3>
-            <p>Each desktop’s Dock only shows the apps open there, so work and personal stuff stay apart. Your pinned apps show up everywhere.</p>
-          </div>
-        </article>
-
-        <article class="feature">
           <figure class="feature-art reveal" role="img" aria-label="A Dock where Safari has two dots, Slack one and Notes three, one dot per open window. A resize grip on the Dock's edge shows it can be dragged. Icons keep a fixed size.">
             <div class="fx-stage fx-counts">
               <div class="fx-dock fx-dock-lg">
@@ -336,6 +360,39 @@
           <div class="feature-copy">
             <h3>See how many windows each app has.</h3>
             <p>Each app gets one dot per open window. Want a bigger Dock? Drag its edge. Icons stay still, with no magnifying.</p>
+          </div>
+        </article>
+        <article class="feature">
+          <figure class="feature-art reveal" role="img" aria-label="Two desktops with different Docks. Desktop 1 shows Slack, Figma and Mail. Desktop 2 shows Chrome, TV and Music. Finder and DogBar are pinned on both.">
+            <div class="fx-stage fx-desks">
+              <div class="fx-desk">
+                <p class="fx-desk-name">Desktop 1 · Work</p>
+                <div class="fx-dock">
+                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
+                  <span class="fx-sep"></span>
+                  <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/figma.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/mail.png" width="96" height="96" alt=""></span>
+                </div>
+              </div>
+              <div class="fx-desk">
+                <p class="fx-desk-name">Desktop 2 · Personal</p>
+                <div class="fx-dock">
+                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
+                  <span class="fx-sep"></span>
+                  <span class="fx-dock-app"><img src="assets/apps/chrome.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/tv.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/music.png" width="96" height="96" alt=""></span>
+                </div>
+              </div>
+              <p class="fx-legend"><span class="fx-pin-key"></span>Pinned on every desktop</p>
+            </div>
+          </figure>
+          <div class="feature-copy">
+            <h3>Get a separate Dock on every desktop.</h3>
+            <p>Each desktop’s Dock only shows the apps open there, so work and personal stuff stay apart. Your pinned apps show up everywhere.</p>
           </div>
         </article>
       </div>
@@ -359,7 +416,7 @@
         </thead>
         <tbody>
           <tr>
-            <th scope="row">See a preview of every window when you alt-tab</th>
+            <th scope="row">See a preview of every window when you switch</th>
             <td><svg aria-hidden="true" focusable="false"><use href="#i-no"/></svg><span class="sr-only">No</span></td>
             <td class="is-dogbar"><svg aria-hidden="true" focusable="false"><use href="#i-yes"/></svg><span class="sr-only">Yes</span></td>
           </tr>
@@ -387,9 +444,9 @@
       </table>
       <div class="native-note">
         <h3>Rather keep Apple’s Dock?</h3>
-        <p>Turn on Native Dock mode. Apple’s Dock stays, and you still get window previews and the better alt-tab. A Dock per desktop and window dots need DogBar’s own Dock. Pause DogBar anytime to get your old Dock back.</p>
+        <p>Turn on Native Dock mode. Apple’s Dock stays, and you still get window previews and better window switching. A Dock per desktop and window dots need DogBar’s own Dock. Pause DogBar anytime and it puts your old Dock and its settings back.</p>
       </div>
-      <p class="modes-foot">You can also choose whether the Dock, alt-tab and previews show windows from this desktop or from all of them.</p>
+      <p class="modes-foot">You can also choose whether the Dock, window switcher and previews show windows from this desktop or from all of them.</p>
     </section>
 
     <section class="get" id="get" aria-labelledby="get-title">
@@ -408,9 +465,9 @@
         <p class="dl-note" id="get-dl-note" data-download-note>The public release is being prepared. Until then, the demo shows how it works.</p>
         <p class="dl-hash" data-download-hash hidden>SHA-256 <code></code></p>
         <ol class="steps">
-          <li><b>Install it.</b> Open the download and drag DogBar into Applications.</li>
+          <li><b>Install it.</b> Open the download, drag DogBar into Applications, then open it. A paw appears in the menu bar.</li>
           <li><b>Say yes to two permissions.</b> Accessibility lets DogBar switch and close windows. Screen Recording lets it show previews.</li>
-          <li><b>Try it.</b> Hold Option and tap Tab.</li>
+          <li><b>Try it.</b> Hold Option and tap Tab to switch windows. You can change the shortcut later in Settings.</li>
         </ol>
         <details class="install-note" id="install" data-preview-help hidden>
           <summary>Installing this unnotarized preview</summary>
@@ -433,7 +490,7 @@
         </details>
         <details>
           <summary>Do I have to replace Apple’s Dock?</summary>
-          <p>No. Native Dock mode keeps Apple’s Dock and still adds window previews and the better alt-tab.</p>
+          <p>No. Native Dock mode keeps Apple’s Dock and still adds window previews and better window switching.</p>
         </details>
         <details>
           <summary>Why does DogBar need Accessibility and Screen Recording?</summary>
@@ -444,8 +501,12 @@
           <p>Click the paw in the menu bar and choose Pause DogBar or Restore Native Dock. Either one brings your old Dock back.</p>
         </details>
         <details>
-          <summary>How do I alt-tab with DogBar?</summary>
-          <p>Hold Option and tap Tab. Add Shift to go back, or use the arrow keys. Let go of Option to switch, or press Escape to cancel.</p>
+          <summary>How do I switch windows with DogBar?</summary>
+          <p>Press the switcher shortcut and keep holding its modifier key. Tap again to move on, add Shift to go back, or use the arrow keys. Let go to switch, or press Escape to cancel.</p>
+        </details>
+        <details>
+          <summary>Can I change the window switching shortcut?</summary>
+          <p>Yes. It’s Option+Tab by default. Record a different one in Settings → Switcher. You can also have the switcher show apps instead of windows, or turn it off and keep Apple’s Cmd+Tab.</p>
         </details>
       </div>
     </section>
