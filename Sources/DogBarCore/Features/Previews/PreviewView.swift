@@ -12,6 +12,7 @@ import SwiftUI
     @Published var size = CGSize(width: 340, height: 260)
     @Published var message: String?
     @Published var opening = false
+    @Published var resourceUsage: AppResourceUsage?
     @Published var desktopLabels: [CGWindowID: String] = [:]
     @Published var edge: DockPosition = .bottom
     @Published var pointerOffset: CGFloat = 0
@@ -41,6 +42,10 @@ import SwiftUI
                 Spacer()
                 if presentation.opening { ProgressView().controlSize(.small) }
             }
+            if settings.previewShowCPUUsage || settings.previewShowMemoryUsage {
+                Text(resourceLabel).font(.system(size: 11).monospacedDigit()).foregroundStyle(.secondary)
+                    .help("App-wide process totals including identifiable helpers, across all desktops. Shared memory can be counted more than once; some shared services cannot be attributed. CPU 100% is one core.")
+            }
             if let message = presentation.message { Text(message).font(.callout).fixedSize(horizontal: false, vertical: true) }
             if presentation.windows.isEmpty {
                 HStack(spacing: 16) {
@@ -69,6 +74,19 @@ import SwiftUI
                                 .onAppear { presentation.visibility(window.id, true) }
                                 .onDisappear { presentation.visibility(window.id, false) }
                         }
+                        if settings.previewShowNewWindowTile {
+                            Button(action: presentation.open) {
+                                VStack(spacing: 10) {
+                                    Image(systemName: "plus").font(.system(size: 30, weight: .light))
+                                    Text("New Window").font(.system(size: 12, weight: .medium))
+                                }
+                                .frame(width: presentation.thumbnailSize.width, height: presentation.thumbnailSize.height)
+                                .padding(8)
+                                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16))
+                                .contentShape(RoundedRectangle(cornerRadius: 16))
+                            }.buttonStyle(.plain).disabled(presentation.opening)
+                            .help("Open another \(presentation.appName) window")
+                        }
                     }.padding(3).id(presentation.contentID)
                 }
             }
@@ -83,6 +101,17 @@ import SwiftUI
                     .allowsHitTesting(false)
             }
         }
+    }
+    private var resourceLabel: String {
+        guard let usage = presentation.resourceUsage else { return "Usage unavailable" }
+        var parts: [String] = []
+        if settings.previewShowCPUUsage {
+            parts.append(usage.cpuPercent.map { String(format: "CPU %.1f%%", $0) } ?? "CPU —")
+        }
+        if settings.previewShowMemoryUsage {
+            parts.append("RAM " + ByteCountFormatter.string(fromByteCount: Int64(clamping: usage.residentBytes), countStyle: .memory))
+        }
+        return parts.joined(separator: "  ")
     }
     private var pointerAlignment: Alignment { presentation.edge == .bottom ? .bottom : (presentation.edge == .left ? .leading : .trailing) }
     private var pointerSymbol: String { presentation.edge == .bottom ? "arrowtriangle.down.fill" : (presentation.edge == .left ? "arrowtriangle.left.fill" : "arrowtriangle.right.fill") }

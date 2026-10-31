@@ -217,7 +217,7 @@ public final class AppSettings: ObservableObject {
         set { write("switcherIncludeHiddenApps", value: newValue) }
     }
     public var switcherShowWindowlessApps: Bool {
-        get { read("switcherShowWindowlessApps", fallback: true) }
+        get { read("switcherShowWindowlessApps", fallback: false) }
         set { write("switcherShowWindowlessApps", value: newValue) }
     }
     public var switcherAppearanceDelay: Double {
@@ -271,6 +271,18 @@ public final class AppSettings: ObservableObject {
     public var previewShowWindowTitles: Bool {
         get { read("previewShowWindowTitles", fallback: true) }
         set { write("previewShowWindowTitles", value: newValue) }
+    }
+    public var previewShowNewWindowTile: Bool {
+        get { read("previewShowNewWindowTile", fallback: true) }
+        set { write("previewShowNewWindowTile", value: newValue) }
+    }
+    public var previewShowCPUUsage: Bool {
+        get { read("previewShowCPUUsage", fallback: false) }
+        set { write("previewShowCPUUsage", value: newValue) }
+    }
+    public var previewShowMemoryUsage: Bool {
+        get { read("previewShowMemoryUsage", fallback: false) }
+        set { write("previewShowMemoryUsage", value: newValue) }
     }
     public var previewShowEmptyApps: Bool {
         get { read("previewShowEmptyApps", fallback: false) }
@@ -366,7 +378,7 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "switcherScreens": encoded(DisplaySelection.all),
             keyPrefix + "switcherIncludeMinimized": encoded(true as Bool),
             keyPrefix + "switcherIncludeHiddenApps": encoded(true as Bool),
-            keyPrefix + "switcherShowWindowlessApps": encoded(true as Bool),
+            keyPrefix + "switcherShowWindowlessApps": encoded(false as Bool),
             keyPrefix + "switcherAppearanceDelay": encoded(0.12 as Double),
             keyPrefix + "switcherThumbnailWidth": encoded(320 as Double),
             keyPrefix + "switcherThumbnailHeight": encoded(200 as Double),
@@ -380,6 +392,9 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "previewThumbnailHeight": encoded(160 as Double),
             keyPrefix + "previewScope": encoded(WindowScope.currentDesktop),
             keyPrefix + "previewShowWindowTitles": encoded(true as Bool),
+            keyPrefix + "previewShowNewWindowTile": encoded(true as Bool),
+            keyPrefix + "previewShowCPUUsage": encoded(false as Bool),
+            keyPrefix + "previewShowMemoryUsage": encoded(false as Bool),
             keyPrefix + "previewShowEmptyApps": encoded(false as Bool),
             keyPrefix + "previewShowTrafficLights": encoded(true as Bool),
             keyPrefix + "previewIncludeMinimized": encoded(true as Bool),

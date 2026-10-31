@@ -22,6 +22,7 @@ import SwiftUI
     private let captures: VisibleThumbnailSession
     private let panel = PreviewPanel()
     private let presentation = PreviewPresentation()
+    private let resourceMonitor = AppResourceMonitor()
     private var subscriptions = Set<AnyCancellable>()
     private var appearanceTask: Task<Void, Never>?
     private var closeTask: Task<Void, Never>?
@@ -97,6 +98,7 @@ import SwiftUI
         openingTask?.cancel(); openingTask = nil
         captureUpdateTask?.cancel(); captureUpdateTask = nil
         captures.stop(); visibleIDs = []
+        resourceMonitor.stop(); presentation.resourceUsage = nil
         if let localMonitor { NSEvent.removeMonitor(localMonitor) }
         if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
         localMonitor = nil; globalMonitor = nil
@@ -116,6 +118,7 @@ import SwiftUI
             generation &+= 1; appearanceTask?.cancel(); appearanceTask = nil
             openingTask?.cancel(); openingTask = nil
             presentation.opening = false; presentation.message = nil
+            resourceMonitor.stop(); presentation.resourceUsage = nil
             visibleIDs = []; captures.stop(); presentation.contentID &+= 1
         }
         self.item = item; self.anchor = anchor; self.screen = screen; self.native = native
@@ -163,13 +166,17 @@ import SwiftUI
         let height = min(max(64, settings.previewThumbnailHeight), max(64, screen.visibleFrame.height - 110))
         let width = min(height * 1.6, max(64, screen.visibleFrame.width - 64))
         presentation.thumbnailSize = CGSize(width: width, height: height)
-        let count = max(1, presentation.windows.count)
+        let count = max(1, presentation.windows.count + (settings.previewShowNewWindowTile && !presentation.windows.isEmpty ? 1 : 0))
         let contentWidth = presentation.windows.isEmpty ? CGFloat(340) : CGFloat(count) * (width + 16) + CGFloat(count - 1) * 10 + 38
-        presentation.size = CGSize(width: min(screen.visibleFrame.width, contentWidth), height: min(screen.visibleFrame.height, presentation.windows.isEmpty ? (presentation.message == nil ? 190 : 280) : height + (presentation.message == nil ? 96 : 170) + (settings.previewShowWindowTitles ? 22 : 0)))
+        let contentHeight: CGFloat = presentation.windows.isEmpty ? (presentation.message == nil ? 190 : 280)
+            : height + (presentation.message == nil ? 96 : 170) + (settings.previewShowWindowTitles ? 22 : 0)
+        let usageHeight: CGFloat = (settings.previewShowCPUUsage || settings.previewShowMemoryUsage) ? 24 : 0
+        presentation.size = CGSize(width: min(screen.visibleFrame.width, contentWidth), height: min(screen.visibleFrame.height, contentHeight + usageHeight))
         let frame = PreviewGeometry.frame(size: presentation.size, anchor: anchor, bounds: screen.visibleFrame, edge: edge)
         panel.setFrame(frame, display: panel.isVisible); panel.appearance = Theme.appearance(settings.theme)
         presentation.edge = edge
         presentation.pointerOffset = edge == .bottom ? min(max(anchor.midX - frame.midX, -frame.width / 2 + 24), frame.width / 2 - 24) : min(max(frame.midY - anchor.midY, -frame.height / 2 + 24), frame.height / 2 - 24)
+        updateResourceMonitor()
         scheduleCaptures()
     }
     private func reveal() {
@@ -178,7 +185,17 @@ import SwiftUI
         let visible = panel.isVisible
         panel.orderFrontRegardless()
         if !visible { onVisibilityChanged?(true) }
+        updateResourceMonitor()
         scheduleCaptures()
+    }
+    private func updateResourceMonitor() {
+        guard panel.isVisible, settings.previewShowCPUUsage || settings.previewShowMemoryUsage,
+              let app = presentation.app else {
+            resourceMonitor.stop(); presentation.resourceUsage = nil; return
+        }
+        resourceMonitor.start(pid: app.pid, bundleURL: app.bundleURL) { [weak self] usage in
+            self?.presentation.resourceUsage = usage
+        }
     }
     private func scheduleCaptures() {
         captureUpdateTask?.cancel()
