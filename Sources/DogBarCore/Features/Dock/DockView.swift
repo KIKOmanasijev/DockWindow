@@ -13,6 +13,8 @@ import QuartzCore
     var onClick: ((DockItem) -> Void)?
     var onMenu: ((DockItem, NSEvent) -> Void)?
     var onResizeStarted: (() -> Void)?
+    /// Live geometry only; settings are persisted once when the drag ends.
+    var onResizeChanged: ((CGFloat) -> Void)?
     var onHover: ((DockItem?, CGRect) -> Void)?
     var onReorder: ((DockItem, Int, Bool) -> Void)?
     var onFiles: (([URL], DockItem) -> Void)?
@@ -42,6 +44,7 @@ import QuartzCore
     private var cancelMonitor: Any?
     /// Item order at the last render; a change means apps came, went or the desktop changed.
     private var renderedIDs: [String] = []
+    var displayedIconSize: CGFloat { resizeSession?.currentSize ?? CGFloat(settings.iconSize) }
     var isDragging: Bool { dragged != nil || resizeMouseDown }
     var ownsMouseSequence: Bool { pressed != nil || isDragging }
     func iconFrame(for id: String) -> CGRect? {
@@ -81,8 +84,8 @@ import QuartzCore
     func render() {
         guard layer != nil else { return }
         let kinds = items.map(\.kind)
-        geometry = DockLayout(kinds: kinds, bounds: bounds, position: settings.dockPosition, baseSize: settings.iconSize,
-                              maximumSize: settings.iconSize,
+        geometry = DockLayout(kinds: kinds, bounds: bounds, position: settings.dockPosition, baseSize: displayedIconSize,
+                              maximumSize: displayedIconSize,
                               pointer: dragged == nil ? pointer : nil)
         // Keep every icon on whole device pixels. A half-pixel origin makes Core Animation
         // resample the raster, which is what made icons look soft.
@@ -96,7 +99,7 @@ import QuartzCore
         let ids = items.map(\.id)
         let structural = !renderedIDs.isEmpty && ids != renderedIDs && !isDragging && resizeSession == nil && !Theme.reducesMotion(settings)
         renderedIDs = ids
-        let duration = structural ? 0.32 : (pointer == nil && !isDragging && !Theme.reducesMotion(settings) ? 0.12 : 0)
+        let duration = structural ? 0.32 : (pointer == nil && !isDragging && resizeSession == nil && !Theme.reducesMotion(settings) ? 0.12 : 0)
         resizeHandle = geometry.resizeHandle(kinds: kinds)
         removeAllToolTips()
         window?.invalidateCursorRects(for: self)
@@ -111,9 +114,9 @@ import QuartzCore
         } else {
             background.frame = geometry.background
         }
-        let style = "\(settings.panelMaterial.rawValue):\(settings.theme.rawValue):\(settings.iconSize)"
+        let style = "\(settings.panelMaterial.rawValue):\(settings.theme.rawValue):\(displayedIconSize)"
         if backingStyle != style {
-            provider.updateBackgroundView(background, material: settings.panelMaterial, cornerRadius: min(30, settings.iconSize * 0.3), theme: settings.theme)
+            provider.updateBackgroundView(background, material: settings.panelMaterial, cornerRadius: min(30, displayedIconSize * 0.3), theme: settings.theme)
             appearance = Theme.appearance(settings.theme); backingStyle = style
         }
         let live = Set(items.map(\.id))
@@ -227,8 +230,12 @@ import QuartzCore
             longPress?.cancel(); longPress = nil; pressed = nil
             resizeMouseDown = true
             resizeCuePoint = pressPoint
-            resizeSession = DockResizeSession(size: settings.iconSize, origin: NSEvent.mouseLocation, position: settings.dockPosition)
+            resizeSession = DockResizeSession(size: settings.iconSize, origin: screenPoint(for: event), position: settings.dockPosition)
             lastFeedbackSize = settings.iconSize
+            // A live drag owns the geometry immediately, even if an app-arrival or
+            // background resize animation was still running when it was grabbed.
+            background.layer?.removeAllAnimations()
+            for icon in layers.values { icon.removeAllAnimations() }
             pointer = nil; hoverID = nil; onHover?(nil, .zero)
             onResizeStarted?()
             cancelMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
@@ -252,7 +259,7 @@ import QuartzCore
     }
     override func mouseUp(with event: NSEvent) {
         if resizeMouseDown {
-            finishResize(cancelled: false)
+            finishResize(cancelled: false, point: screenPoint(for: event))
             resizeMouseDown = false; render()
             return
         }
@@ -266,10 +273,11 @@ import QuartzCore
     }
     override func mouseDragged(with event: NSEvent) {
         if var resizeSession {
-            let size = resizeSession.size(at: NSEvent.mouseLocation)
+            let previousSize = resizeSession.currentSize
+            let size = resizeSession.size(at: screenPoint(for: event))
             self.resizeSession = resizeSession
-            if size != settings.iconSize {
-                settings.iconSize = size
+            if size != previousSize {
+                onResizeChanged?(size)
                 if abs(size - lastFeedbackSize) >= 16 {
                     NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .drawCompleted)
                     lastFeedbackSize = size
@@ -333,10 +341,15 @@ import QuartzCore
         if newWindow == nil { finishResize(cancelled: true); resizeMouseDown = false }
         super.viewWillMove(toWindow: newWindow)
     }
-    private func finishResize(cancelled: Bool) {
+    private func screenPoint(for event: NSEvent) -> CGPoint {
+        event.window?.convertPoint(toScreen: event.locationInWindow) ?? NSEvent.mouseLocation
+    }
+    private func finishResize(cancelled: Bool, point: CGPoint? = nil) {
         guard var session = resizeSession else { return }
-        settings.iconSize = session.end(at: NSEvent.mouseLocation, cancelled: cancelled)
+        let size = session.end(at: point ?? NSEvent.mouseLocation, cancelled: cancelled)
         resizeSession = nil
+        onResizeChanged?(size)
+        if settings.iconSize != size { settings.iconSize = size }
         if let cancelMonitor { NSEvent.removeMonitor(cancelMonitor); self.cancelMonitor = nil }
         pressed = nil; pointer = nil; hoverID = nil
         onHover?(nil, .zero); NSCursor.arrow.set(); render()

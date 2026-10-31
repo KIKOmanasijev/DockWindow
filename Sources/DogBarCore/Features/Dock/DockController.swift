@@ -49,6 +49,7 @@ import Combine
         view.onClick = { [weak self] in self?.click($0) }
         view.onMenu = { [weak self] in self?.showMenu(item: $0, event: $1) }
         view.onResizeStarted = { [weak self] in self?.onIconClicked?() }
+        view.onResizeChanged = { [weak self] in self?.resizePanel(iconSize: $0) }
         view.onHover = { [weak self] item, rect in self?.hover(item: item, rect: rect) }
         view.onReorder = { [weak self] item, index, remove in self?.reorder(item, at: index, remove: remove) }
         view.onFiles = { [weak self] in self?.openFiles($0, item: $1) }
@@ -133,7 +134,7 @@ import Combine
             hideTask?.cancel(); hideTask = nil; view.stopTracking()
         }
         screen = nextScreen
-        shownFrame = DockLayout.panelFrame(screen: nextScreen.frame, position: settings.dockPosition, depth: settings.dockPosition == .bottom ? max(210, settings.iconSize + 85) : max(360, settings.iconSize + 220))
+        shownFrame = DockLayout.panelFrame(screen: nextScreen.frame, position: settings.dockPosition, depth: settings.dockPosition == .bottom ? max(210, view.displayedIconSize + 85) : max(360, view.displayedIconSize + 220))
         if !settings.autohide { hidden = false; hideTask?.cancel(); hideTask = nil }
         panel.setFrame(hidden ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame, display: true)
         let spaces = currentSpaces(snapshot: snapshot)
@@ -167,6 +168,15 @@ import Combine
         view.launching = launching; view.render()
         if !panel.isVisible { panel.orderFrontRegardless() }
         updatePointer()
+    }
+    /// Runs synchronously in event tracking mode without rebuilding the app list, reading
+    /// icons, publishing settings or waiting for a default-mode Combine delivery.
+    private func resizePanel(iconSize: CGFloat) {
+        guard started, let screen else { return }
+        let depth = settings.dockPosition == .bottom ? max(210, iconSize + 85) : max(360, iconSize + 220)
+        shownFrame = DockLayout.panelFrame(screen: screen.frame, position: settings.dockPosition, depth: depth)
+        let frame = hidden ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame
+        if panel.frame != frame { panel.setFrame(frame, display: false) }
     }
     private func updatePointer() {
         guard started, settings.useDogBarDock, !settings.isPaused, let screen else { return }

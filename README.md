@@ -45,7 +45,7 @@ These are recordings of the demo on [dogbar.hristijan.dev](https://dogbar.hristi
 - **Hover an app in the Dock to preview its windows.** Click the one you want and only that window comes up. You can close, minimize or make it full screen right from the preview.
 - **Get a separate Dock on every desktop.** Each desktop’s Dock shows only the apps open there. Your pinned apps show up everywhere.
 - **See how many windows each app has.** One dot per open window, right under the icon.
-- **Resize the Dock by dragging its edge.** Icons stay still, with no magnifying. Sizes snap into small steps so the Dock doesn’t jitter.
+- **Resize the Dock by dragging its edge.** Icons stay still, with no magnifying. Size follows your drag directly, including when you reverse direction.
 - **Keep Apple’s Dock if you prefer.** Native Dock mode leaves Apple’s Dock in place and still gives you window previews and the better alt-tab.
 
 | | macOS | DogBar |

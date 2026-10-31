@@ -11,37 +11,43 @@ final class DockResizeTests: XCTestCase {
             XCTAssertEqual(session.size(at: inward), 68)
             let outward = CGPoint(x: 2 * origin.x - inward.x, y: 2 * origin.y - inward.y)
             XCTAssertEqual(session.size(at: outward), 28)
-            XCTAssertEqual(session.end(at: inward, cancelled: true), 48)
             XCTAssertEqual(session.end(at: inward, cancelled: false), 68)
+            XCTAssertEqual(session.end(at: inward, cancelled: true), 48)
         }
     }
-    func testClampAndReturnFromBoundaryUsesOriginalAnchor() {
-        var session = DockResizeSession(size: 48, origin: .zero, position: .bottom)
-        XCTAssertEqual(session.size(at: CGPoint(x: 900, y: 500)), 128)
-        XCTAssertEqual(session.size(at: CGPoint(x: 900, y: -500)), 16)
-        XCTAssertEqual(session.size(at: CGPoint(x: 900, y: 4)), 52)
-        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: CGFloat.nan)), 52)
+    func testReversalAtBothLimitsDoesNotNeedToUnwindOvershoot() {
+        for position in DockPosition.allCases {
+            func point(_ amount: CGFloat) -> CGPoint {
+                switch position {
+                case .bottom: return CGPoint(x: 0, y: amount)
+                case .left: return CGPoint(x: amount, y: 0)
+                case .right: return CGPoint(x: -amount, y: 0)
+                }
+            }
+            var session = DockResizeSession(size: 48, origin: .zero, position: position)
+            XCTAssertEqual(session.size(at: point(500)), 128)
+            XCTAssertEqual(session.size(at: point(499)), 127)
+            XCTAssertEqual(session.size(at: point(-500)), 16)
+            XCTAssertEqual(session.size(at: point(-499)), 17)
+            XCTAssertEqual(session.size(at: point(-499)), 17, "Repeated sample must not resize again")
+            XCTAssertEqual(session.end(at: point(-499), cancelled: true), 48)
+        }
+    }
+    func testSmallMovementsAndReversalsFollowThePointerWithoutDetents() {
+        var session = DockResizeSession(size: 49, origin: .zero, position: .bottom)
+        for y in [0.0, 0.5, 1, 3.4, 3.6, 3.5, 2.1, 1, 2.9, 0.4, -3.6] {
+            XCTAssertEqual(session.size(at: CGPoint(x: 0, y: y)), 49 + y, accuracy: 0.0001)
+        }
+        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: CGFloat.nan)), 45.4, accuracy: 0.0001)
+        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: -2.6)), 46.4, accuracy: 0.0001,
+                       "Invalid input does not poison the next movement")
         XCTAssertEqual(DockResizeSession(size: .infinity, origin: .zero, position: .left).initialSize, 48)
     }
-    func testResizeDetentsResistJitterAndRetainStartingSizeUntilPulled() {
-        var session = DockResizeSession(size: 49, origin: .zero, position: .bottom)
-        for y in [0.0, 1, 2.5, -2, 3.4] {
-            XCTAssertEqual(session.size(at: CGPoint(x: 0, y: y)), 49)
-        }
-        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: 3.6)), 53)
-        for y in [3.5, 2.1, 1, 2.9] {
-            XCTAssertEqual(session.size(at: CGPoint(x: 0, y: y)), 53)
-        }
-        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: 0.4)), 49)
-        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: -3.6)), 45)
-        XCTAssertEqual(session.end(at: CGPoint(x: 0, y: -3.6), cancelled: true), 49)
-    }
-    func testOddStartingSizeStillReachesBothLimits() {
-        var session = DockResizeSession(size: 49, origin: .zero, position: .bottom)
-        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: -32)), 17)
-        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: -33)), 16)
-        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: 76)), 125)
-        XCTAssertEqual(session.size(at: CGPoint(x: 0, y: 79)), 128)
+    func testScreenSpaceIgnoresMovementAcrossTheDock() {
+        var session = DockResizeSession(size: 48, origin: CGPoint(x: -400, y: 300), position: .bottom)
+        XCTAssertEqual(session.size(at: CGPoint(x: 900, y: 300)), 48)
+        XCTAssertEqual(session.size(at: CGPoint(x: 900, y: 301)), 49)
+        XCTAssertEqual(session.end(at: CGPoint(x: 900, y: 301.5), cancelled: false), 49.5)
     }
     func testInwardBorderResizesWithoutCoveringIconsOrTransparentCorners() {
         for position in DockPosition.allCases {
@@ -113,6 +119,44 @@ final class DockResizeTests: XCTestCase {
                 }
             }
         }
+    }
+    @MainActor func testLiveResizeUpdatesGeometryWithoutWritingSettingsUntilRelease() throws {
+        let suite = "DockResizePersistenceTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        settings.iconSize = 48
+        let view = DockView(settings: settings)
+        let window = NSWindow(contentRect: CGRect(x: 100, y: 100, width: 800, height: 210),
+                              styleMask: .borderless, backing: .buffered, defer: false)
+        window.contentView = view
+        view.items = [DockItem(id: "trash", kind: .trash)]
+        view.render()
+        let layout = DockLayout(kinds: [.trash], bounds: view.bounds, position: .bottom, baseSize: 48, maximumSize: 48)
+        let start = CGPoint(x: layout.resizeEdge.midX, y: layout.resizeEdge.midY)
+        func event(_ type: NSEvent.EventType, offset: CGFloat) throws -> NSEvent {
+            try XCTUnwrap(NSEvent.mouseEvent(with: type, location: CGPoint(x: start.x, y: start.y + offset),
+                                            modifierFlags: [], timestamp: 0, windowNumber: window.windowNumber,
+                                            context: nil, eventNumber: 0, clickCount: 1, pressure: 1))
+        }
+        var liveSizes: [CGFloat] = []
+        var published = 0
+        let observer = settings.objectWillChange.sink { published += 1 }
+        defer { observer.cancel() }
+        view.onResizeChanged = { liveSizes.append($0) }
+        view.mouseDown(with: try event(.leftMouseDown, offset: 0))
+        view.mouseDragged(with: try event(.leftMouseDragged, offset: 20))
+        XCTAssertEqual(view.displayedIconSize, 68)
+        view.mouseDragged(with: try event(.leftMouseDragged, offset: 19))
+        XCTAssertEqual(view.displayedIconSize, 67, "A one-point reversal is immediate")
+        XCTAssertEqual(liveSizes, [68, 67])
+        XCTAssertEqual(settings.iconSize, 48)
+        XCTAssertEqual(defaults.double(forKey: AppSettings.keyPrefix + "iconSize"), 48)
+        XCTAssertEqual(published, 0, "Dragging must not fan out settings notifications")
+        view.mouseUp(with: try event(.leftMouseUp, offset: 19))
+        XCTAssertEqual(settings.iconSize, 67)
+        XCTAssertEqual(published, 1, "Persist once when the drag ends")
+        XCTAssertFalse(view.isDragging)
     }
     @MainActor func testResizeCancellationRetainsSequenceAndNeverClicksAnApp() throws {
         let suite = "DockResizeTests.\(UUID().uuidString)"

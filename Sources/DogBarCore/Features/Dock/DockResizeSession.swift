@@ -1,37 +1,30 @@
 import Foundation
 
-/// Uses screen coordinates so panel relayout cannot change the drag's reference point.
+/// Follows screen-space movement, independent of the panel relayout beneath the pointer.
 struct DockResizeSession {
     let initialSize: CGFloat
     let origin: CGPoint
     let position: DockPosition
     private(set) var currentSize: CGFloat
-    private static let step: CGFloat = 4
-    private static let releaseDistance: CGFloat = 3.5
+    private var previousCoordinate: CGFloat
 
     init(size: CGFloat, origin: CGPoint, position: DockPosition) {
         initialSize = Self.clamp(size)
-        currentSize = Self.clamp(size)
+        currentSize = initialSize
         self.origin = origin
         self.position = position
+        previousCoordinate = Self.coordinate(origin, position: position)
     }
 
     mutating func size(at point: CGPoint) -> CGFloat {
-        let delta: CGFloat
-        switch position {
-        case .bottom: delta = point.y - origin.y
-        case .left: delta = point.x - origin.x
-        case .right: delta = origin.x - point.x
-        }
+        let coordinate = Self.coordinate(point, position: position)
+        guard coordinate.isFinite else { return currentSize }
+        let delta = coordinate - previousCoordinate
         guard delta.isFinite else { return currentSize }
-        let raw = Self.clamp(initialSize + delta)
-        // Hold each size until the pointer pulls past its detent. Separate
-        // release thresholds keep tiny reversals from flickering between sizes.
-        if raw == 16 || raw == 128 {
-            currentSize = raw
-        } else if abs(raw - currentSize) >= Self.releaseDistance {
-            currentSize = Self.clamp(initialSize + (delta / Self.step).rounded() * Self.step)
-        }
+        previousCoordinate = coordinate
+        // Consume every movement, including movement past a limit. Reversing from
+        // either limit therefore responds immediately instead of unwinding overshoot.
+        currentSize = Self.clamp(currentSize + delta)
         return currentSize
     }
 
@@ -40,6 +33,13 @@ struct DockResizeSession {
         return size(at: point)
     }
 
+    private static func coordinate(_ point: CGPoint, position: DockPosition) -> CGFloat {
+        switch position {
+        case .bottom: return point.y
+        case .left: return point.x
+        case .right: return -point.x
+        }
+    }
     private static func clamp(_ size: CGFloat) -> CGFloat {
         min(128, max(16, size.isFinite ? size : 48))
     }
