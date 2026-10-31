@@ -36,10 +36,6 @@
   const frontApp = $("[data-front-app]");
   const menus = $("[data-menus]");
   const swipeHud = $("[data-swipe]");
-  const tabBtn = $("[data-tab]");
-  const releaseBtn = $("[data-release]");
-  const resetBtn = $("[data-reset]");
-  const deskBtns = document.querySelectorAll("[data-desk-btn]");
   const stage = $("#demo");
 
   const APPS = {
@@ -53,7 +49,7 @@
   const PINS = ["finder", "dockwindow"];
   const INTRO_APP = "safari";
   const INTRO_PICK = "s2";
-  const INTRO_TEXT = "Planning a trip: Safari has two windows open. Pick “Hotel booking” to bring just that one forward.";
+  const INTRO_TEXT = "Safari has two windows open. Click “Hotel booking” to bring up just that one.";
 
   // Only the front window is shown on the desk, so every change reads at a glance;
   // the others wait behind it. `view` picks the window's content.
@@ -222,7 +218,7 @@
   }
 
   // ----- Focus a window -----
-  function focusWindow(id, how) {
+  function focusWindow(id) {
     const w = byId(id);
     if (!w) return;
     const order = state.order[state.desk];
@@ -235,21 +231,19 @@
     const name = APPS[w.app].name;
     const others = windowsHere().filter((x) => x.app === w.app && x.id !== id).length;
     const rest = others === 0 ? "" : others === 1
-      ? ` The other ${name} window stayed where it was.`
-      : ` The other ${others} ${name} windows stayed where they were.`;
-    say(`${how}: ${name}, “${w.title}”, is in front.${rest}`);
+      ? ` Your other ${name} window stays where it was.`
+      : ` Your other ${others} ${name} windows stay where they were.`;
+    say(`“${w.title}” is now in front.${rest}`);
   }
 
   // ----- Switcher -----
-  function openSwitcher() {
+  function openSwitcher(direction = 1) {
     closePreview();
     const list = mru();
     if (!list.length) { say("No windows on this desktop to switch to."); return; }
     state.mode = "switcher";
-    state.sel = list.length > 1 ? 1 : 0;
+    state.sel = list.length > 1 ? (direction < 0 ? list.length - 1 : 1) : 0;
     switcher.hidden = false;
-    tabBtn.innerHTML = '<kbd aria-hidden="true">⇥</kbd> Tab again';
-    releaseBtn.hidden = false;
     renderTiles();
   }
 
@@ -260,7 +254,7 @@
         aria-label="${APPS[w.app].name}: ${w.title}">${miniMarkup(w)}${iconMarkup(w.app)}<span class="name">${w.title}</span></button></li>`
     ).join("");
     const w = list[state.sel];
-    say(`Switcher: ${plural(list.length, "tile")}, one per window. Selected ${APPS[w.app].name}, “${w.title}”.`);
+    say(`Every window gets its own tile. “${w.title}” (${APPS[w.app].name}) is selected.`);
   }
 
   function stepSwitcher(delta) {
@@ -274,8 +268,6 @@
     state.mode = "idle";
     switcher.hidden = true;
     tilesEl.innerHTML = "";
-    tabBtn.innerHTML = '<kbd aria-hidden="true">⌥</kbd> Option+Tab';
-    releaseBtn.hidden = true;
   }
 
   // ----- Previews -----
@@ -307,8 +299,8 @@
     if (intro) say(INTRO_TEXT);
     else if (announce) {
       say(wins.length
-        ? `${name} previews: ${plural(wins.length, "window")}. Pick one to bring exactly that window forward.`
-        : `${name} is pinned here with no windows on this desktop.`);
+        ? `${name} has ${plural(wins.length, "window")} here. Click one to bring up just that window.`
+        : `No ${name} windows on this desktop.`);
     }
   }
 
@@ -358,7 +350,6 @@
     const app = w.app;
     state.windows[state.desk] = windowsHere().filter((x) => x.id !== id);
     state.order[state.desk] = state.order[state.desk].filter((x) => x !== id);
-    resetBtn.hidden = false;
     renderDesk();
     renderDock();
     const left = windowsHere().filter((x) => x.app === app).length;
@@ -369,7 +360,9 @@
       closePreview();
       dock.querySelector(".dock-btn")?.focus();
     }
-    say(`Closed “${w.title}”. ${APPS[app].name} now has ${plural(left, "dot")}${left ? "" : " and leaves this desktop’s Dock"}.`);
+    say(left
+      ? `Closed “${w.title}”. ${APPS[app].name} now shows ${plural(left, "dot")}, one per window.`
+      : `Closed “${w.title}”. ${APPS[app].name} has no windows left here, so it leaves this Dock.`);
   }
 
   function closeAll() { closeSwitcher(); closePreview(); }
@@ -381,56 +374,45 @@
     const dir = n > state.desk ? 1 : -1;
     if (hud) showSwipe(n, dir);
     state.desk = n;
-    deskBtns.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.deskBtn) === n)));
     renderDesk({ swap: dir });
     renderDock({ animate: true });
     const { running } = dockApps();
-    const list = running.map((a) => `${APPS[a].name} (${plural(windowsHere().filter((w) => w.app === a).length, "dot")})`);
-    say(`Desktop ${n} has its own Dock: ${list.join(", ") || "only pins"}. Finder and DogBar stay pinned.`);
+    const names = running.map((a) => APPS[a].name);
+    const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
+    say(`Desktop ${n} has its own Dock: ${list ? `just ${list}` : "only your pinned apps"}. Finder and DogBar stay on every Dock.`);
   }
 
   function showIntro() {
     if (state.desk === 1 && byId(INTRO_PICK)) openPreview(INTRO_APP, { intro: true });
   }
 
-  // Restores the opening scenario. Only a person pressing Reset gets focus moved.
-  function reset({ focus = true } = {}) {
+  // Restores the opening scenario. Never moves focus.
+  function reset() {
     closeAll();
     state.windows = initialWindows();
     state.order = initialOrder();
-    resetBtn.hidden = true;
-    if (state.desk !== 1) {
-      state.desk = 1;
-      deskBtns.forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.deskBtn === "1")));
-    }
+    state.desk = 1;
     renderDesk();
     renderDock();
     showIntro();
-    if (focus) tabBtn.focus();
+  }
+
+  // Letting go of Option brings the selected window forward.
+  function releaseSwitcher({ focus = true } = {}) {
+    const w = mru()[state.sel];
+    if (w) focusWindow(w.id);
+    if (focus) stage.focus({ preventScroll: true });
   }
 
   // ----- Events -----
-  deskBtns.forEach((b) => b.addEventListener("click", () => setDesk(Number(b.dataset.deskBtn))));
-
-  tabBtn.addEventListener("click", () => {
-    if (state.mode === "switcher") stepSwitcher(1);
-    else openSwitcher();
-  });
-  releaseBtn.addEventListener("click", () => {
-    const w = mru()[state.sel];
-    if (w) focusWindow(w.id, "Released Option");
-    tabBtn.focus();
-  });
-  resetBtn.addEventListener("click", () => reset());
-
   tilesEl.addEventListener("click", (e) => {
     const t = e.target.closest("[data-tile]");
-    if (t) { focusWindow(t.dataset.tile, "Switcher"); tabBtn.focus(); }
+    if (t) { focusWindow(t.dataset.tile); stage.focus({ preventScroll: true }); }
   });
 
   desk.addEventListener("click", (e) => {
     const w = e.target.closest("[data-win]");
-    if (w) focusWindow(w.dataset.win, "Clicked");
+    if (w) focusWindow(w.dataset.win);
   });
 
   dock.addEventListener("click", (e) => {
@@ -481,24 +463,36 @@
     const focus = e.target.closest("[data-focus]");
     if (focus) {
       const appKey = state.previewApp;
-      focusWindow(focus.dataset.focus, "Preview");
+      focusWindow(focus.dataset.focus);
       dock.querySelector(`[data-app="${appKey}"]`)?.focus();
     }
   });
 
-  // Keys are handled only while focus is inside the demo, never globally.
+  // Keys are handled only while focus is inside the demo, never globally. Like the
+  // real thing: hold Option and tap Tab (Shift goes back), let go of Option to switch.
   stage.addEventListener("keydown", (e) => {
-    if (e.key === "Escape" && state.mode !== "idle") {
+    if (e.key === "Tab" && e.altKey) {
+      if (state.mode === "switcher") stepSwitcher(e.shiftKey ? -1 : 1);
+      else openSwitcher(e.shiftKey ? -1 : 1);
+      e.preventDefault();
+    } else if (e.key === "Escape" && state.mode !== "idle") {
       const appKey = state.previewApp;
       const wasSwitcher = state.mode === "switcher";
       closeAll();
-      say(wasSwitcher ? "Switcher cancelled. Nothing changed." : "Preview closed.");
-      (wasSwitcher ? tabBtn : dock.querySelector(`[data-app="${appKey}"]`))?.focus();
+      say(wasSwitcher ? "Closed the switcher. Nothing changed." : "Closed the preview.");
+      if (wasSwitcher) stage.focus({ preventScroll: true });
+      else dock.querySelector(`[data-app="${appKey}"]`)?.focus();
       e.preventDefault();
     } else if (state.mode === "switcher" && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
       stepSwitcher(e.key === "ArrowRight" ? 1 : -1);
       e.preventDefault();
+    } else if (state.mode === "switcher" && e.key === "Enter") {
+      releaseSwitcher();
+      e.preventDefault();
     }
+  });
+  stage.addEventListener("keyup", (e) => {
+    if (e.key === "Alt" && state.mode === "switcher") releaseSwitcher();
   });
 
   // Click outside the demo dismisses overlays, except the opening example.
@@ -513,11 +507,6 @@
     ro.observe(dock);
   }
 
-  // "Try the demo" links land focus on the first demo control.
-  document.querySelectorAll("[data-demo-start]").forEach((a) => a.addEventListener("click", () => {
-    setTimeout(() => tabBtn.focus({ preventScroll: true }), reduceMotion.matches ? 0 : 450);
-  }));
-
   renderDesk();
   renderDock();
   showIntro();
@@ -531,7 +520,6 @@
   const pointer = $("[data-cursor]");
   const keys = $("[data-keys]");
   const tourBtn = $("[data-tour-toggle]");
-  const tourLabel = $("[data-tour-label]");
   const tourSteps = [...document.querySelectorAll("[data-tour-step]")];
   const tour = { run: 0, scene: 0, playing: false, userTook: false };
   const STOP = Symbol("tour stopped");
@@ -567,9 +555,9 @@
     // One window on screen: the Lisbon day plan. Its sibling, the hotel booking, is
     // one hover away in Safari's Dock previews.
     { ms: 7600, run: async (wait) => {
-      reset({ focus: false });
+      reset();
       closeAll();
-      say("Safari has two windows, but you only see the day plan. Watch the Dock.");
+      say("Safari has two windows open, but you can only see one. Hover Safari in the Dock to see both.");
       point(desk);
       pointer.classList.add("is-on");
       await wait(1100);
@@ -582,7 +570,7 @@
       if (shot) { point(shot); peek("s2"); }
       await wait(1300);
       press();
-      focusWindow("s2", "Picked from the preview");
+      focusWindow("s2");
       zoom(1);
       await wait(2700);
     } },
@@ -598,9 +586,8 @@
       await wait(1500);
       stepSwitcher(1);
       await wait(2400);
-      const w = mru()[state.sel];
       keys.hidden = true;
-      if (w) focusWindow(w.id, "Released Option");
+      releaseSwitcher({ focus: false });
       zoom(1);
       await wait(1700);
     } },
@@ -609,7 +596,7 @@
       closeAll();
       if (state.desk !== 1) setDesk(1, { hud: false });
       pointer.classList.remove("is-on");
-      say("Each desktop keeps its own Dock. Swiping to Desktop 2.");
+      say("Swipe to another desktop and the Dock changes to match.");
       await wait(400);
       showSwipe(2, 1);
       await wait(700);
@@ -646,7 +633,7 @@
     tour.playing = on;
     stage.dataset.tour = on ? "playing" : "stopped";
     caption.setAttribute("aria-live", on ? "off" : "polite"); // no running commentary for screen readers
-    tourLabel.textContent = on ? "Pause tour" : "Play tour";
+    tourBtn.setAttribute("aria-label", on ? "Pause the demo" : "Play the demo");
     if (!on) {
       zoom(1);
       pointer.classList.remove("is-on", "press");
@@ -686,6 +673,11 @@
   tourSteps.forEach((b) => b.addEventListener("click", () => {
     tour.userTook = false;
     playTour(Number(b.dataset.tourStep));
+  }));
+  // "Watch the demo" links scroll to the demo and play it from the start.
+  document.querySelectorAll("[data-demo-start]").forEach((a) => a.addEventListener("click", () => {
+    tour.userTook = false;
+    playTour(0);
   }));
 
   // Any hands-on use of the demo ends the tour; the tour's own buttons do not.
