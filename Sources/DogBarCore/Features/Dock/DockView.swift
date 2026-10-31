@@ -111,6 +111,7 @@ import QuartzCore
         let previousBackground = background.layer?.presentation()?.frame ?? background.frame
         CATransaction.begin(); CATransaction.setDisableActions(true)
         background.frame = geometry.background
+        background.layoutSubtreeIfNeeded()
         CATransaction.commit()
         if structural, let backing = background.layer, previousBackground != geometry.background {
             let move = CABasicAnimation(keyPath: "position")
@@ -187,11 +188,12 @@ import QuartzCore
         let thickness: CGFloat = 3
         if settings.dockPosition == .bottom {
             let width = min(length, edge.width)
-            resizePill.frame = CGRect(x: edge.midX - width / 2, y: edge.midY - thickness / 2, width: width, height: thickness)
+            resizePill.frame = CGRect(x: edge.midX - width / 2, y: geometry.background.maxY - thickness - 2, width: width, height: thickness)
         } else {
             let height = min(length, edge.height)
             resizePill.frame = CGRect(x: edge.midX - thickness / 2, y: edge.midY - height / 2, width: thickness, height: height)
         }
+        resizePill.zPosition = 100
         resizePill.name = "resize-pill"
         resizePill.backgroundColor = accent.cgColor
         resizePill.cornerRadius = thickness / 2

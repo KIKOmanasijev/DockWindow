@@ -37,7 +37,6 @@ On a Mac, Cmd+Tab shows one icon per app, so two Safari windows look like one, a
 
 <img src=".github/readme/demo-desktops.gif" alt="Swiping to Desktop 2 slides in a new desktop whose Dock shows only Safari and Music, then swiping back restores the Desktop 1 Dock." width="760">
 
-These are recordings of the demo on [dogbar.hristijan.dev](https://dogbar.hristijan.dev/), made with `node landing/tools/record-demo-gifs.mjs`.
 
 ## What you get
 

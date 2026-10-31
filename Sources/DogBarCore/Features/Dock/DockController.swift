@@ -149,6 +149,25 @@ import Combine
             (runningOrder.firstIndex(of: $0.id) ?? Int.max) < (runningOrder.firstIndex(of: $1.id) ?? Int.max)
         }
         items = items.filter { $0.kind == .application && $0.isPinned } + unpinned + items.filter { $0.kind != .application }
+        // macOS keeps recently used apps separately from permanent pins. Preserve that
+        // group without turning recent apps into saved DogBar pins.
+        let native = UserDefaults.standard.persistentDomain(forName: "com.apple.dock") ?? [:]
+        if native["show-recents"] as? Bool != false {
+            let recent = PinnedAppsPolicy.parse(plist: ["persistent-apps": native["recent-apps"] ?? []],
+                appExists: { FileManager.default.fileExists(atPath: $0.path) },
+                bundleIdentifierAtURL: { Bundle(url: $0)?.bundleIdentifier })
+            let existing = Set(items.map(\.id))
+            let extra = recent.filter { pin in
+                guard !existing.contains(pin.id), !removedRunning.contains(pin.id) else { return false }
+                guard let app = snapshot.apps.first(where: { $0.bundleIdentifier == pin.id }) else { return true }
+                let windows = snapshot.windows.filter { $0.pid == app.pid }
+                return windows.isEmpty || settings.dockScope == .allDesktops || !WindowFilter(scope: settings.dockScope, currentSpaceIDs: spaces, includeMinimized: settings.includeMinimizedInDock).apply(to: windows).isEmpty
+            }.map { pin in DockItem(id: pin.id, app: snapshot.apps.first { $0.bundleIdentifier == pin.id }, pinnedApp: pin) }
+            if !extra.isEmpty {
+                let index = items.firstIndex { $0.kind == .separator && $0.id == "separator:trash" } ?? items.count
+                items.insert(contentsOf: [DockItem(id: "separator:recent", kind: .separator)] + extra, at: index)
+            }
+        }
         if !view.isDragging { view.items = items }
         for item in items {
             let path = item.pinnedApp?.url ?? item.app?.bundleURL
@@ -158,7 +177,14 @@ import Combine
                 if let path { view.images[item.id] = NSWorkspace.shared.icon(forFile: path.path) }
                 else if let icon = item.app?.icon { view.images[item.id] = icon }
             }
-            if item.kind == .trash { view.images[item.id] = NSWorkspace.shared.icon(forFile: trashURL.path) }
+            if item.kind == .trash {
+                let full = ((try? FileManager.default.contentsOfDirectory(atPath: trashURL.path)) ?? []).contains { $0 != ".DS_Store" }
+                let name = full ? "trashfull" : "trashempty"
+                let resources = URL(fileURLWithPath: "/System/Library/CoreServices/Dock.app/Contents/Resources")
+                view.images[item.id] = NSImage(contentsOf: resources.appendingPathComponent(name + "@2x.png"))
+                    ?? NSImage(contentsOf: resources.appendingPathComponent(name + ".png"))
+                    ?? NSImage(systemSymbolName: "trash", accessibilityDescription: "Trash")
+            }
             view.indicators[item.id] = DotPolicy.indicators(windows: snapshot.windows,
                 filter: WindowFilter(scope: settings.dockScope, currentSpaceIDs: spaces, includeMinimized: settings.includeMinimizedInCount, pid: item.app?.pid ?? -1),
                 style: settings.indicatorStyle, maxDots: settings.maxDots, isRunning: item.app != nil, showRunningState: settings.showRunningState)

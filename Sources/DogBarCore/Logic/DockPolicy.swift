@@ -28,7 +28,7 @@ public enum DockCompositionPolicy {
             guard seen.insert(key).inserted else { continue }
             let all = snapshot.windows.filter { $0.pid == app.pid }
             let visible = WindowFilter(scope: options.scope, currentSpaceIDs: options.currentSpaceIDs, includeMinimized: options.includeMinimized).apply(to: all)
-            let windowlessHere = all.isEmpty && options.showWindowlessAppsOnLastActiveDesktop && (options.currentSpaceIDs.isEmpty || !options.currentSpaceIDs.isDisjoint(with: app.lastActiveSpaceIDs))
+            let windowlessHere = all.isEmpty && options.showWindowlessAppsOnLastActiveDesktop && (app.lastActiveSpaceIDs.isEmpty || options.currentSpaceIDs.isEmpty || !options.currentSpaceIDs.isDisjoint(with: app.lastActiveSpaceIDs))
             if options.scope == .allDesktops || !visible.isEmpty || windowlessHere {
                 result.append(DockItem(id: key, app: app))
             } else if options.otherDesktopApps == .dimmed {

@@ -87,7 +87,19 @@ import SwiftUI
         effect.layer?.addSublayer(highlight)
     }
     required init?(coder: NSCoder) { nil }
-    override func layout() { super.layout(); effect.frame = bounds; highlight.frame = effect.bounds }
+    override func setFrameSize(_ newSize: NSSize) {
+        super.setFrameSize(newSize)
+        // Resize the actual material in the same drag event, not the next layout pass.
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        effect.frame = bounds; highlight.frame = effect.bounds
+        CATransaction.commit()
+    }
+    override func layout() {
+        super.layout()
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        effect.frame = bounds; highlight.frame = effect.bounds
+        CATransaction.commit()
+    }
 }
 
 #if compiler(>=6.2)

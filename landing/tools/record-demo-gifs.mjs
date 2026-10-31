@@ -65,10 +65,10 @@ try {
     // The demo area: the screen, chapter bar and caption, with some purple around it.
     const box = await evaluate(`(() => {
       document.querySelector('[data-tour-step="${chapter}"]').click();
-      const r = document.querySelector("#demo").getBoundingClientRect();
+      const r = document.querySelector("[data-demo]").getBoundingClientRect();
       return { x: r.x, y: r.y, width: r.width, height: r.height };
     })()`);
-    const pad = 24;
+    const pad = 0;
 
     // Screencast sends a frame whenever the page repaints; keep each with its timestamp.
     const frames = [];
