@@ -8,7 +8,7 @@ Research date: 2026-10-30. Scope: source inspection and read-only symbol/space-q
 - DockDoor: [`3044142c907b9cdd49917628847a04970450a8e6`](https://github.com/ejbills/DockDoor/tree/3044142c907b9cdd49917628847a04970450a8e6).
 - CGSInternal headers: [`c4f6f559d624dc1cfc2bf24c8c19dbf653317fcf`](https://github.com/NUIKit/CGSInternal/tree/c4f6f559d624dc1cfc2bf24c8c19dbf653317fcf). These are community reverse-engineered declarations, not Apple ABI guarantees.
 
-References below use the exact files and line ranges at these commits. Upstream HEAD can move. Source files were fetched over HTTPS into `/tmp/dockwindow-research`, outside the repository. Upstream comments describing tests are upstream evidence, not tests performed for DockWindow.
+References below use the exact files and line ranges at these commits. Upstream HEAD can move. Source files were fetched over HTTPS into `/tmp/dockwindow-research`, outside the repository. Upstream comments describing tests are upstream evidence, not tests performed for DogBar.
 
 ## Corrections the implementation needs
 
@@ -116,13 +116,13 @@ Find running `com.apple.dock`, make its AX application element, and find its chi
 
 Map icons through `AXURL` to app bundle URL and bundle identifier. Title matching is a fallback, since app names are localized and can collide. Multiple instances of one app require PID-aware disambiguation. Treat non-app items such as folders and Trash separately.
 
-Keep the observer and refcon alive, install its run-loop source on the dedicated observer thread, remove subscriptions on teardown, and recreate after Dock restart, including the intentional `killall Dock` used by hiding/restoration. A successful initial subscription is not permanent health. The upstream restart/health handling is worth studying, but its main-thread AX work must not be reproduced because the DockWindow specification forbids it.
+Keep the observer and refcon alive, install its run-loop source on the dedicated observer thread, remove subscriptions on teardown, and recreate after Dock restart, including the intentional `killall Dock` used by hiding/restoration. A successful initial subscription is not permanent health. The upstream restart/health handling is worth studying, but its main-thread AX work must not be reproduced because the DogBar specification forbids it.
 
 `AXStatusLabel` is explicitly defined by AltTab in HIServices wrapper line 17. It is an opportunistic badge string, not a guaranteed badge API with reliable change notifications. Poll on a low-frequency background schedule, cache results, and tolerate empty/unavailable labels. `AXChildrenChanged`/selection notifications can invalidate an item cache, but do not guarantee badge changes. No reference justifies scraping arbitrary third-party app Dock context menus.
 
 ## DockDoor visual measurements
 
-These values describe the pinned current source, not an exact reconstruction of the user's screenshots. DockDoor's defaults and design have evolved. Prefer the explicit DockWindow specification wherever it differs, including 320x200 switcher thumbnails, 160-point preview height, 20-point preview header icon, 16-point switcher icon, three traffic lights, and about 26/20-point panel radii.
+These values describe the pinned current source, not an exact reconstruction of the user's screenshots. DockDoor's defaults and design have evolved. Prefer the explicit DogBar specification wherever it differs, including 320x200 switcher thumbnails, 160-point preview height, 20-point preview header icon, 16-point switcher icon, three traffic lights, and about 26/20-point panel radii.
 
 | Element | Current DockDoor source measurement | Source |
 | --- | --- | --- |
@@ -152,7 +152,7 @@ Apple's [desktop-independent window filter](https://developer.apple.com/document
 
 Local SDK header check: Xcode 16.4's ScreenCaptureKit headers declare `SCScreenshotManager.captureImage` in `SCScreenshotManager.h:32`, `ignoreShadowsSingleWindow` in `SCStream.h:317`, and `capturesShadowsOnly` in `SCStream.h:327`, all available on macOS 14.0. The requested capture path and these shadow controls fit the deployment target without a newer SDK. This does not enable the newer Liquid Glass APIs.
 
-The reference apps' broader capture results must not be attributed to the requested public capture path. DockDoor's [WindowUtil.swift, lines 519-555](https://github.com/ejbills/DockDoor/blob/3044142c907b9cdd49917628847a04970450a8e6/DockDoor/Utilities/Window%20Management/WindowUtil.swift#L519-L555) uses private `CGSHWCaptureWindowList`, with explicit transparency and Space-transition clipping rejection. AltTab declares that same private capture API at SkyLight lines 27-35. DockWindow should retain the requested ScreenCaptureKit implementation, not silently substitute this private capture API to mimic source behavior.
+The reference apps' broader capture results must not be attributed to the requested public capture path. DockDoor's [WindowUtil.swift, lines 519-555](https://github.com/ejbills/DockDoor/blob/3044142c907b9cdd49917628847a04970450a8e6/DockDoor/Utilities/Window%20Management/WindowUtil.swift#L519-L555) uses private `CGSHWCaptureWindowList`, with explicit transparency and Space-transition clipping rejection. AltTab declares that same private capture API at SkyLight lines 27-35. DogBar should retain the requested ScreenCaptureKit implementation, not silently substitute this private capture API to mimic source behavior.
 
 Cache successful captures before minimize/Space transitions, show cache immediately, and retain it on capture failure. Fall back to the app icon if no valid cached image exists. Avoid accepting a blank/transparent result as a fresh successful thumbnail. Use bounded concurrent work and cancel/coalesce obsolete requests. Capture failure must not remove the tracked window or change its count. Stop visible refresh work when panels close. Cached thumbnails are snapshots, not continuous live streams, even with a one-second refresh timer.
 

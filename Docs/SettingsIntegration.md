@@ -1,6 +1,6 @@
 # Settings integration
 
-Settings lives entirely in `DockWindowCore/Features/Settings`. Construct and retain this controller on the main actor:
+Settings lives entirely in `DogBarCore/Features/Settings`. Construct and retain this controller on the main actor:
 
 ```swift
 @MainActor

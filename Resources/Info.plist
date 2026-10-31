@@ -3,11 +3,11 @@
 <plist version="1.0">
 <dict>
 	<key>CFBundleIdentifier</key>
-	<string>com.dockwindow.app</string>
+	<string>dev.hristijan.dogbar</string>
 	<key>CFBundleName</key>
 	<string>DogBar</string>
 	<key>CFBundleExecutable</key>
-	<string>DockWindow</string>
+	<string>DogBar</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleIconFile</key>

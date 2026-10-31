@@ -224,7 +224,7 @@ test("demo opens on a still frame: one window on screen, Safari's previews showi
   assert.equal($$(".win").length, 4);
   assert.equal($$(".win.is-front").length, 1, "one window on screen");
   assert.equal($(".win.is-front").dataset.win, "s1");
-  assert.equal(dockApps(), "finder:0,dockwindow:0,safari:2,slack:1,notes:1");
+  assert.equal(dockApps(), "finder:0,dogbar:0,safari:2,slack:1,notes:1");
   assert.equal($("[data-front-app]").textContent, "Safari");
   assert.match($('[data-win="s2"]').textContent, /casaluz-stays\.travel[\s\S]*Confirm your stay/);
   assert.doesNotMatch($("[data-desk]").textContent, /\bPR\b|staging|deploy|review|diff/i, "no developer jargon");
@@ -295,7 +295,7 @@ test("pause freezes the walkthrough and play resumes it; chapters jump; reduced 
   assert.ok($('[data-tour-step="0"]').classList.contains("is-done"));
   await pause(w, 1300);
   assert.equal($("[data-desk]").dataset.wall, "2", "the swipe switched desktops");
-  assert.equal($$dockApps(w), "finder:0,dockwindow:0,safari:1,music:1", "the Dock changed with the desktop");
+  assert.equal($$dockApps(w), "finder:0,dogbar:0,safari:1,music:1", "the Dock changed with the desktop");
   assert.equal($("[data-cam]").style.transform, "", "never zoomed");
 
   // Paused mid-scene: nothing moves on; Play continues from the same moment.

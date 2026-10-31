@@ -110,7 +110,7 @@ class ReleaseTests(unittest.TestCase):
             resources = root / 'Resources'
             resources.mkdir()
             (resources / 'Info.plist').write_bytes(plistlib.dumps({}))
-            (resources / 'DockWindow.entitlements').write_bytes(plistlib.dumps(r.ENTITLEMENTS))
+            (resources / 'DogBar.entitlements').write_bytes(plistlib.dumps(r.ENTITLEMENTS))
             (resources / 'AppIcon.icns').write_bytes(b'icon')
             out = root / 'dist/DogBar-1.2.3-arm64'
             events = []
@@ -119,7 +119,7 @@ class ReleaseTests(unittest.TestCase):
                 if args[0] == 'swift':
                     binary = out / 'build/bin'
                     binary.mkdir(parents=True, exist_ok=True)
-                    (binary / 'DockWindow').write_bytes(b'mock binary')
+                    (binary / 'DogBar').write_bytes(b'mock binary')
                     return str(binary) if '--show-bin-path' in args else ''
                 if args[:2] == ('hdiutil', 'create'):
                     Path(args[-1]).write_bytes(b'mock dmg')
@@ -148,7 +148,7 @@ class ReleaseTests(unittest.TestCase):
                 self.assertLess(create, dmg_notary)
                 self.assertTrue((out / 'release.json').exists())
                 self.assertFalse(any('--deep' in e for e in events if e[0] == 'codesign'))
-                self.assertTrue(all('Applications/DockWindow.app' not in ' '.join(e) for e in events))
+                self.assertTrue(all('Applications/DogBar.app' not in ' '.join(e) for e in events))
                 with self.assertRaises(r.ReleaseError):
                     r.build_release(args)
 

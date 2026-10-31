@@ -6,7 +6,7 @@ Production: https://dogbar.hristijan.dev/ (Cloudflare DNS configured and HTTPS v
 
 Working Vercel address: https://dockwindow.vercel.app/
 
-The Vercel project is `dockwindow` in the connected account. Only the site files are uploaded, not native app sources or this README. `vercel.json` keeps deployment static. Canonical and social image URLs use the production domain. The repository remains private.
+The Vercel project is `dockwindow` in the connected account. Only the site files are uploaded, not native app sources or this README. `vercel.json` keeps deployment static. Canonical and social image URLs use the production domain. The repository is public on GitHub.
 
 ## Custom domain setup
 
@@ -89,6 +89,12 @@ Window content is code: spans styled in `styles.css`, sized in container query u
 node landing/tools/app-icons.mjs
 ```
 
+The repository README shows the demo as three GIFs in `.github/readme/`. Re-record them after changing the demo (needs Google Chrome, ffmpeg and Node 22+; Chrome runs headless with a throwaway profile):
+
+```
+node landing/tools/record-demo-gifs.mjs
+```
+
 These icons are trademarks of their owners and appear only to depict those apps in the demo and feature visuals.
 
 ## Download CTAs and release channels
@@ -122,7 +128,7 @@ JSDOM_PATH=/path/to/node_modules/jsdom node --test 'landing/tests/*.test.cjs'
 
 ## Copy guardrails
 
-The page avoids claims the app has not verified. It makes no speed claims and no guarantee about never switching Space. It does not mention App Store, pricing, testimonials or full Liquid Glass. It discloses unnotarized previews explicitly and names Apple Silicon only when a validated download is live. It does not link to the private repository, and there is no waitlist.
+The page avoids claims the app has not verified. It makes no speed claims and no guarantee about never switching Space. It does not mention App Store, pricing, testimonials or full Liquid Glass. It discloses unnotarized previews explicitly and names Apple Silicon only when a validated download is live. The page has no GitHub link yet, and there is no waitlist.
 
 ### Explicit preview channel
 

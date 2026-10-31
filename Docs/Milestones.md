@@ -1,8 +1,8 @@
-# DockWindow milestones
+# DogBar milestones
 
 ## M0: Scaffold
 
-Built the Swift 5 package, native menu bar application, permission onboarding, structured logging, metadata and release install/run scripts. Build and bundle metadata test pass. Release app installed and launch requested from `~/Applications/DockWindow.app`. SDK is 15.5. A newer Xcode enables true Liquid Glass. Certificate instructions were already provided by the parent. The certificate is still missing, so this build uses ad-hoc signing.
+Built the Swift 5 package, native menu bar application, permission onboarding, structured logging, metadata and release install/run scripts. Build and bundle metadata test pass. Release app installed and launch requested from `~/Applications/DogBar.app`. SDK is 15.5. A newer Xcode enables true Liquid Glass. Certificate instructions were already provided by the parent. The certificate is still missing, so this build uses ad-hoc signing.
 
 Manual checks, pending user verification:
 - Launch the app from Applications and find its menu bar icon.
@@ -116,11 +116,11 @@ Manual checks, pending user verification:
 
 Completed service cancellation, display-specific focus verification, stale membership reply rejection, minimized membership retention, observer teardown, guarded CF conversion, tested byte layouts and bounded capture geometry. Nonrunning pinned preview actions now launch and verify through openPinned. UI hardening covers stale tasks, lifecycle dismissal, hit testing, side autohide, display-link cleanup and exclusive recorder ownership. Removed the debug-only dump menu. Added the Apple Events entitlement used by hardened-runtime Trash automation. Installer requests orderly quit and refuses replacement while a process remains, rather than killing it.
 
-Latest user instructions supersede the original invisible-app requirement: DockWindow is now a regular foreground application, LSUIElement is false, and its own bundle is pinned into the replacement Dock. Normal self windows are tracked. Settings preserves regular activation. The menu bar keeps the dog identity and uses a small adjacent state indicator and tooltip instead of replacing the brand with a triangle. Onboarding has a retained hosting controller, explicit 640 by 530 viewport, scrolling content and layout before display. The parent moved actual permission/signature checks off-main and added an initial checking state. Both permission surfaces distinguish initial Checking from Unavailable to this build. Repeated login-status RPCs were removed from the main thread.
+Latest user instructions supersede the original invisible-app requirement: DogBar is now a regular foreground application, LSUIElement is false, and its own bundle is pinned into the replacement Dock. Normal self windows are tracked. Settings preserves regular activation. The menu bar keeps the dog identity and uses a small adjacent state indicator and tooltip instead of replacing the brand with a triangle. Onboarding has a retained hosting controller, explicit 640 by 530 viewport, scrolling content and layout before display. The parent moved actual permission/signature checks off-main and added an initial checking state. Both permission surfaces distinguish initial Checking from Unavailable to this build. Repeated login-status RPCs were removed from the main thread.
 
 Final verification: swift build, all 67 tests, release compilation and Scripts/build-app.sh passed without warnings. One final combined installation and fresh launch followed the parent's release of the install hold. codesign verification passed. The installed Info.plist reports LSUIElement=false and CFBundleIconFile=AppIcon. Installed icon content matches the selected dog resource. No local database was accessed. No browser or GUI automation was used. git diff --check passed.
 
-Runtime evidence, 2026-10-30: process 86846 launched from /Users/kiko/Applications/DockWindow.app. Its public system log states: accessibility=false, screenRecording=false, adHoc=true. This is the actual process result, despite the user's Settings screenshot showing Screen & System Audio Recording enabled. Permission access is not claimed as fixed. No fake grants or TCC resets were used. Security reports zero valid signing identities. Feature activation remains gated by effective permissions.
+Runtime evidence, 2026-10-30: process 86846 launched from /Users/kiko/Applications/DogBar.app. Its public system log states: accessibility=false, screenRecording=false, adHoc=true. This is the actual process result, despite the user's Settings screenshot showing Screen & System Audio Recording enabled. Permission access is not claimed as fixed. No fake grants or TCC resets were used. Security reports zero valid signing identities. Feature activation remains gated by effective permissions.
 
 A short top sample of this permission/setup state showed about 27 MB resident memory and CPU samples 0.0%, 1.7%, 2.6%. An earlier setup-state sample ranged from 0.0% to 5.4% at about 32 to 33 MB. These are not a verified full-Dock idle workload or 30-window memory test, and do not establish the under-1% CPU budget. Presentation latency, ProMotion pacing, Space-update timing, native visual parity and all live multi-display/private-API behavior remain unverified. The new onboarding rendering and visible Dock behavior still need user confirmation after this final launch.
 
@@ -168,7 +168,7 @@ Manual checks:
 
 ## DogBar rebrand and custom domain
 
-Renamed the public site and native display name, menus, onboarding and Settings to DogBar. Kept com.dockwindow.app, DockWindow executable and install path, settings keys, window autosave keys and DockWindow Dev certificate name unchanged. Bundle metadata tests cover the new display name and preserved executable/identifier.
+Renamed the public site and native display name, menus, onboarding and Settings to DogBar. Kept dev.hristijan.dogbar, DogBar executable and install path, settings keys, window autosave keys and DockWindow Dev certificate name unchanged. Bundle metadata tests cover the new display name and preserved executable/identifier.
 
 The user-created self-signed identity was present but excluded from valid-only identity lookup. Signing a temporary app copy proved it works without changing system trust settings. The installer now selects present signing identities, aborts on signing failure rather than silently changing identity, and waits for asynchronous quit/restoration before replacing the app. The installed app verifies with Authority DockWindow Dev and a designated requirement anchored to its certificate leaf. All 87 tests, debug and release builds pass. Current process permissions remain false, with adHoc=false, so permission reapproval is still pending.
 

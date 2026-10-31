@@ -50,7 +50,7 @@ On Pause, disable, or Restore Native Dock, call `try await restore()`. On ordina
 
 `NativeDockReader.items` publishes app Dock items and `hoveredItem` publishes the selected icon only when its frame contains the mouse. Frames are converted from Quartz to AppKit global coordinates using the primary display's top edge. AXURL resolves bundle identifiers; badges are keyed by bundle ID. Observe `$items` and pass `reader.badges` to tracker `setBadges`. Badge reads run every two seconds. Selection notifications trigger reads immediately. After Dock restart, the reader reconnects on workspace launch or timer recovery. Selection is an AX signal, not a guaranteed mouse-hover API; the panel coordinator must still apply delay, pointer bridge and close behavior. Folders and Trash are excluded from application previews.
 
-`PinnedAppsStore` imports the native persistent-apps list once if no own saved list exists. `apps`, `pin(bundleIdentifier:url:at:)`, `unpin(bundleIdentifier:)`, `move(from:to:)` and `reimportNativeDock()` provide ordered persistence. Reimport is an explicit overwrite of DockWindow's pins only. File existence and bundle ID parsing use the shared pure policy. Neither the store nor the reader writes native Dock pins.
+`PinnedAppsStore` imports the native persistent-apps list once if no own saved list exists. `apps`, `pin(bundleIdentifier:url:at:)`, `unpin(bundleIdentifier:)`, `move(from:to:)` and `reimportNativeDock()` provide ordered persistence. Reimport is an explicit overwrite of DogBar's pins only. File existence and bundle ID parsing use the shared pure policy. Neither the store nor the reader writes native Dock pins.
 
 ## Verification and manual checks
 

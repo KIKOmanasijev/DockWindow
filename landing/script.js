@@ -47,13 +47,13 @@
 
   const APPS = {
     finder: { name: "Finder", img: "assets/apps/finder.png" },
-    dockwindow: { name: "DogBar", img: "assets/dog-96.png" },
+    dogbar: { name: "DogBar", img: "assets/dog-96.png" },
     safari: { name: "Safari", img: "assets/apps/safari.png" },
     slack: { name: "Slack", img: "assets/apps/slack.png" },
     notes: { name: "Notes", img: "assets/apps/notes.png" },
     music: { name: "Music", img: "assets/apps/music.png" },
   };
-  const PINS = ["finder", "dockwindow"];
+  const PINS = ["finder", "dogbar"];
   const INTRO_TEXT = "Safari has two windows open, but you can only see one. DogBar’s Dock preview shows both.";
 
   // Only the front window is shown on the desk, so every change reads at a glance.

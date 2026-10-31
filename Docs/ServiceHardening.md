@@ -12,7 +12,7 @@ Service and private-wrapper changes only. PermissionsService, AppRelauncher, Dia
 - AX/CF force casts were replaced by CF type-ID checks and guarded typed conversion, including validation of each array element. Runtime symbol conversion checks pointer size before conversion. Framework handles remain alive for resolved functions.
 - Packed remote-token and focus-record builders are independent pure functions, using the existing private API fact report. No signatures were newly researched. Tokens remain 20 packed bytes; focus records allocate 256 zeroed bytes and declare 248 bytes.
 - Thumbnail refresh rejects invalid geometry before integer conversion, bounds refresh intervals, checks cancellation after shareable-content waits and before cache writes, and preserves invalidations arriving during content discovery. Removing a thumbnail cancels its request. Restarting visible refresh cancels preceding requests. An already running ScreenCaptureKit operation may still finish internally.
-- DockWindow is included among regular applications. Its normal Settings/onboarding windows can be tracked and counted. Existing AX role/subrole and window eligibility checks still apply to panels.
+- DogBar is included among regular applications. Its normal Settings/onboarding windows can be tracked and counted. Existing AX role/subrole and window eligibility checks still apply to panels.
 
 ## Pinned application API
 
@@ -42,5 +42,5 @@ Manual checks still required:
 - Pause/restart during a membership poll, AX discovery and visible capture. Confirm old publications do not return.
 - Minimize, switch desktops, restore and close windows, including apps that omit minimized windows from their server inventory.
 - Unplug the requested display and move between fullscreen/shared/separate Spaces while opening. Confirm failure or cancellation rather than verified success on another display.
-- Open DockWindow Settings/onboarding and check normal-window tracking; verify nonactivating overlay panels do not appear as ordinary app windows.
+- Open DogBar Settings/onboarding and check normal-window tracking; verify nonactivating overlay panels do not appear as ordinary app windows.
 - Verify native-Dock reconnect after restart and permission revocation/regrant. Measure CPU, memory and responsiveness separately before asserting budgets.

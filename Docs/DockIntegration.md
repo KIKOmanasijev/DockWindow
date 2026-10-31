@@ -2,7 +2,7 @@
 
 ## Lifecycle and ownership
 
-All presentation types are main-actor AppKit/CALayer types in DockWindowCore. Construct and retain:
+All presentation types are main-actor AppKit/CALayer types in DogBarCore. Construct and retain:
 
 ```swift
 let dock = DockController(
@@ -14,7 +14,7 @@ let dock = DockController(
 )
 ```
 
-Call `start()` only after the coordinator has applied `NativeDockController.beginSession(dockEnabled:)`, started tracking and passed permission/pause gates. Call `stop()` before restoring native preferences, pausing, disabling or terminating. Start/stop are idempotent. The controller owns its panel, event monitors, subscriptions, display link, delayed hide and opening tasks. It does not start shared services, request permissions, alter native Dock preferences or activate DockWindow. The coordinator must await native restore/endSession through the existing delayed-termination path. Keep the reader-to-tracker badge wiring from ServiceIntegration.md.
+Call `start()` only after the coordinator has applied `NativeDockController.beginSession(dockEnabled:)`, started tracking and passed permission/pause gates. Call `stop()` before restoring native preferences, pausing, disabling or terminating. Start/stop are idempotent. The controller owns its panel, event monitors, subscriptions, display link, delayed hide and opening tasks. It does not start shared services, request permissions, alter native Dock preferences or activate DogBar. The coordinator must await native restore/endSession through the existing delayed-termination path. Keep the reader-to-tracker badge wiring from ServiceIntegration.md.
 
 Snapshot, pin and settings changes are consumed on the next main run-loop turn so Combine's willSet publication does not produce stale reads. Main display means the primary/menu-bar display, not the focused-window display returned by NSScreen.main. Mouse display follows pointer movement except during dragging or an open preview. Screen topology changes reselect and reframe. Current Space selection uses the display UUID and shared-Spaces policy fallback.
 

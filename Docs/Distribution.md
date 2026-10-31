@@ -33,7 +33,7 @@ Use `python3 Scripts/release.py build` if preferred. Add `--identity FINGERPRINT
 python3 -m unittest discover -s Tests/ReleaseTests -v
 ```
 
-The helper never calls `Scripts/build-app.sh`, installs or launches an app, quits a running process, or touches `~/Applications/DockWindow.app`. It builds with `swift build -c release --triple arm64-apple-macosx14.0 --product DockWindow --scratch-path ...` inside a new `dist/DogBar-<version>-arm64/` directory. Bundle display/name is DogBar and the distribution bundle is `DogBar.app`; identifier `com.dockwindow.app`, executable `DockWindow`, and existing native settings remain stable.
+The helper never calls `Scripts/build-app.sh`, installs or launches an app, quits a running process, or touches `~/Applications/DogBar.app`. It builds with `swift build -c release --triple arm64-apple-macosx14.0 --product DogBar --scratch-path ...` inside a new `dist/DogBar-<version>-arm64/` directory. Bundle display/name is DogBar and the distribution bundle is `DogBar.app`; identifier `dev.hristijan.dogbar` and executable `DogBar` match the development build, so permissions and settings carry across.
 
 Release sequence:
 
@@ -58,7 +58,7 @@ This command copies to a temporary candidate, checks its hash against local buil
 
 Only approved bytes enter `landing/downloads/DogBar-<version>-arm64.dmg`, followed by an atomic replacement of `landing/release.json`. Different bytes cannot overwrite an existing versioned filename. Identical staging is idempotent after full validation. A version older than the currently advertised version is rejected. Run only one release/staging operation at a time, and finish staging before deploying the landing directory. Keep older versioned DMGs available. Do not deploy temporary candidate folders, logs, the ZIP, or `dist`. No helper commits, pushes, or deploys anything.
 
-Deploy the static landing site to Vercel separately after staging the verified release. Use the same-origin public path `https://dogbar.hristijan.dev/downloads/DogBar-<version>-arm64.dmg`. Never link private GitHub release assets, embed GitHub credentials, or redirect downloads to a private repository. Ensure the Vercel project's static root and file-size limits support the actual DMG before deployment. Serve the DMG as `application/x-apple-diskimage` with an attachment filename, immutable caching for versioned files, and revalidation/no-cache for `release.json`. Do not apply immutable caching to the manifest.
+Deploy the static landing site to Vercel separately after staging the verified release. Use the same-origin public path `https://dogbar.hristijan.dev/downloads/DogBar-<version>-arm64.dmg`. The website never links to GitHub release assets or redirects downloads there; the GitHub release is a mirror of the same bytes (see [Releasing.md](Releasing.md)). Never embed GitHub credentials. Ensure the Vercel project's static root and file-size limits support the actual DMG before deployment. Serve the DMG as `application/x-apple-diskimage` with an attachment filename, immutable caching for versioned files, and revalidation/no-cache for `release.json`. Do not apply immutable caching to the manifest.
 
 The UI contract is exactly:
 
@@ -66,7 +66,7 @@ The UI contract is exactly:
 {"available":false,"version":null,"url":null,"sha256":null,"architecture":"arm64","minimumMacOS":"14.0","notarized":false}
 ```
 
-On success, `available` and `notarized` become true, `version` is the validated release version, `url` is exactly `/downloads/DogBar-<version>-arm64.dmg`, and `sha256` is 64 lowercase hexadecimal characters. Hero and footer should consume the same manifest and enable downloads only for a valid ready response. Treat fetch failures, malformed/unsafe paths, or incomplete fields as unavailable. Do not invent a download URL, set notarized true for a demo, or use a private asset fallback. Initial public UI remains gated until a genuine release is staged.
+On success, `available` and `notarized` become true, `version` is the validated release version, `url` is exactly `/downloads/DogBar-<version>-arm64.dmg`, and `sha256` is 64 lowercase hexadecimal characters. Hero and footer should consume the same manifest and enable downloads only for a valid ready response. Treat fetch failures, malformed/unsafe paths, or incomplete fields as unavailable. Do not invent a download URL, set notarized true for a demo, or fall back to an off-site asset. Initial public UI remains gated until a genuine release is staged.
 
 After deployment, download over HTTPS, compare SHA-256 using `shasum -a 256`, and test the downloaded quarantined DMG/app through Finder on a fresh supported Mac or clean VM. Do not strip quarantine to make a test pass. Confirm the app copies into Applications and launches under default security settings. This manual acceptance step remains necessary even when command-line checks pass.
 

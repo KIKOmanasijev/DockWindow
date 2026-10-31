@@ -17,7 +17,7 @@ let hotkeys = HotkeyEventTap { [weak switcher] command in
 }
 ```
 
-`enabled` defaults to false. The coordinator must set it only when Accessibility, Screen Recording, pause and overall lifecycle gating permit operation. Match the event tap's configuration.enabled to this gate, `settings.switcherEnabled` and `!settings.isPaused`. Publish a complete HotkeyConfiguration when shortcut or action settings change. The switcher also guards the preference and pause state itself. It never requests permissions, starts the tracker, creates an event tap, changes native Dock preferences or activates DockWindow.
+`enabled` defaults to false. The coordinator must set it only when Accessibility, Screen Recording, pause and overall lifecycle gating permit operation. Match the event tap's configuration.enabled to this gate, `settings.switcherEnabled` and `!settings.isPaused`. Publish a complete HotkeyConfiguration when shortcut or action settings change. The switcher also guards the preference and pause state itself. It never requests permissions, starts the tracker, creates an event tap, changes native Dock preferences or activates DogBar.
 
 On shutdown or pause set `switcher.enabled = false` and disable/stop the tap. `dismiss()` cancels the delayed appearance, stops this panel's refresh lease and closes without focusing. On ordinary UI dismissal it fades for 120 ms unless Reduce Motion applies. `isActive` is published and includes the appearance-delay period. `isVisible` reflects the panel, including its short outgoing fade. Do not use isVisible as the tap gate: quick switching must begin before the panel is visible.
 
@@ -55,7 +55,7 @@ Windowless commit uses `NewWindowOpener.open(app:onSpace:rule:)`, targeting the 
 
 ## Reusable UI APIs
 
-All views and providers are main-actor types in DockWindowCore.
+All views and providers are main-actor types in DogBarCore.
 
 - `WindowCardView(window:app:image:thumbnailSize:layout:selected:selectionColor:showTitle:showTrafficLights:reduceMotion:select:activate:close:minimize:zoom:)` renders the same thumbnail surface in `.header` switcher layout or `.overlay` preview layout. Supply the cached CGImage, optional TrackedApp, closures and setting values. It contains no AX/private calls, focus logic or capture ownership. The parent must observe ThumbnailService revision to redraw cached images. `select` is a hover callback. `activate` is a thumbnail/title click. Traffic lights call their own closures without activating the card.
 - `TrafficLightsView(close:minimize:zoom:)` provides grey resting controls with colored hover controls, help and accessibility labels. Zoom means service fullscreen toggle.

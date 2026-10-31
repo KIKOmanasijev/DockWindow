@@ -33,7 +33,7 @@ No browser, GUI automation, application launch, bundle build, installation, comm
 
 ## Manual verification still required
 
-1. Confirm DockWindow's Dock icon remains visible after opening and closing Settings. Verify Welcome content and permission state through the integrator's separate changes.
+1. Confirm DogBar's Dock icon remains visible after opening and closing Settings. Verify Welcome content and permission state through the integrator's separate changes.
 2. Open General and switch panes repeatedly. Confirm login status loads without blocking input, login registration and reset report real errors, and no periodic Service Management RPC remains after closing Settings.
 3. Hover nonrunning pins, then request New Window on each display. Test unknown Space and failure feedback, dismiss during the operation, and verify no late panel appears.
 4. Use traffic lights in both surfaces, including save-sheet close vetoes. Confirm the card does not activate or commit from those controls.

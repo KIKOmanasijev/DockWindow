@@ -48,7 +48,7 @@ class PreviewTests(unittest.TestCase):
     def test_signature_is_bound_to_certificate_identifier_runtime_and_entitlements(self):
         req = p.requirement(SHA, app=True)
         self.assertIn(SHA, req)
-        self.assertIn('identifier "com.dockwindow.app"', req)
+        self.assertIn('identifier "dev.hristijan.dogbar"', req)
         self.assertNotIn('anchor apple', req)
         detail = 'Authority=DockWindow Dev\nflags=0x10000(runtime)\n'
         xml = plistlib.dumps(p.ENTITLEMENTS).decode()
@@ -103,7 +103,7 @@ class PreviewTests(unittest.TestCase):
                 resources = root / 'Resources'
                 resources.mkdir()
                 (resources / 'Info.plist').write_bytes(plistlib.dumps({}))
-                (resources / 'DockWindow.entitlements').write_bytes(plistlib.dumps(p.ENTITLEMENTS))
+                (resources / 'DogBar.entitlements').write_bytes(plistlib.dumps(p.ENTITLEMENTS))
                 (resources / 'AppIcon.icns').write_bytes(b'fixture icon')
                 out = root / 'dist' / f'DogBar-{VERSION}-arm64'
                 events = []
@@ -114,7 +114,7 @@ class PreviewTests(unittest.TestCase):
                     if args[0] == 'swift':
                         binary = out / 'build/bin'
                         binary.mkdir(parents=True, exist_ok=True)
-                        (binary / 'DockWindow').write_bytes(b'fixture binary')
+                        (binary / 'DogBar').write_bytes(b'fixture binary')
                         return str(binary) if '--show-bin-path' in args else ''
                     if args[:2] == ('hdiutil', 'create'):
                         Path(args[-1]).write_bytes(b'fixture dmg')
@@ -137,7 +137,7 @@ class PreviewTests(unittest.TestCase):
                     self.assertTrue(any('--scratch-path' in event for event in events))
                     self.assertFalse(any('--deep' in event for event in events if event[0] == 'codesign'))
                     self.assertFalse(any('notarytool' in event or 'stapler' in event or 'spctl' in event for event in events))
-                    self.assertFalse(any('Applications/DockWindow.app' in ' '.join(event) for event in events))
+                    self.assertFalse(any('Applications/DogBar.app' in ' '.join(event) for event in events))
                     with self.assertRaises(p.PreviewError):
                         p.build_preview(args)
 

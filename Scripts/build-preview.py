@@ -83,7 +83,7 @@ def prerequisites():
 def requirement(identity, app=False):
     value = f'certificate leaf = H"{fingerprint(identity)}"'
     if app:
-        value += ' and identifier "com.dockwindow.app"'
+        value += ' and identifier "dev.hristijan.dogbar"'
     return value
 
 
@@ -106,12 +106,12 @@ def verify_app(app, identity, value, build):
     build_number(build)
     require(app.is_dir() and not app.is_symlink(), 'Expected a real DogBar.app bundle')
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
-    expected = dict(CFBundleIdentifier='com.dockwindow.app', CFBundleExecutable='DockWindow',
+    expected = dict(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                     CFBundleName='DogBar', CFBundleDisplayName='DogBar',
                     CFBundleShortVersionString=value.split('-')[0], DogBarPreviewVersion=value,
                     CFBundleVersion=build, LSMinimumSystemVersion='14.0')
     require(all(info.get(key) == item for key, item in expected.items()), 'Preview app metadata mismatch')
-    require(run('xcrun', 'lipo', '-archs', app / 'Contents/MacOS/DockWindow').strip() == 'arm64', 'Preview executable must be arm64 only')
+    require(run('xcrun', 'lipo', '-archs', app / 'Contents/MacOS/DogBar').strip() == 'arm64', 'Preview executable must be arm64 only')
     verify_signature(app, identity, app=True)
 
 
@@ -175,12 +175,12 @@ def build_preview(args):
     prerequisites()
     # Valid-only identity lookup excludes this deliberately self-signed local certificate.
     select_identity(run('security', 'find-identity', '-p', 'codesigning'), identity)
-    entitlements = ROOT / 'Resources/DockWindow.entitlements'
+    entitlements = ROOT / 'Resources/DogBar.entitlements'
     require(plistlib.loads(entitlements.read_bytes()) == ENTITLEMENTS, 'Review changed entitlements before packaging')
     parent.mkdir(exist_ok=True)
     out.mkdir()
     scratch = out / 'build'
-    command = ['swift', 'build', '--scratch-path', scratch, '-c', 'release', '--triple', 'arm64-apple-macosx14.0', '--product', 'DockWindow']
+    command = ['swift', 'build', '--scratch-path', scratch, '-c', 'release', '--triple', 'arm64-apple-macosx14.0', '--product', 'DogBar']
     run(*command)
     binary_dir = Path(run(*command, '--show-bin-path').strip())
     require(binary_dir.resolve().is_relative_to(scratch.resolve()), 'Swift executable must come from the isolated preview build')
@@ -188,10 +188,10 @@ def build_preview(args):
     app = stage / 'DogBar.app'
     (app / 'Contents/MacOS').mkdir(parents=True)
     (app / 'Contents/Resources').mkdir()
-    shutil.copy2(binary_dir / 'DockWindow', app / 'Contents/MacOS/DockWindow')
+    shutil.copy2(binary_dir / 'DogBar', app / 'Contents/MacOS/DogBar')
     shutil.copy2(ROOT / 'Resources/AppIcon.icns', app / 'Contents/Resources/AppIcon.icns')
     info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())
-    info.update(CFBundleIdentifier='com.dockwindow.app', CFBundleExecutable='DockWindow',
+    info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                 CFBundleName='DogBar', CFBundleDisplayName='DogBar',
                 CFBundleShortVersionString=value.split('-')[0], DogBarPreviewVersion=value,
                 CFBundleVersion=build, LSMinimumSystemVersion='14.0')

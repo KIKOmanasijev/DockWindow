@@ -12,6 +12,7 @@
 <p align="center">
   <a href="https://dogbar.hristijan.dev/">Website</a> ·
   <a href="https://dogbar.hristijan.dev/#get">Download</a> ·
+  <a href="#see-it-in-action">See it in action</a> ·
   <a href="#what-you-get">What you get</a> ·
   <a href="#install">Install</a> ·
   <a href="#build-and-run">Build from source</a> ·
@@ -21,6 +22,22 @@
 On a Mac, Cmd+Tab shows one icon per app, so two Safari windows look like one, and the Dock can’t tell you which window you’re about to get. DogBar fixes that. It shows you every window, lets you preview them from the Dock, and gives each desktop its own Dock.
 
 > **Status: in active development.** An [unnotarized preview](https://dogbar.hristijan.dev/#get) is available for Apple Silicon Macs on macOS 14 or later. It is self-signed, not notarized by Apple, so macOS asks you to confirm the first launch.
+
+## See it in action
+
+**Hover an app in the Dock to preview its windows**, then click the one you want.
+
+<img src=".github/readme/demo-previews.gif" alt="Only a Lisbon day plan window is on screen. The pointer hovers Safari in the Dock, previews of its two windows appear, and clicking Hotel booking brings that window forward." width="760">
+
+**Alt-tab to any window, not just any app.** Every window gets its own tile.
+
+<img src=".github/readme/demo-alt-tab.gif" alt="Holding Option and tapping Tab shows a tile for each window, including two Safari windows. Releasing on the Slack chat brings it forward." width="760">
+
+**Get a separate Dock on every desktop.** Swipe to another desktop and the Dock changes to match.
+
+<img src=".github/readme/demo-desktops.gif" alt="Swiping to Desktop 2 slides in a new desktop whose Dock shows only Safari and Music, then swiping back restores the Desktop 1 Dock." width="760">
+
+These are recordings of the demo on [dogbar.hristijan.dev](https://dogbar.hristijan.dev/), made with `node landing/tools/record-demo-gifs.mjs`.
 
 ## What you get
 
@@ -81,10 +98,9 @@ DogBar saves your original Dock settings before hiding Apple’s Dock and puts t
 
 ```sh
 git clone https://github.com/KIKOmanasijev/DockWindow.git
-cd DockWindow
+cd DogBar
 ```
 
-The repository is currently private, so cloning requires access.
 
 ### Build, install and launch
 
@@ -92,7 +108,7 @@ The repository is currently private, so cloning requires access.
 Scripts/run.sh
 ```
 
-This builds the release executable, assembles and signs the app bundle, installs it at `~/Applications/DockWindow.app`, then launches it. If an existing instance is running, installation waits for it to quit and restore the native Dock.
+This builds the release executable, assembles and signs the app bundle, installs it at `~/Applications/DogBar.app`, then launches it. If an existing instance is running, installation waits for it to quit and restore the native Dock.
 
 To compile the Swift package without installing or launching it:
 
@@ -124,9 +140,11 @@ The build script uses that signing identity when present. Without it, the script
 The development certificate is for local builds. Public distribution uses the separate Developer ID workflow described below.
 
 <details>
-<summary>Why do some paths and identifiers still say DockWindow?</summary>
+<summary>Moving from the old DockWindow build</summary>
 
-DogBar is the product, app display name and Swift package name. The bundle ID `com.dockwindow.app`, executable and targets (`DockWindow`, `DockWindowCore`), development install path `~/Applications/DockWindow.app`, settings keys and `DockWindow Dev` certificate name stay unchanged on purpose. Keeping the bundle ID, signing identity and settings keys stable preserves permission matching and access to existing preferences. The GitHub repository also keeps its name.
+Earlier builds were called DockWindow, with bundle ID `com.dockwindow.app`. Everything is now DogBar: the bundle ID is `dev.hristijan.dogbar`, the executable and targets are `DogBar` and `DogBarCore`, and the development install is `~/Applications/DogBar.app`. macOS ties permissions and saved settings to the bundle ID, so the first DogBar build asks for Accessibility and Screen Recording again and starts with default settings. `Scripts/build-app.sh` quits a running DockWindow first so it restores your Dock. Afterwards, delete `~/Applications/DockWindow.app` and its old entries in **System Settings → Privacy & Security**.
+
+The local signing certificate keeps its name, `DockWindow Dev`, because it is an existing Keychain item. Renaming it means creating a new certificate.
 
 </details>
 
@@ -162,7 +180,7 @@ Window focus, Spaces, permissions, native Dock restoration and performance also 
 
 ## Distribution
 
-The current download is an **unnotarized, self-signed preview**. The [preview guide](Docs/PreviewDistribution.md) covers its build, checks and first-launch instructions. Preview artifacts are hosted on the DogBar website; the GitHub repository stays private.
+The current download is an **unnotarized, self-signed preview**. The [preview guide](Docs/PreviewDistribution.md) covers its build, checks and first-launch instructions. Preview DMGs are hosted on the DogBar website and mirrored on [GitHub Releases](https://github.com/KIKOmanasijev/DockWindow/releases); see [Releasing.md](Docs/Releasing.md).
 
 A notarized release needs an Apple-issued **Developer ID Application** certificate, hardened-runtime signing, notarization and stapled tickets. Enrollment in the Apple Developer Program is required before this project can produce that release.
 
@@ -172,9 +190,9 @@ The [distribution guide](Docs/Distribution.md) explains owner setup, Keychain cr
 
 | Path | Purpose |
 | --- | --- |
-| `Sources/DockWindow/` | App startup, lifecycle, menus and onboarding |
-| `Sources/DockWindowCore/` | Window tracking, system services, feature UI and testable policies |
-| `Tests/DockWindowCoreTests/` | Native unit tests |
+| `Sources/DogBar/` | App startup, lifecycle, menus and onboarding |
+| `Sources/DogBarCore/` | Window tracking, system services, feature UI and testable policies |
+| `Tests/DogBarCoreTests/` | Native unit tests |
 | `Tests/ReleaseTests/` | Release-tool tests |
 | `Scripts/` | Development builds and public-release tooling |
 | `Resources/` | Bundle metadata, icon and entitlements |

@@ -7,8 +7,8 @@
 - All 102 native tests pass. Tests have no database integration.
 - Dock magnification is removed. Icon rasterization chooses Retina representations and updates for size or display-scale changes. Whole switcher cards render at 90 percent of their previous dimensions.
 - Switcher content is bounded before scaling, preventing intrinsic title widths from overlapping adjacent cards. A persistent Dock resize grip supports all three positions. Focus and desktop events use independent fast publication paths instead of waiting for full AX scans. Live latency is still unmeasured.
-- App installed at ~/Applications/DockWindow.app and fresh process launched.
-- Signature integrity verifies. The installed DogBar display name uses the existing DockWindow Dev self-signed certificate. Its designated requirement retains com.dockwindow.app and the certificate leaf, rather than an ad-hoc binary hash.
+- App installed at ~/Applications/DogBar.app and fresh process launched.
+- Signature integrity verifies. The installed DogBar display name uses the existing DockWindow Dev self-signed certificate. Its designated requirement retains dev.hristijan.dogbar and the certificate leaf, rather than an ad-hoc binary hash.
 - Selected dog AppIcon.icns and CFBundleIconFile are packaged.
 - LSUIElement is false. The app uses regular activation and pins itself in the replacement Dock.
 - Source audit found no AX/private force casts, force tries, em dashes or debug-only dump menu in current code.

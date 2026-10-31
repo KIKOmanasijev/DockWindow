@@ -1,6 +1,6 @@
 # Models and pure policy integration
 
-`Models/` and `Logic/` are public API in `DockWindowCore`. They contain no AX references and do not call private APIs, launch apps, execute defaults commands, or mutate the native Dock.
+`Models/` and `Logic/` are public API in `DogBarCore`. They contain no AX references and do not call private APIs, launch apps, execute defaults commands, or mutate the native Dock.
 
 ## Tracker contract
 
@@ -16,12 +16,12 @@
 
 Create `AppSettings(defaults: .standard)` on the main actor and retain it. It conforms to `ObservableObject`; SwiftUI can bind the named read/write properties directly. Each setter sends `objectWillChange` before persisting. UserDefaults notifications also refresh other instances. `refresh()` is available for deterministic synchronization after external defaults writes.
 
-Keys are `DockWindow.` plus the public property name. Scalars use native defaults types; structured values and enums use JSON `Data`. `registeredDefaults` exposes the complete key/default table. `reset()` removes only this table's keys, preserving native Dock backups and unrelated defaults. Confirmation belongs in the UI before calling reset.
+Keys are `DogBar.` plus the public property name. Scalars use native defaults types; structured values and enums use JSON `Data`. `registeredDefaults` exposes the complete key/default table. `reset()` removes only this table's keys, preserving native Dock backups and unrelated defaults. Confirmation belongs in the UI before calling reset.
 
 Public property groups:
 
 - General: `launchAtLogin`, `showMenuBarIcon`, `isPaused`.
-- Dock: `useDockWindowDock`, `dockPosition`, `dockDisplay`, `iconSize`, `magnificationEnabled`, `magnificationSize`, `autohide`, `autohideDelay`, `dockScope`, `otherDesktopApps`, `indicatorStyle`, `maxDots`, `includeMinimizedInCount`, `useCustomDotColor`, `dotColor`, `showRunningState`, `bounceOnLaunch`, `showAppNameLabels`, `activeAppClickBehavior`, `showTrash`, `includeMinimizedInDock`, `showWindowlessAppsOnLastActiveDesktop`, `scrollToCycleWindows`, `newWindowRules`, `pinnedApps`, `hasImportedPinnedApps`.
+- Dock: `useDogBarDock`, `dockPosition`, `dockDisplay`, `iconSize`, `magnificationEnabled`, `magnificationSize`, `autohide`, `autohideDelay`, `dockScope`, `otherDesktopApps`, `indicatorStyle`, `maxDots`, `includeMinimizedInCount`, `useCustomDotColor`, `dotColor`, `showRunningState`, `bounceOnLaunch`, `showAppNameLabels`, `activeAppClickBehavior`, `showTrash`, `includeMinimizedInDock`, `showWindowlessAppsOnLastActiveDesktop`, `scrollToCycleWindows`, `newWindowRules`, `pinnedApps`, `hasImportedPinnedApps`.
 - Switcher: `switcherEnabled`, `switcherShortcut`, `sameAppShortcutEnabled`, `sameAppShortcut`, `switcherScope`, `switcherScreens`, `switcherIncludeMinimized`, `switcherIncludeHiddenApps`, `switcherShowWindowlessApps`, `switcherAppearanceDelay`, `switcherThumbnailWidth`, `switcherThumbnailHeight`, `switcherMaxTilesPerRow`, `switcherCloseWithW`, `switcherMinimizeWithM`, `switcherHideWithH`, `switcherQuitWithQ`.
 - Previews: `previewsEnabled`, `previewHoverDelay`, `previewThumbnailHeight`, `previewScope`, `previewShowWindowTitles`, `previewShowTrafficLights`, `previewIncludeMinimized`, `thumbnailRefreshInterval`, `previewShowPointer`.
 - Appearance: `theme`, `useCustomSelectionColor`, `selectionColor`, `panelCornerRadius`, `panelMaterial`, `reduceAnimations`.
@@ -44,7 +44,7 @@ Public property groups:
 - `PinnedAppsPolicy.parse`: pass the exported plist, an existence predicate, and optionally a bundle-ID resolver. It preserves native pin order, skips invalid/missing/non-app entries, and deduplicates IDs. It performs no file access itself.
 - `NewWindowMenuPolicy.match`: pass a detached tree with service-owned IDs. Title matching across the full enabled tree precedes exact Cmd+N fallback. Convert AX modifier flags to `HotkeyModifiers` first: AX menu flags have different bit semantics, including an inverted no-command bit. Custom localized titles come from the rule/UI, not English translation guesses.
 - `NewWindowVerificationPolicy.confirmedWindow`: records prior IDs, requires a new ID for the same PID and confirmed membership in the requested Space set. Unknown membership is not success. Activation and no-Space-switch behavior remain best effort and require runtime verification.
-- `NativeDockPolicy.backup`, `replacementPlan`, `restorePlan`: preserve typed original values and explicit missing keys. A nil change value means delete the key. Persist backup before applying changes. Do not overwrite an existing un-restored backup with DockWindow's own replacement values. `PreferenceValue` converts property-list values without losing Boolean/integer/real distinctions. Crash recovery decision is available separately.
+- `NativeDockPolicy.backup`, `replacementPlan`, `restorePlan`: preserve typed original values and explicit missing keys. A nil change value means delete the key. Persist backup before applying changes. Do not overwrite an existing un-restored backup with DogBar's own replacement values. `PreferenceValue` converts property-list values without losing Boolean/integer/real distinctions. Crash recovery decision is available separately.
 - `HotkeyPolicy.decode`: pure event-to-command decoding. The tap service must reenable on `reenableTap`, swallow only when requested, and retain the modifier set of the shortcut that began the active session. Pass that set as `heldModifiers` when decoding modifier release. Dispatch commands to the main actor; release commits even during the appearance delay, allowing quick switching without showing the panel. Initial forward selection is index one, wrapped through `nextIndex`; reverse begins at the last item. Keep session ownership until trigger key-up has been swallowed, even if modifier release already committed the selection.
 
 All policy options are values and can be constructed from settings on the main actor, then passed to worker queues. Services own failures, retries, timeouts, permission gating and actual UI/system effects.
