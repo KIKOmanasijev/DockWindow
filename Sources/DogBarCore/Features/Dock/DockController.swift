@@ -171,7 +171,8 @@ import Combine
         items.removeAll { item in
             guard item.kind == .application else { return false }
             if item.id == "dev.hristijan.dogbar" { return !settings.showDogBarInDock }
-            guard settings.hideWindowlessApps else { return false }
+            // Permanent pins stay launchable even when their app has no windows.
+            guard !item.isPinned, settings.hideWindowlessApps else { return false }
             guard let pid = item.app?.pid else { return true }
             return !snapshot.windows.contains { $0.pid == pid }
         }

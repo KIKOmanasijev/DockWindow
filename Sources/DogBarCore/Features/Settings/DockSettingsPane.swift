@@ -20,7 +20,7 @@ import SwiftUI
                 SettingsChoice(title: "Dock shows apps from", description: "Show apps with windows in the selected desktop scope.", value: $settings.dockScope)
                 SettingsChoice(title: "Apps from other desktops", description: "Hide remote apps or keep them dimmed.", value: $settings.otherDesktopApps)
                 Toggle("Include minimized windows", isOn: $settings.includeMinimizedInDock).settingsDescription("Keep apps visible when their local windows are minimized.")
-                Toggle("Hide apps with no open windows", isOn: $settings.hideWindowlessApps).settingsDescription("Hide windowless apps, including pinned and recent apps, until they have a window.")
+                Toggle("Hide apps with no open windows", isOn: $settings.hideWindowlessApps).settingsDescription("Hide unpinned running and recent apps without windows. Pinned apps always stay available.")
                 Toggle("Show windowless apps on last active desktop", isOn: $settings.showWindowlessAppsOnLastActiveDesktop).settingsDescription("Keep running apps without windows on their last desktop.").disabled(settings.hideWindowlessApps)
             }.disabled(!settings.useDogBarDock)
             Section("Window indicators") {
