@@ -1,0 +1,41 @@
+# DogBar
+
+> DogBar is a native macOS window switcher and Dock app. It gives you alt-tab for individual windows (not just apps), window previews when you hover an app in the Dock, a separate Dock on every desktop, and a dot per open window. It runs on Apple Silicon Macs with macOS 26 or later.
+
+Website: https://dogbar.hristijan.dev/
+Source code: https://github.com/KIKOmanasijev/DockWindow (MIT License)
+
+## What it does
+
+- Alt-tab to any window: hold Option and tap Tab to see one tile per open window, each with its name and a preview. The Mac's own Cmd+Tab shows one icon per app, so two Safari windows look like one. Add Shift or use the arrow keys to go back, let go of Option to switch, press Escape to cancel.
+- Dock window previews: hover an app in the Dock to see all of its windows. Click one and only that window comes forward. Windows can be closed or minimized from the preview.
+- A Dock per desktop: each desktop's Dock shows only the apps open on that desktop.
+- Window counts: each app in the Dock shows one dot per open window. The Dock can be resized by dragging its edge, and icons do not magnify.
+- Native Dock mode: keeps Apple's Dock and still adds window previews and the window switcher. Per-desktop Docks and window dots need DogBar's own Dock.
+- You can choose whether the Dock, the switcher and previews show windows from the current desktop or from all desktops.
+
+## Requirements and status
+
+- Apple Silicon (arm64) Mac, macOS 26 or later.
+- The current download is a self-signed preview that Apple has not notarized. On first launch macOS may block it; open System Settings, Privacy & Security, and choose Open Anyway.
+- DogBar asks for two permissions. Accessibility lets it bring up, close and minimize single windows and listen for its shortcut. Screen Recording lets it show what is inside each window in the previews.
+- To get the normal Dock back, click the paw in the menu bar and choose Pause DogBar or Restore Native Dock.
+
+## Compared with macOS
+
+| Feature | macOS | DogBar |
+| --- | --- | --- |
+| Preview of every window when you alt-tab | No | Yes |
+| Preview windows by hovering the Dock | No | Yes |
+| A separate Dock for each desktop | No | Yes |
+| See how many windows each app has | No | Yes |
+| Close or minimize a window from its Dock preview | No | Yes |
+
+macOS Mission Control can show individual windows; the table is about the keyboard switcher and the Dock.
+
+## Links
+
+- [Download and setup](https://dogbar.hristijan.dev/#get)
+- [Interactive demo](https://dogbar.hristijan.dev/#demo)
+- [Features](https://dogbar.hristijan.dev/#features)
+- [FAQ](https://dogbar.hristijan.dev/#faq)

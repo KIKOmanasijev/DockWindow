@@ -508,20 +508,6 @@ html:not(.js) .tour { display: none; }
 .pv-lights i:nth-child(2) { background: #febc2e; }
 .pv-lights i:nth-child(3) { background: #28c840; }
 .pv-name { text-align: center; font-size: .75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* A label over the Dock naming whose Dock it is, with a bracket spanning the Dock.
-   script.js sizes and places it over the Dock. */
-.dock-label {
-  position: absolute; z-index: 5; pointer-events: none;
-  display: grid; justify-items: center; gap: 4px;
-  font-size: .7rem; font-weight: 650; white-space: nowrap; color: #fff;
-  animation: rise .3s var(--ease);
-}
-.dock-label > span { padding: .15rem .6rem; border-radius: 999px; background: var(--purple); }
-.dock-label::after {
-  content: ""; justify-self: stretch; height: 7px;
-  border: 1.5px solid rgba(255, 255, 255, .85); border-bottom: 0; border-radius: 6px 6px 0 0;
-}
-
 /* ---------- Sections ---------- */
 .section-title {
   font-family: var(--display);

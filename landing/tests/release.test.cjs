@@ -99,7 +99,7 @@ test("page ships download CTAs in the unavailable state", () => {
 });
 
 test("no em dashes in landing sources", () => {
-  for (const file of ["index.html", "styles.css", "script.js", "release.js", "README.md", "tools/build-art.mjs", "tools/png.mjs", "tools/app-icons.mjs", "tests/dom.test.cjs", "tests/release.test.cjs", "tests/layout.test.cjs"]) {
+  for (const file of ["index.html", "styles.css", "script.js", "release.js", "analytics.js", "llms.txt", "README.md", "tools/build-art.mjs", "tools/png.mjs", "tools/app-icons.mjs", "tests/dom.test.cjs", "tests/release.test.cjs", "tests/layout.test.cjs"]) {
     assert.doesNotMatch(fs.readFileSync(path.join(ROOT, file), "utf8"), /\u2014/, file);
   }
 });

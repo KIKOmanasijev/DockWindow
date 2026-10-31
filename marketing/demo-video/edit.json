@@ -1,0 +1,60 @@
+{
+  "fps": 30,
+  "music": null,
+  "scenes": [
+    {
+      "id": "01-spaces",
+      "duration": 3,
+      "caption": "4 desktops.",
+      "source": null,
+      "start": 0,
+      "verified": false
+    },
+    {
+      "id": "02-clutter",
+      "duration": 3,
+      "caption": "Where\u2019s that window?",
+      "source": null,
+      "start": 0,
+      "verified": false
+    },
+    {
+      "id": "03-desktops",
+      "duration": 11,
+      "caption": "Your desktop. Your Dock.",
+      "source": null,
+      "start": 0,
+      "verified": false
+    },
+    {
+      "id": "04-hover",
+      "duration": 7,
+      "caption": "Hover. Pick your window.",
+      "source": null,
+      "start": 0,
+      "verified": false
+    },
+    {
+      "id": "05-switcher",
+      "duration": 7,
+      "caption": "Option+Tab. Any window.",
+      "source": null,
+      "start": 0,
+      "verified": false
+    },
+    {
+      "id": "06-native",
+      "duration": 3,
+      "caption": "Native. Open source.",
+      "source": null,
+      "start": 0,
+      "verified": false
+    },
+    {
+      "id": "07-end",
+      "duration": 4,
+      "caption": "Free in beta.",
+      "endcard": true
+    }
+  ]
+}

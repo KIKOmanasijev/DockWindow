@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DogBar | Mac Window Switcher &amp; Dock Previews</title>
-  <meta name="description" content="Switch between individual Mac windows with DogBar. Get Dock previews, a Dock for each desktop, and window counts. Apple Silicon, macOS 26+.">
+  <title>DogBar | Alt-Tab Window Switcher &amp; Dock Previews for Mac</title>
+  <meta name="description" content="Alt-tab between individual windows on your Mac, preview windows by hovering the Dock, and get a separate Dock on every desktop. Apple Silicon, macOS 26+.">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#4a14b8">
   <link rel="canonical" href="https://dogbar.hristijan.dev/">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="DogBar">
   <meta property="og:locale" content="en_US">
-  <meta property="og:title" content="DogBar | Mac Window Switcher &amp; Dock Previews">
+  <meta property="og:title" content="DogBar | Alt-Tab Window Switcher &amp; Dock Previews for Mac">
   <meta property="og:description" content="A better alt-tab and Dock for your Mac. See every window, preview windows from the Dock, and get a separate Dock on every desktop. macOS 26+.">
   <meta property="og:url" content="https://dogbar.hristijan.dev/">
   <meta property="og:image" content="https://dogbar.hristijan.dev/assets/dog-640.jpg">
@@ -19,12 +19,13 @@
   <meta property="og:image:width" content="640">
   <meta property="og:image:height" content="640">
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="DogBar | Mac Window Switcher &amp; Dock Previews">
-  <meta name="twitter:description" content="A window switcher and Dock for macOS. Preview windows, switch to the one you need, and keep each desktop separate.">
+  <meta name="twitter:title" content="DogBar | Alt-Tab Window Switcher &amp; Dock Previews for Mac">
+  <meta name="twitter:description" content="Alt-tab between individual windows on your Mac, preview windows by hovering the Dock, and get a separate Dock on every desktop. Apple Silicon, macOS 26+.">
   <meta name="twitter:image" content="https://dogbar.hristijan.dev/assets/dog-640.jpg">
   <meta name="twitter:image:alt" content="DogBar app icon: a cartoon dog holding two windows on purple">
   <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+  <link rel="alternate" type="text/markdown" title="DogBar summary for AI assistants" href="/llms.txt">
   <link rel="stylesheet" href="styles.css">
   <script type="application/ld+json">
 {
@@ -44,11 +45,17 @@
       "url": "https://dogbar.hristijan.dev/",
       "description": "DogBar is a native macOS window switcher and Dock app with individual window previews, per-desktop Docks and window counts.",
       "applicationCategory": "DesktopEnhancementApplication",
+      "applicationSubCategory": "Window switcher",
+      "keywords": "alt-tab for Mac, Mac window switcher, Dock window previews, per-desktop Dock, window counts, Option+Tab",
       "operatingSystem": "macOS 26 or later",
       "processorRequirements": "Apple Silicon (arm64)",
       "image": "https://dogbar.hristijan.dev/assets/dog-640.jpg",
       "license": "https://github.com/KIKOmanasijev/DockWindow/blob/main/LICENSE",
       "sameAs": "https://github.com/KIKOmanasijev/DockWindow",
+      "author": {
+        "@type": "Person",
+        "name": "Hristijan Manasijev"
+      },
       "featureList": [
         "One preview tile per window in the window switcher",
         "Window previews when hovering the Dock",
@@ -108,6 +115,14 @@
         },
         {
           "@type": "Question",
+          "name": "Does DogBar work like Alt+Tab on Windows?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. Its window switcher shows a tile for every open window, like Alt+Tab on Windows. The Mac’s own Cmd+Tab shows only one icon per app."
+          }
+        },
+        {
+          "@type": "Question",
           "name": "How do I switch windows with DogBar?",
           "acceptedAnswer": {
             "@type": "Answer",
@@ -127,6 +142,7 @@
   ]
 }
   </script>
+  <script src="analytics.js" defer></script>
   <script src="release.js" defer></script>
   <script src="script.js" defer></script>
 </head>
@@ -215,7 +231,6 @@
             <div class="dock-wrap">
               <ul class="dock" data-dock></ul>
             </div>
-            <span class="dock-label" data-dock-label hidden><span data-label-text>Desktop 1’s own Dock</span></span>
             <div class="preview" data-preview hidden></div>
             <svg class="cursor" data-cursor focusable="false"><use href="#i-cursor"/></svg>
           </div>
@@ -495,6 +510,10 @@
         <details>
           <summary>How do I get my normal Dock back?</summary>
           <p>Click the paw in the menu bar and choose Pause DogBar or Restore Native Dock. Either one brings your old Dock back.</p>
+        </details>
+        <details>
+          <summary>Does DogBar work like Alt+Tab on Windows?</summary>
+          <p>Yes. Its window switcher shows a tile for every open window, like Alt+Tab on Windows. The Mac’s own Cmd+Tab shows only one icon per app.</p>
         </details>
         <details>
           <summary>How do I switch windows with DogBar?</summary>

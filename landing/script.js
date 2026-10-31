@@ -39,7 +39,6 @@
   const menus = $("[data-menus]");
   const swipeHud = $("[data-swipe]");
   const pointer = $("[data-cursor]");
-  const dockLabel = $("[data-dock-label]");
   const keys = $("[data-keys]");
   const stage = $("#demo");
   const playBtn = $("[data-tour-toggle]");
@@ -89,7 +88,7 @@
     photos: ["File", "Edit", "Image", "View", "Window", "Help"],
   };
 
-  const state = { desk: 1, windows: initialWindows(), order: initialOrder(), mode: "idle", sel: 0, previewApp: null, labels: false };
+  const state = { desk: 1, windows: initialWindows(), order: initialOrder(), mode: "idle", sel: 0, previewApp: null };
 
   const windowsHere = () => state.windows[state.desk];
   const byId = (id) => windowsHere().find((w) => w.id === id);
@@ -220,21 +219,6 @@
     };
     dock.innerHTML = PINS.map(item).join("") +
       (running.length ? `<li class="dock-sep"></li>` : "") + running.map(item).join("");
-    renderDockLabels();
-  }
-
-  // ----- A label over the Dock naming whose Dock it is -----
-  function renderDockLabels() {
-    dockLabel.hidden = !state.labels;
-    if (!state.labels) return;
-    dockLabel.style.left = `${offsetIn(dock).x}px`;
-    dockLabel.style.width = `${dock.offsetWidth}px`;
-    dockLabel.style.bottom = `${Math.max(cam.clientHeight - offsetIn(dock).y + 8, 0)}px`;
-    dockLabel.querySelector("[data-label-text]").textContent = `Desktop ${state.desk}’s own Dock`;
-  }
-  function showDockLabels(on) {
-    state.labels = on;
-    renderDockLabels();
   }
 
   // ----- Bring one window to the front -----
@@ -350,26 +334,23 @@
   }
 
   // The opening frame, also the still image under reduced motion: Desktop 1 with its
-  // own Dock, labelled.
+  // own Dock.
   function reset() {
     closeAll();
     state.windows = initialWindows();
     state.order = initialOrder();
     state.desk = 1;
-    state.labels = false;
     keys.hidden = true; // a chapter jump can leave the switcher's keycaps up
     renderDesk();
     renderDock();
   }
   function openingFrame() {
     reset();
-    showDockLabels(true);
     say(INTRO_TEXT);
   }
 
   window.addEventListener("resize", () => {
     if (state.mode === "preview") placePreview(dock.querySelector(`[data-app="${state.previewApp}"]`));
-    renderDockLabels();
   });
 
   // ---------- Playback ----------
@@ -387,12 +368,10 @@
   }
 
   const SCENES = [
-    // A swipe to Desktop 2 and back. The label names whose Dock is on screen, and the
-    // Dock changes with the desktop.
+    // A swipe to Desktop 2 and back: the Dock changes with the desktop.
     { ms: 7600, run: async (wait) => {
       reset();
       pointer.classList.remove("is-on");
-      showDockLabels(true);
       say(INTRO_TEXT);
       await wait(1900);
       showSwipe(2, 1);
@@ -428,7 +407,6 @@
     // The window switcher over the hotel booking: step to the Slack chat, let go, Slack is in front.
     { ms: 5600, run: async (wait) => {
       closeAll();
-      showDockLabels(false);
       if (state.desk !== 1) setDesk(1);
       pointer.classList.remove("is-on");
       keys.hidden = false;
@@ -444,6 +422,13 @@
 
   const STOP = Symbol("stopped");
   const player = { run: 0, scene: 0, playing: false, pausedByUser: false, timer: null };
+
+  // Analytics (analytics.js): what starts the demo, and how many scenes people watch to the end.
+  const track = (...args) => window.dogbarTrack?.(...args);
+  const trackOnce = (...args) => window.dogbarTrackOnce?.(...args);
+  const chapterName = (n) => chapters[n]?.textContent.trim() || `Scene ${n + 1}`;
+  const watched = new Set();
+  let startedBy = "auto";
 
   // Waits `ms` of playing time. Pausing banks the time left; playing spends the rest.
   function clockWait(id, ms) {
@@ -475,6 +460,7 @@
   }
 
   function setPlaying(on) {
+    if (on) trackOnce("demo-start", "demo_started", { trigger: startedBy, chapter: chapterName(player.scene) });
     player.playing = on;
     stage.dataset.tour = on ? "playing" : "paused";
     playBtn.setAttribute("aria-label", on ? "Pause the demo" : "Play the demo");
@@ -484,12 +470,16 @@
   async function playFrom(i) {
     player.timer?.cancel();
     const id = ++player.run;
+    player.scene = i;
     setPlaying(true);
     try {
       for (let n = i; ; n = (n + 1) % SCENES.length) {
         player.scene = n;
         markChapter(n);
         await SCENES[n].run((ms) => clockWait(id, ms));
+        watched.add(n);
+        trackOnce(`scene:${n}`, "demo_scene_watched", { scene: n + 1, chapter: chapterName(n), scenes_watched: watched.size });
+        if (watched.size === SCENES.length) trackOnce("demo-all", "demo_watched_all", {});
       }
     } catch (err) {
       if (err !== STOP) throw err;
@@ -508,15 +498,21 @@
   }
 
   playBtn.addEventListener("click", () => {
+    track("demo_control_clicked", { action: player.playing ? "pause" : "play", chapter: chapterName(player.scene) });
+    startedBy = "play_button";
     if (player.playing) { player.pausedByUser = true; pause(); }
     else { player.pausedByUser = false; resume(); }
   });
   chapters.forEach((b) => b.addEventListener("click", () => {
+    const n = Number(b.dataset.tourStep);
+    track("demo_control_clicked", { action: "chapter", chapter: chapterName(n) });
+    startedBy = "chapter";
     player.pausedByUser = false;
-    playFrom(Number(b.dataset.tourStep));
+    playFrom(n);
   }));
   // "Watch the demo" links scroll here and start from the beginning.
   document.querySelectorAll("[data-demo-start]").forEach((a) => a.addEventListener("click", () => {
+    startedBy = "watch_demo_link";
     player.pausedByUser = false;
     playFrom(0);
   }));

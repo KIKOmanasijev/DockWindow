@@ -1,0 +1,9 @@
+# Licences checked for this edit
+
+- **DogBar mascot:** copied unchanged from `landing/assets/dog-640.jpg`, used as first-party project artwork. Repository MIT notice is retained in `assets/licenses/DogBar-MIT.txt`. No competitor screenshots, UI, wallpaper or music are reused.
+- **DM Sans:** official Google Fonts file downloaded from https://github.com/google/fonts/tree/main/ofl/dmsans . SIL Open Font License 1.1; allows use, embedding and redistribution with its notice, not sale on its own. Exact notice is bundled in `assets/licenses/DMSans-OFL.txt`. No system font is copied into the project.
+- **Pillow 12.2.0:** MIT-CMU licence, permits use, reproduction and distribution with its copyright/permission notice. Installed separately via requirements; no library code bundled in the video. Official licence: https://github.com/python-pillow/Pillow/blob/main/LICENSE . The installed distribution retains its notices.
+- **FFmpeg installed locally:** this machine's build reports `--enable-gpl --enable-version3 --enable-libx264`; treat this tool build as GPLv3-or-later with components' applicable terms. This project calls the user's installed binary; it does not redistribute it. FFmpeg licensing: https://ffmpeg.org/legal.html . Rendered video is not a distribution of FFmpeg source/binaries. H.264 patent questions are distinct from software copyright licensing.
+- **Original edit code and doodles:** created in this repository; covered by its MIT licence. No rough.js/Remotion licence or subscription required.
+- **Music:** none. Silent by design until a licensed track and attribution are supplied.
+- **Recordings to come:** the user must own or have permission for the visible content; prefer harmless sample documents and built-in wallpapers. The renderer does not certify third-party assets.

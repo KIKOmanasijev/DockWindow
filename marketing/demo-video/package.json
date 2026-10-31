@@ -1,0 +1,12 @@
+{
+  "name": "dogbar-demo-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Offline Pillow + FFmpeg edit. No browser or app automation.",
+  "scripts": {
+    "setup": "python3 -m venv .venv && .venv/bin/pip install -r requirements.txt",
+    "render": ".venv/bin/python scripts/render.py",
+    "final": ".venv/bin/python scripts/render.py --final",
+    "qa": ".venv/bin/python scripts/qa.py"
+  }
+}

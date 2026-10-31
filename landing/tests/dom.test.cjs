@@ -216,7 +216,7 @@ test("explicit preview enables both downloads with honest status and installatio
   assert.equal(production.$("[data-preview-help]").hidden, true);
 });
 
-test("demo opens on a still frame: Desktop 1 with its own Dock, labelled", { skip }, async () => {
+test("demo opens on a still frame: Desktop 1 with its own Dock", { skip }, async () => {
   const { w, $, $$ } = await page(json(null));
   const dockApps = () => $$(".dock-btn").map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
 
@@ -230,9 +230,8 @@ test("demo opens on a still frame: Desktop 1 with its own Dock, labelled", { ski
   assert.doesNotMatch($("[data-desk]").textContent, /\bPR\b|staging|deploy|review|diff/i, "no developer jargon");
   for (const img of $$(".dock-btn img")) assert.match(img.getAttribute("src"), /^assets\/(apps\/[a-z]+|dog-96)\.png$/);
 
-  // The Dock is labelled as this desktop's own. No previews yet, and nothing claims shared pins.
-  assert.equal($("[data-dock-label]").hidden, false);
-  assert.match($("[data-dock-label]").textContent, /Desktop 1’s own Dock/);
+  // No label or bracket obscures the Dock; the changing apps explain the scene.
+  assert.equal($("[data-dock-label]"), null);
   assert.ok($("[data-preview]").hidden);
   assert.match($("[data-caption]").textContent, /Each desktop gets its own Dock/);
   assert.doesNotMatch($("#demo").textContent, /pinned/i);
@@ -267,13 +266,11 @@ test("autoplay: plays on screen, highlights the preview before the click, never 
   assert.ok($('[data-tour-step="0"]').classList.contains("is-active"));
   assert.equal($('[data-tour-step="0"]').getAttribute("aria-current"), "step");
   assert.equal($('[data-tour-step="0"]').textContent.trim(), "A Dock per desktop", "the isolated Docks come first");
-  assert.equal($("[data-dock-label]").hidden, false);
 
   // 1.9 s on Desktop 1, then the swipe: Desktop 2 has its own Dock.
   await pause(w, 2700);
   assert.equal($("[data-desk]").dataset.wall, "2");
   assert.equal($$dockApps(w), "finder:0,music:1,chrome:1,tv:1,photos:1");
-  assert.match($("[data-dock-label]").textContent, /Desktop 2’s own Dock/);
 
   // Scene 2 (7.6 s in): previews. 1.2 s pointer to Safari, 0.9 s previews open,
   // 1.4 s pointer to "Hotel booking", 0.8 s highlight.
@@ -281,7 +278,6 @@ test("autoplay: plays on screen, highlights the preview before the click, never 
   assert.ok($('[data-tour-step="1"]').classList.contains("is-active"));
   assert.ok($("[data-cursor]").classList.contains("is-on"), "the pointer is visible");
   assert.ok($("[data-preview]").hidden, "the preview scene starts from just the day plan");
-  assert.ok($("[data-dock-label]").hidden, "the label belongs to the desktop scene");
   await pause(w, 3500);
   assert.equal($("[data-preview]").hidden, false);
   await pause(w, 900);
@@ -299,7 +295,6 @@ test("pause freezes the walkthrough and play resumes it; chapters jump; reduced 
   const { w, $ } = still;
   await pause(w, 760);
   assert.equal($("#demo").dataset.tour, "idle", "no autoplay under reduced motion");
-  assert.equal($("[data-dock-label]").hidden, false, "the opening frame stays as a still");
 
   $('[data-tour-step="2"]').click();
   assert.equal($("#demo").dataset.tour, "playing", "a person can still start it");

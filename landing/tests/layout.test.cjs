@@ -71,8 +71,7 @@ test("closed preview, switcher and HUD shells stay invisible", { skip: !JSDOM &&
       assert.equal(display(sel), "none", `${sel}: no empty bubble, overlay or pointer`);
     }
     w.eval(fs.readFileSync(path.join(ROOT, "script.js"), "utf8"));
-    assert.equal(display("[data-preview]"), "none", "the opening frame shows the labelled Dock, not previews");
-    assert.equal(display("[data-dock-label]"), "grid", "the label naming this desktop's Dock is visible");
+    assert.equal(display("[data-preview]"), "none", "the opening frame shows the Dock, not previews");
     assert.equal(display("[data-switcher]"), "none");
     assert.equal(display("[data-keys]"), "none");
     assert.equal(display("[data-swipe]"), "none");
