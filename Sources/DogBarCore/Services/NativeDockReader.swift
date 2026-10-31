@@ -36,9 +36,11 @@ public struct NativeDockItem: Identifiable, Equatable {
                     value.frame.origin.y = top - item.frame.maxY
                     return value
                 }
-                self.items = items.map(convert)
+                let converted = items.map(convert)
+                if self.items != converted { self.items = converted }
                 let item = selected.map(convert)
-                self.hoveredItem = item.flatMap { $0.frame.contains(NSEvent.mouseLocation) ? $0 : nil }
+                let hovered = item.flatMap { $0.frame.contains(NSEvent.mouseLocation) ? $0 : nil }
+                if self.hoveredItem != hovered { self.hoveredItem = hovered }
             }
         }
         token = NSWorkspace.shared.notificationCenter.addObserver(forName: NSWorkspace.didLaunchApplicationNotification, object: nil, queue: .main) { [weak worker] _ in worker?.refresh() }

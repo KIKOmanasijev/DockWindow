@@ -3,7 +3,7 @@ import SwiftUI
 import DogBarCore
 import Combine
 
-@MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
+@MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     let updater = UpdateController()
     let permissions = PermissionsService()
     let tracker = WindowTracker()
@@ -32,10 +32,26 @@ import Combine
     var permissionTimer: Timer?
     var statusItem: NSStatusItem?
     var onboarding: NSWindow?
+    private var trackingMenus = Set<ObjectIdentifier>()
+    func menuWillOpen(_ menu: NSMenu) {
+        trackingMenus.insert(ObjectIdentifier(menu))
+        dock.applicationMenuTracking = true
+        previews.contextMenuTracking = true
+    }
+    func menuDidClose(_ menu: NSMenu) {
+        trackingMenus.remove(ObjectIdentifier(menu))
+        // Let AppKit finish menu teardown and dispatch its selected action first.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.trackingMenus.isEmpty else { return }
+            self.previews.contextMenuTracking = false
+            self.dock.applicationMenuTracking = false
+        }
+    }
     func applicationDidFinishLaunching(_ notification: Notification) {
         let mainMenu = NSMenu()
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu(title: "DogBar")
+        appMenu.delegate = self
         appMenu.addItem(withTitle: "About DogBar", action: #selector(showAbout), keyEquivalent: "").target = self
         appMenu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
         appMenu.addItem(withTitle: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "").target = self
@@ -44,6 +60,7 @@ import Combine
         appMenuItem.submenu = appMenu; mainMenu.addItem(appMenuItem)
         let fileItem = NSMenuItem()
         let fileMenu = NSMenu(title: "File")
+        fileMenu.delegate = self
         fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
         fileItem.submenu = fileMenu; mainMenu.addItem(fileItem)
         NSApp.mainMenu = mainMenu
@@ -56,6 +73,7 @@ import Combine
         item.button?.imagePosition = .imageOnly
         item.button?.setAccessibilityLabel("DogBar")
         let menu = NSMenu()
+        menu.delegate = self
         let permissionStatus = NSMenuItem(title: "Checking permissions...", action: nil, keyEquivalent: "")
         permissionStatus.identifier = NSUserInterfaceItemIdentifier("permissionStatus")
         permissionStatus.isEnabled = false
@@ -135,15 +153,16 @@ import Combine
         }
         let desiredPolicy: NSApplication.ActivationPolicy = settings.showDogBarInDock ? .regular : .accessory
         if NSApp.activationPolicy() != desiredPolicy { NSApp.setActivationPolicy(desiredPolicy) }
-        statusItem?.isVisible = settings.showMenuBarIcon
-        statusItem?.button?.title = ""
+        if statusItem?.isVisible != settings.showMenuBarIcon { statusItem?.isVisible = settings.showMenuBarIcon }
         if let status = statusItem?.menu?.items.first(where: { $0.identifier?.rawValue == "permissionStatus" }) {
-            status.title = !permissions.hasCheckedPermissions ? "Checking permissions..." : permissions.isGranted ? "Permissions granted" : "Current process access unavailable"
+            let title = !permissions.hasCheckedPermissions ? "Checking permissions..." : permissions.isGranted ? "Permissions granted" : "Current process access unavailable"
+            if status.title != title { status.title = title }
         }
         let subroles = Set(settings.allowedWindowSubroles)
         if tracker.allowedSubroles != subroles { tracker.allowedSubroles = subroles }
         DiagnosticsService.setDebugLogging(settings.debugLogging)
-        statusItem?.button?.toolTip = !permissions.hasCheckedPermissions ? "DogBar: checking current process access" : permissions.isGranted ? "DogBar" : "DogBar: current process access is unavailable"
+        let tooltip = !permissions.hasCheckedPermissions ? "DogBar: checking current process access" : permissions.isGranted ? "DogBar" : "DogBar: current process access is unavailable"
+        if statusItem?.button?.toolTip != tooltip { statusItem?.button?.toolTip = tooltip }
         let enabled = permissions.isGranted && !settings.isPaused && !terminating
         previews.enabled = enabled && settings.previewsEnabled
         switcher.enabled = enabled && settings.switcherEnabled && !SettingsShortcutRecording.isRecording
@@ -165,7 +184,8 @@ import Combine
         if enabled { nativeReader.start() } else { nativeReader.stop() }
         reconcileDock()
         if let item = statusItem?.menu?.items.first(where: { $0.action == #selector(togglePause) }) {
-            item.title = settings.isPaused ? "Resume DogBar" : "Pause DogBar"
+            let title = settings.isPaused ? "Resume DogBar" : "Pause DogBar"
+            if item.title != title { item.title = title }
         }
     }
     private var wantsReplacement: Bool { permissions.isGranted && !settings.isPaused && settings.useDogBarDock && !terminating }

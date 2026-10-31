@@ -16,6 +16,20 @@ import ApplicationServices
     public var onContextMenuTrackingChanged: ((Bool) -> Void)?
     /// If absent, actionable failures appear in an NSAlert.
     public var onError: ((String) -> Void)?
+    /// Native menus own pointer tracking. Keep Dock rendering out of their event loop;
+    /// inventory continues updating and is reconciled once after the menu closes.
+    public var applicationMenuTracking = false {
+        didSet {
+            guard applicationMenuTracking != oldValue else { return }
+            if applicationMenuTracking {
+                hideTask?.cancel(); hideTask = nil
+                displayPush.reset()
+                view.stopTracking()
+            } else if started {
+                reload()
+            }
+        }
+    }
     public var previewVisible = false { didSet { guard previewVisible != oldValue else { return }; view.previewVisible = previewVisible; if previewVisible { hideTask?.cancel(); hideTask = nil } else { updatePointer() } } }
     private let tracker: WindowTracker
     private let actions: WindowActions
@@ -95,12 +109,14 @@ import ApplicationServices
         pins.$apps.receive(on: RunLoop.main).sink { [weak self] _ in self?.reload() }.store(in: &subscriptions)
         let mask: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .leftMouseUp, .flagsChanged, .scrollWheel]
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+            guard self?.applicationMenuTracking != true else { return event }
             self?.trackDisplayPush(event)
             self?.updatePointer()
             if event.type == .scrollWheel, self?.scroll(event) == true { return nil }
             return event
         }
         globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .leftMouseUp]) { [weak self] event in
+            guard self?.applicationMenuTracking != true else { return }
             self?.trackDisplayPush(event)
             self?.updatePointer()
         }
@@ -299,7 +315,7 @@ import ApplicationServices
     private func reload(snapshot incoming: WindowSnapshot? = nil) {
         // @Published delivers before the property changes. Render its supplied value synchronously.
         let snapshot = incoming ?? tracker.snapshot
-        guard started, !movingDisplay else { return }
+        guard started, !movingDisplay, !applicationMenuTracking else { return }
         guard settings.useDogBarDock, !settings.isPaused else {
             hideTask?.cancel(); hideTask = nil
             for task in openingTasks.values { task.cancel() }; openingTasks.removeAll()
@@ -490,14 +506,15 @@ import ApplicationServices
     }
     private func updatePointer() {
         guard started, settings.useDogBarDock, !settings.isPaused, let screen else { return }
-        guard !menuVisible else { return }
+        guard !menuVisible, !applicationMenuTracking else { return }
         if settings.dockDisplay == .withMouse, !screen.frame.contains(NSEvent.mouseLocation), !view.isDragging, !previewVisible {
             if let next = display(), next !== screen { self.screen = next; reload(); return }
         }
         let global = NSEvent.mouseLocation
         let point = view.convert(panel.convertPoint(fromScreen: global), from: nil)
         let inside = !hidden && view.containsInteractivePoint(point)
-        panel.ignoresMouseEvents = !inside && !view.ownsMouseSequence
+        let ignoresMouseEvents = !inside && !view.ownsMouseSequence
+        if panel.ignoresMouseEvents != ignoresMouseEvents { panel.ignoresMouseEvents = ignoresMouseEvents }
         view.track(inside || view.isDragging ? point : nil)
         let edge = DockLayout.touchesEdge(global, screen: screen.frame, position: settings.dockPosition)
         if inside || edge || previewVisible || view.ownsMouseSequence || menuVisible {
