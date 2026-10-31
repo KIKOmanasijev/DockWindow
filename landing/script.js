@@ -39,9 +39,7 @@
   const menus = $("[data-menus]");
   const swipeHud = $("[data-swipe]");
   const pointer = $("[data-cursor]");
-  const dockLabels = $("[data-dock-labels]");
-  const labelPins = $("[data-label-pins]");
-  const labelHere = $("[data-label-here]");
+  const dockLabel = $("[data-dock-label]");
   const keys = $("[data-keys]");
   const stage = $("#demo");
   const playBtn = $("[data-tour-toggle]");
@@ -49,8 +47,6 @@
 
   const APPS = {
     finder: { name: "Finder", img: "assets/apps/finder.png" },
-    dogbar: { name: "DogBar", img: "assets/dog-96.png" },
-    mail: { name: "Mail", img: "assets/apps/mail.png" },
     safari: { name: "Safari", img: "assets/apps/safari.png" },
     slack: { name: "Slack", img: "assets/apps/slack.png" },
     notes: { name: "Notes", img: "assets/apps/notes.png" },
@@ -59,11 +55,10 @@
     tv: { name: "TV", img: "assets/apps/tv.png" },
     photos: { name: "Photos", img: "assets/apps/photos.png" },
   };
-  // Pinned apps sit on every desktop's Dock; everything after the divider belongs to one desktop.
-  const PINS = ["finder", "dogbar", "mail"];
+  // Finder leads every Dock, as on macOS; after the divider, each desktop shows only its own apps.
+  const PINS = ["finder"];
   const listOf = (names) => names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0] || "";
-  const PINNED_TEXT = `${listOf(PINS.map((a) => APPS[a].name))} are pinned, so they stay on every Dock.`;
-  const INTRO_TEXT = `Each desktop gets a Dock with just its apps. ${PINNED_TEXT}`;
+  const INTRO_TEXT = "Each desktop gets its own Dock, with just the apps open there.";
 
   // Only the front window is shown on the desk, so every change reads at a glance.
   const initialWindows = () => ({
@@ -228,26 +223,14 @@
     renderDockLabels();
   }
 
-  // ----- Labels over the Dock: pinned apps versus this desktop's own apps -----
+  // ----- A label over the Dock naming whose Dock it is -----
   function renderDockLabels() {
-    dockLabels.hidden = !state.labels;
+    dockLabel.hidden = !state.labels;
     if (!state.labels) return;
-    const span = (keys) => {
-      const els = keys.map((k) => dock.querySelector(`[data-app="${k}"]`)).filter(Boolean);
-      if (!els.length) return null;
-      const first = offsetIn(els[0]).x, last = els.at(-1);
-      return { left: first, width: offsetIn(last).x + last.offsetWidth - first };
-    };
-    const place = (el, box) => {
-      el.hidden = !box;
-      if (!box) return;
-      el.style.left = `${box.left}px`;
-      el.style.width = `${box.width}px`;
-    };
-    place(labelPins, span(PINS));
-    place(labelHere, span(dockApps()));
-    labelHere.querySelector("[data-label-text]").textContent = `Only on Desktop ${state.desk}`;
-    dockLabels.style.bottom = `${Math.max(cam.clientHeight - offsetIn(dock).y + 8, 0)}px`;
+    dockLabel.style.left = `${offsetIn(dock).x}px`;
+    dockLabel.style.width = `${dock.offsetWidth}px`;
+    dockLabel.style.bottom = `${Math.max(cam.clientHeight - offsetIn(dock).y + 8, 0)}px`;
+    dockLabel.querySelector("[data-label-text]").textContent = `Desktop ${state.desk}’s own Dock`;
   }
   function showDockLabels(on) {
     state.labels = on;
@@ -363,11 +346,11 @@
     renderDesk({ swap: dir });
     renderDock({ animate: true });
     const list = listOf(dockApps().map((a) => APPS[a].name));
-    say(`Desktop ${n} has its own Dock: ${list ? `just ${list}` : "only your pinned apps"}. ${PINNED_TEXT}`);
+    say(`Desktop ${n} has its own Dock: ${list ? `just ${list}` : "nothing open yet"}.`);
   }
 
   // The opening frame, also the still image under reduced motion: Desktop 1 with its
-  // Dock labelled, pinned apps on one side and this desktop's own apps on the other.
+  // own Dock, labelled.
   function reset() {
     closeAll();
     state.windows = initialWindows();
@@ -404,8 +387,8 @@
   }
 
   const SCENES = [
-    // A swipe to Desktop 2 and back. The labels show which apps are pinned everywhere
-    // and which belong to the desktop on screen, and the Dock changes with the desktop.
+    // A swipe to Desktop 2 and back. The label names whose Dock is on screen, and the
+    // Dock changes with the desktop.
     { ms: 7600, run: async (wait) => {
       reset();
       pointer.classList.remove("is-on");

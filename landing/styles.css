@@ -508,21 +508,19 @@ html:not(.js) .tour { display: none; }
 .pv-lights i:nth-child(2) { background: #febc2e; }
 .pv-lights i:nth-child(3) { background: #28c840; }
 .pv-name { text-align: center; font-size: .75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-/* Labels over the Dock: a bracket over the pinned apps and one over this desktop's apps.
-   script.js sizes each bracket to its group of icons. */
-.dock-labels { position: absolute; left: 0; right: 0; z-index: 5; height: 0; pointer-events: none; }
+/* A label over the Dock naming whose Dock it is, with a bracket spanning the Dock.
+   script.js sizes and places it over the Dock. */
 .dock-label {
-  position: absolute; bottom: 0;
+  position: absolute; z-index: 5; pointer-events: none;
   display: grid; justify-items: center; gap: 4px;
   font-size: .7rem; font-weight: 650; white-space: nowrap; color: #fff;
+  animation: rise .3s var(--ease);
 }
-.dock-label > span { padding: .15rem .55rem; border-radius: 999px; background: rgba(26, 16, 51, .72); }
+.dock-label > span { padding: .15rem .6rem; border-radius: 999px; background: var(--purple); }
 .dock-label::after {
   content: ""; justify-self: stretch; height: 7px;
   border: 1.5px solid rgba(255, 255, 255, .85); border-bottom: 0; border-radius: 6px 6px 0 0;
 }
-.dock-label.is-here > span { background: var(--purple); }
-.dock-labels:not([hidden]) .dock-label { animation: rise .3s var(--ease); }
 
 /* ---------- Sections ---------- */
 .section-title {
@@ -664,7 +662,6 @@ html:not(.js) .tour { display: none; }
 .fx-dock-app { position: relative; display: grid; justify-items: center; gap: 2px; padding: 2px 2px 0; border-radius: 8px; }
 .fx-dock-app img { width: 34px; height: 34px; border-radius: 22%; }
 .fx-dock-app.is-on { background: rgba(110, 36, 230, .16); }
-.fx-dock-app.is-pin { background: rgba(110, 36, 230, .16); box-shadow: inset 0 -2px 0 var(--purple); }
 .fx-sep { width: 1px; align-self: stretch; margin: 4px 2px 6px; background: rgba(26, 16, 51, .2); }
 
 .fx-desks { align-content: center; gap: 10px; }
@@ -676,7 +673,6 @@ html:not(.js) .tour { display: none; }
 .fx-desk-name { justify-self: start; font-size: .75rem; font-weight: 700; color: var(--muted); }
 .fx-desk .fx-dock-app img { width: 28px; height: 28px; }
 .fx-legend { display: flex; align-items: center; gap: .45rem; font-size: .78rem; font-weight: 600; color: var(--muted); }
-.fx-pin-key { width: 14px; height: 14px; border-radius: 4px; background: rgba(110, 36, 230, .16); box-shadow: inset 0 -2px 0 var(--purple); }
 
 .fx-counts { align-content: center; gap: 18px; }
 .fx-dock-lg { position: relative; gap: 10px; padding: 8px 26px 6px 12px; border-radius: 18px; }
@@ -816,28 +812,6 @@ html:not(.js) .tour { display: none; }
 .install-note summary { cursor: pointer; font-weight: 650; color: #fff; }
 .install-note p { margin-top: .65rem; }
 .install-note a { color: #fff; text-underline-offset: .2em; }
-
-/* Pay what you want: one price from $5, chosen with a slider. pricing.js keeps the
-   amount, total and button in step and only enables the button once Paddle is set up. */
-.pwyw {
-  max-width: 520px; margin: 2.75rem auto 0; padding: 1.4rem 1.5rem 1.3rem;
-  text-align: left;
-  background: rgba(255, 255, 255, .07); border: 1px solid rgba(255, 255, 255, .14); border-radius: 18px;
-}
-.pwyw h3 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.015em; }
-.pwyw-sub { margin-top: .3rem; font-size: .95rem; color: rgba(255, 255, 255, .8); }
-.pwyw-row { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; margin-top: 1.2rem; }
-.pwyw-label { font-size: .9rem; font-weight: 650; }
-.pwyw-value { font-size: 2rem; font-weight: 750; letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
-.pwyw-range { display: block; width: 100%; height: 28px; margin: .35rem 0 0; accent-color: #d8c6ff; cursor: pointer; }
-.pwyw-scale { display: flex; justify-content: space-between; font-size: .78rem; color: rgba(255, 255, 255, .7); }
-.pwyw-total { margin-top: 1rem; font-size: .95rem; }
-.pwyw-total b { font-variant-numeric: tabular-nums; }
-.pwyw-total span { display: block; margin-top: .15rem; font-size: .8rem; color: rgba(255, 255, 255, .7); }
-.btn-pay { width: 100%; margin-top: 1rem; color: var(--purple-600); background: #fff; }
-.btn-pay:not(:disabled):hover { background: var(--purple-50); transform: translateY(-1px); }
-.btn-pay:disabled { cursor: not-allowed; color: rgba(255, 255, 255, .75); background: rgba(255, 255, 255, .12); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .22); }
-.pwyw-status { margin-top: .7rem; font-size: .85rem; color: rgba(255, 255, 255, .78); }
 
 /* ---------- FAQ ---------- */
 .faq { max-width: 760px; margin: 0 auto; padding: clamp(4rem, 8vw, 6rem) var(--gutter); }
