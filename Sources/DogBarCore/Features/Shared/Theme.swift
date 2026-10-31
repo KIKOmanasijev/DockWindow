@@ -81,7 +81,7 @@ import SwiftUI
         effect.blendingMode = .behindWindow; effect.state = .active; effect.wantsLayer = true
         effect.layer?.borderWidth = 0.5; effect.layer?.borderColor = NSColor.white.withAlphaComponent(0.25).cgColor
         addSubview(effect)
-        highlight.colors = [NSColor.white.withAlphaComponent(0.15).cgColor, NSColor.white.withAlphaComponent(0).cgColor]
+        highlight.colors = [NSColor.clear.cgColor, NSColor.clear.cgColor]
         highlight.locations = [0, 0.45]; highlight.masksToBounds = true
         highlight.startPoint = CGPoint(x: 0.5, y: 1); highlight.endPoint = CGPoint(x: 0.5, y: 0)
         effect.layer?.addSublayer(highlight)
@@ -115,12 +115,35 @@ import SwiftUI
 }
 #endif
 
-/// Chooses true glass only when both the build SDK and running OS support it.
+/// Uses Apple's public Liquid Glass view on supported systems, including when the
+/// local build SDK predates its Swift declarations. No private selectors are used.
+@MainActor public struct RuntimeGlassDockBackgroundProvider: DockBackgroundProvider {
+    public init() {}
+    public func makeBackgroundView() -> NSView {
+        guard let type = NSClassFromString("NSGlassEffectView") as? NSView.Type else {
+            return MaterialDockBackgroundProvider().makeBackgroundView()
+        }
+        let view = type.init(frame: .zero)
+        // NSGlassEffectView.Style.regular, documented by AppKit as value 0.
+        if view.responds(to: NSSelectorFromString("setStyle:")) { view.setValue(0, forKey: "style") }
+        return view
+    }
+    public func updateBackgroundView(_ view: NSView, material: PanelMaterial, cornerRadius: CGFloat, theme: AppTheme) {
+        guard view.isKind(of: NSClassFromString("NSGlassEffectView") ?? NSView.self),
+              view.responds(to: NSSelectorFromString("setCornerRadius:")) else {
+            MaterialDockBackgroundProvider().updateBackgroundView(view, material: material, cornerRadius: cornerRadius, theme: theme)
+            return
+        }
+        view.setValue(cornerRadius, forKey: "cornerRadius")
+        view.appearance = Theme.appearance(theme)
+    }
+}
+
 @MainActor public enum DockBackgroundProviders {
     public static func preferred() -> any DockBackgroundProvider {
-        #if compiler(>=6.2)
-        if #available(macOS 26.0, *) { return GlassDockBackgroundProvider() }
-        #endif
+        if #available(macOS 26.0, *), NSClassFromString("NSGlassEffectView") != nil {
+            return RuntimeGlassDockBackgroundProvider()
+        }
         return MaterialDockBackgroundProvider()
     }
 }

@@ -188,14 +188,15 @@ import QuartzCore
         let thickness: CGFloat = 3
         if settings.dockPosition == .bottom {
             let width = min(length, edge.width)
-            resizePill.frame = CGRect(x: edge.midX - width / 2, y: geometry.background.maxY - thickness - 2, width: width, height: thickness)
+            resizePill.frame = CGRect(x: edge.midX - width / 2, y: geometry.background.maxY + 6, width: width, height: thickness)
         } else {
             let height = min(length, edge.height)
-            resizePill.frame = CGRect(x: edge.midX - thickness / 2, y: edge.midY - height / 2, width: thickness, height: height)
+            let x = settings.dockPosition == .left ? geometry.background.maxX + 6 : geometry.background.minX - 6 - thickness
+            resizePill.frame = CGRect(x: x, y: edge.midY - height / 2, width: thickness, height: height)
         }
         resizePill.zPosition = 100
         resizePill.name = "resize-pill"
-        resizePill.backgroundColor = accent.cgColor
+        resizePill.backgroundColor = NSColor.white.cgColor
         resizePill.cornerRadius = thickness / 2
         resizePill.isHidden = !resizeArmed
         let hasSeparator = kinds.contains(.separator)

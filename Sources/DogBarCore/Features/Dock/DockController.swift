@@ -168,6 +168,12 @@ import Combine
                 items.insert(contentsOf: [DockItem(id: "separator:recent", kind: .separator)] + extra, at: index)
             }
         }
+        // Always divide permanent pins from transient running/recent apps, including
+        // recent apps which were already present in the running-app inventory.
+        items.removeAll { $0.id == "separator:recent" }
+        if let firstTransient = items.firstIndex(where: { $0.kind == .application && !$0.isPinned }), firstTransient > 0 {
+            items.insert(DockItem(id: "separator:recent", kind: .separator), at: firstTransient)
+        }
         if !view.isDragging { view.items = items }
         for item in items {
             let path = item.pinnedApp?.url ?? item.app?.bundleURL
