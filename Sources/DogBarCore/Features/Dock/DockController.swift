@@ -393,7 +393,16 @@ import ApplicationServices
         // External launches (Spotlight/Finder) deserve the same launch feedback as clicks.
         view.launching = launching.union(pendingLaunches.values.map { $0.bundleIdentifier ?? "pid:\($0.pid)" }); view.render()
         keepMaximizedWindowsClear(snapshot: snapshot, screen: nextScreen)
-        if !panel.isVisible { panel.orderFrontRegardless() }
+        if !panel.isVisible {
+            if !hidden && !Theme.reducesMotion(settings) {
+                // Show the assembled Dock as one unit, rising from its own screen edge.
+                hidden = true; placeContent(animated: false)
+                panel.orderFrontRegardless()
+                hidden = false; placeContent(animated: true, duration: 0.24)
+            } else {
+                panel.orderFrontRegardless()
+            }
+        }
         updatePointer()
     }
     private func keepMaximizedWindowsClear(snapshot: WindowSnapshot, screen: NSScreen) {

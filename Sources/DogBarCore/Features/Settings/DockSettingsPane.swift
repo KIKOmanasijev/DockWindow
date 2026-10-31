@@ -33,7 +33,6 @@ import SwiftUI
                 SettingsColorPicker(title: "Dot color", description: "Choose the window indicator color.", value: $settings.dotColor).disabled(!settings.useCustomDotColor)
             }.disabled(!settings.useDogBarDock)
             SettingsSection("Interaction") {
-                Toggle("Bounce on launch", isOn: $settings.bounceOnLaunch).settingsDescription("Animate an app icon when it launches.")
                 Toggle("Show app name labels", isOn: $settings.showAppNameLabels).settingsDescription("Show application names while hovering icons.")
                 SettingsChoice(title: "Clicking the active app", description: "Choose the action when clicking an already active app.", value: $settings.activeAppClickBehavior)
                 Toggle("Scroll to cycle windows", isOn: $settings.scrollToCycleWindows).settingsDescription("Scroll over an icon to move between its windows.")

@@ -43,8 +43,6 @@ import QuartzCore
     private let resizePill = CALayer()
     private var resizeCuePoint = CGPoint.zero
     private var cancelMonitor: Any?
-    /// Item order at the last render; a change means apps came, went or the desktop changed.
-    private var renderedIDs: [String] = []
     var reservedScreenDepth: CGFloat {
         guard !geometry.background.isEmpty else { return 0 }
         switch settings.dockPosition {
@@ -110,20 +108,14 @@ import QuartzCore
         geometry.iconFrames = geometry.iconFrames.map { CGRect(x: snap($0.minX), y: snap($0.minY), width: snap($0.width), height: snap($0.height)) }
         geometry.background = CGRect(x: snap(geometry.background.minX), y: snap(geometry.background.minY),
                                      width: snap(geometry.background.width), height: snap(geometry.background.height))
-        // Like the system Dock: when apps arrive or leave, neighbours glide over, new icons
-        // grow in and removed ones shrink away. Resizing and dragging stay immediate.
-        let ids = items.map(\.id)
-        let structural = !renderedIDs.isEmpty && ids != renderedIDs && !isDragging && resizeSession == nil && !Theme.reducesMotion(settings)
-        renderedIDs = ids
-        let duration = structural ? DockMotion.layout : (pointer == nil && !isDragging && resizeSession == nil && !Theme.reducesMotion(settings) ? 0.12 : 0)
+        // Layout is immediate. Only the containing Dock view moves at the screen edge;
+        // individual icons never fly in from an old/zero position during a layout pass.
         resizeHandle = geometry.resizeHandle(kinds: kinds)
         removeAllToolTips()
         window?.invalidateCursorRects(for: self)
-        CATransaction.begin(); CATransaction.setDisableActions(duration == 0); CATransaction.setAnimationDuration(duration)
-        CATransaction.setAnimationTimingFunction(structural ? DockMotion.curve : CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1))
+        CATransaction.begin(); CATransaction.setDisableActions(true)
         // Material and icons share one Core Animation transaction. AppKit's animator
         // proxy can defer the material resize to a later run-loop pass.
-        let previousBackground = background.layer?.presentation()?.frame ?? background.frame
         CATransaction.begin(); CATransaction.setDisableActions(true)
         background.frame = geometry.background
         background.layoutSubtreeIfNeeded()
@@ -135,19 +127,7 @@ import QuartzCore
         // Keep the existing Dock coordinate system inside the glass content view.
         iconSurface.bounds = iconSurface.superview === self ? bounds : geometry.background
         CATransaction.commit()
-        if structural, let backing = background.layer, previousBackground != geometry.background {
-            let move = CABasicAnimation(keyPath: "position")
-            move.fromValue = NSValue(point: CGPoint(x: previousBackground.minX + previousBackground.width * backing.anchorPoint.x, y: previousBackground.minY + previousBackground.height * backing.anchorPoint.y))
-            move.toValue = NSValue(point: backing.position)
-            let size = CABasicAnimation(keyPath: "bounds")
-            size.fromValue = NSValue(rect: CGRect(origin: .zero, size: previousBackground.size))
-            size.toValue = NSValue(rect: backing.bounds)
-            let group = CAAnimationGroup(); group.animations = [move, size]; group.duration = duration
-            group.timingFunction = DockMotion.curve
-            backing.add(group, forKey: "dock-layout")
-        } else {
-            background.layer?.removeAnimation(forKey: "dock-layout")
-        }
+        background.layer?.removeAnimation(forKey: "dock-layout")
         let style = "\(settings.panelMaterial.rawValue):\(settings.theme.rawValue):\(displayedIconSize)"
         if backingStyle != style {
             provider.updateBackgroundView(background, material: settings.panelMaterial, cornerRadius: min(30, displayedIconSize * 0.3), theme: settings.theme)
@@ -155,14 +135,7 @@ import QuartzCore
         }
         let live = Set(items.map(\.id))
         for key in Array(layers.keys) where !live.contains(key) {
-            if let old = layers.removeValue(forKey: key) {
-                let departure = structural ? DockMotion.departure : duration
-                CATransaction.begin(); CATransaction.setDisableActions(departure == 0)
-                CATransaction.setAnimationDuration(departure); CATransaction.setAnimationTimingFunction(DockMotion.departureCurve)
-                old.opacity = 0; old.transform = CATransform3DMakeScale(DockMotion.minimumScale, DockMotion.minimumScale, 1)
-                CATransaction.commit()
-                DispatchQueue.main.asyncAfter(deadline: .now() + departure) { old.removeFromSuperlayer() }
-            }
+            layers.removeValue(forKey: key)?.removeFromSuperlayer()
         }
         for key in Array(separators.keys) where !live.contains(key) { separators.removeValue(forKey: key)?.removeFromSuperlayer() }
         let custom = settings.dotColor
@@ -179,15 +152,9 @@ import QuartzCore
             let icon = layers[item.id] ?? DockIconLayer()
             let isNew = layers[item.id] == nil
             if isNew { iconSurface.layer?.addSublayer(icon); layers[item.id] = icon }
-            if isNew, structural {
-                // A layer added in this transaction has no on-screen state to animate from,
-                // so grow it in explicitly.
-                let grow = CABasicAnimation(keyPath: "transform.scale"); grow.fromValue = DockMotion.minimumScale; grow.toValue = 1
-                let fade = CABasicAnimation(keyPath: "opacity"); fade.fromValue = 0; fade.toValue = 1
-                let group = CAAnimationGroup(); group.animations = [grow, fade]; group.duration = DockMotion.arrival
-                group.timingFunction = DockMotion.curve
-                icon.add(group, forKey: "arrive")
-            }
+            icon.removeAnimation(forKey: "arrive")
+            icon.removeAnimation(forKey: "position")
+            icon.removeAnimation(forKey: "bounds")
             if dragged != nil, icon.frame != frame, !Theme.reducesMotion(settings) {
                 let slide = CABasicAnimation(keyPath: "position")
                 slide.fromValue = NSValue(point: icon.presentation()?.position ?? icon.position)
@@ -203,7 +170,7 @@ import QuartzCore
             icon.update(image: images[item.id], badgeText: item.app?.badgeLabel, indicators: indicators[item.id] ?? .init(count: 0), color: color,
                         position: settings.dockPosition, scale: scale, reduceMotion: Theme.reducesMotion(settings))
             icon.setPressed(pressed?.id == item.id && dragged == nil)
-            icon.bounce(position: settings.dockPosition, enabled: launching.contains(item.id) && settings.bounceOnLaunch, reduceMotion: Theme.reducesMotion(settings))
+            icon.bounce(position: settings.dockPosition, enabled: false, reduceMotion: true)
         }
         if resizePill.superlayer == nil { layer?.addSublayer(resizePill) }
         if edgeRim.superlayer == nil {
@@ -407,20 +374,6 @@ import QuartzCore
               let urls = sender.draggingPasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL], !urls.isEmpty else { return false }
         onFiles?(urls, target); dropID = nil; render(); return true
     }
-}
-
-/// App arrival and departure timing, tuned to the system Dock's unhurried pace. The previous
-/// front-loaded curve finished most of its motion in the first ~100 ms, so changes looked abrupt.
-@MainActor private enum DockMotion {
-    /// Neighbours sliding and the material resizing when an app arrives or leaves.
-    static let layout: CFTimeInterval = 0.42
-    static let arrival: CFTimeInterval = 0.42
-    /// Slightly shorter, so a quitting icon has faded before its gap fully closes.
-    static let departure: CFTimeInterval = 0.34
-    static let minimumScale: CGFloat = 0.5
-    /// Symmetric ease-in-out with a soft landing.
-    static let curve = CAMediaTimingFunction(controlPoints: 0.4, 0, 0.2, 1)
-    static let departureCurve = CAMediaTimingFunction(controlPoints: 0.4, 0, 1, 1)
 }
 
 /// Event routing stays on DockView; this view only establishes correct glass content.
