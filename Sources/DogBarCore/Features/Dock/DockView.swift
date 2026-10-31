@@ -36,11 +36,11 @@ import QuartzCore
     private var geometry = DockLayout(kinds: [], bounds: .zero, position: .bottom, baseSize: 48, maximumSize: 96)
     private var resizeSession: DockResizeSession?
     private var resizeMouseDown = false
+    private var dockHeld = false
     private var resizeHandle = CGRect.zero
     private let resizeGrip = CALayer()
     private let resizePill = CALayer()
     private var resizeCuePoint = CGPoint.zero
-    private var lastFeedbackSize: CGFloat = 0
     private var cancelMonitor: Any?
     /// Item order at the last render; a change means apps came, went or the desktop changed.
     private var renderedIDs: [String] = []
@@ -70,6 +70,7 @@ import QuartzCore
     func stopTracking() {
         finishResize(cancelled: true)
         resizeMouseDown = false
+        dockHeld = false
         pointer = nil
         longPress?.cancel(); longPress = nil; pressed = nil
         hoverID = nil; onHover?(nil, .zero); render()
@@ -105,14 +106,24 @@ import QuartzCore
         window?.invalidateCursorRects(for: self)
         CATransaction.begin(); CATransaction.setDisableActions(duration == 0); CATransaction.setAnimationDuration(duration)
         CATransaction.setAnimationTimingFunction(CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1))
-        if structural, background.frame != geometry.background {
-            NSAnimationContext.runAnimationGroup { context in
-                context.duration = duration
-                context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
-                background.animator().frame = geometry.background
-            }
+        // Material and icons share one Core Animation transaction. AppKit's animator
+        // proxy can defer the material resize to a later run-loop pass.
+        let previousBackground = background.layer?.presentation()?.frame ?? background.frame
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        background.frame = geometry.background
+        CATransaction.commit()
+        if structural, let backing = background.layer, previousBackground != geometry.background {
+            let move = CABasicAnimation(keyPath: "position")
+            move.fromValue = NSValue(point: CGPoint(x: previousBackground.minX + previousBackground.width * backing.anchorPoint.x, y: previousBackground.minY + previousBackground.height * backing.anchorPoint.y))
+            move.toValue = NSValue(point: backing.position)
+            let size = CABasicAnimation(keyPath: "bounds")
+            size.fromValue = NSValue(rect: CGRect(origin: .zero, size: previousBackground.size))
+            size.toValue = NSValue(rect: backing.bounds)
+            let group = CAAnimationGroup(); group.animations = [move, size]; group.duration = duration
+            group.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
+            backing.add(group, forKey: "dock-layout")
         } else {
-            background.frame = geometry.background
+            background.layer?.removeAnimation(forKey: "dock-layout")
         }
         let style = "\(settings.panelMaterial.rawValue):\(settings.theme.rawValue):\(displayedIconSize)"
         if backingStyle != style {
@@ -169,20 +180,17 @@ import QuartzCore
         }
         if resizePill.superlayer == nil { layer?.addSublayer(resizePill) }
         if resizeGrip.superlayer == nil { layer?.addSublayer(resizeGrip) }
-        let resizeArmed = resizeSession != nil || (!resizeMouseDown && pointer.map { geometry.containsResizeTarget($0, kinds: kinds) } == true)
+        let resizeArmed = dockHeld || resizeSession != nil || (!resizeMouseDown && pointer.map { geometry.containsResizeTarget($0, kinds: kinds) } == true)
         let accent = NSColor.systemPurple
         let edge = geometry.resizeEdge
-        let point = resizeSession == nil ? (pointer ?? .zero) : resizeCuePoint
-        let length = resizeSession == nil ? CGFloat(28) : 36
-        let thickness = resizeSession == nil ? CGFloat(3) : 4
+        let length: CGFloat = 28
+        let thickness: CGFloat = 3
         if settings.dockPosition == .bottom {
             let width = min(length, edge.width)
-            let x = min(max(point.x - width / 2, edge.minX), edge.maxX - width)
-            resizePill.frame = CGRect(x: x, y: edge.midY - thickness / 2, width: width, height: thickness)
+            resizePill.frame = CGRect(x: edge.midX - width / 2, y: edge.midY - thickness / 2, width: width, height: thickness)
         } else {
             let height = min(length, edge.height)
-            let y = min(max(point.y - height / 2, edge.minY), edge.maxY - height)
-            resizePill.frame = CGRect(x: edge.midX - thickness / 2, y: y, width: thickness, height: height)
+            resizePill.frame = CGRect(x: edge.midX - thickness / 2, y: edge.midY - height / 2, width: thickness, height: height)
         }
         resizePill.name = "resize-pill"
         resizePill.backgroundColor = accent.cgColor
@@ -225,13 +233,13 @@ import QuartzCore
     }
     private func item(at point: CGPoint) -> DockItem? { geometry.hitTest(point, kinds: items.map(\.kind)).map { items[$0] } }
     override func mouseDown(with event: NSEvent) {
+        dockHeld = true
         pressPoint = convert(event.locationInWindow, from: nil)
         if geometry.containsResizeTarget(pressPoint, kinds: items.map(\.kind)) {
             longPress?.cancel(); longPress = nil; pressed = nil
             resizeMouseDown = true
             resizeCuePoint = pressPoint
             resizeSession = DockResizeSession(size: settings.iconSize, origin: screenPoint(for: event), position: settings.dockPosition)
-            lastFeedbackSize = settings.iconSize
             // A live drag owns the geometry immediately, even if an app-arrival or
             // background resize animation was still running when it was grabbed.
             background.layer?.removeAllAnimations()
@@ -247,7 +255,7 @@ import QuartzCore
             return
         }
         pressed = item(at: pressPoint)
-        if pressed != nil { render() }
+        render()
         longPress?.cancel()
         if let pressed {
             longPress = Task { [weak self] in
@@ -258,6 +266,7 @@ import QuartzCore
         }
     }
     override func mouseUp(with event: NSEvent) {
+        dockHeld = false
         if resizeMouseDown {
             finishResize(cancelled: false, point: screenPoint(for: event))
             resizeMouseDown = false; render()
@@ -278,10 +287,6 @@ import QuartzCore
             self.resizeSession = resizeSession
             if size != previousSize {
                 onResizeChanged?(size)
-                if abs(size - lastFeedbackSize) >= 16 {
-                    NSHapticFeedbackManager.defaultPerformer.perform(.alignment, performanceTime: .drawCompleted)
-                    lastFeedbackSize = size
-                }
             }
             resizeCursor.set(); render()
             return
@@ -338,7 +343,7 @@ import QuartzCore
     }
     override func cancelOperation(_ sender: Any?) { finishResize(cancelled: true) }
     override func viewWillMove(toWindow newWindow: NSWindow?) {
-        if newWindow == nil { finishResize(cancelled: true); resizeMouseDown = false }
+        if newWindow == nil { finishResize(cancelled: true); resizeMouseDown = false; dockHeld = false }
         super.viewWillMove(toWindow: newWindow)
     }
     private func screenPoint(for event: NSEvent) -> CGPoint {

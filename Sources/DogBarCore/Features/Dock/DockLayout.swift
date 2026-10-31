@@ -38,9 +38,9 @@ public struct DockLayout {
             defer { cursor += side + 4 }
             let depth = kinds[index] == .separator ? size * 0.7 : side
             switch position {
-            case .bottom: return CGRect(x: bounds.minX + cursor, y: bounds.minY + 14, width: side, height: depth)
-            case .left: return CGRect(x: bounds.minX + 14, y: bounds.maxY - cursor - side, width: depth, height: side)
-            case .right: return CGRect(x: bounds.maxX - 14 - depth, y: bounds.maxY - cursor - side, width: depth, height: side)
+            case .bottom: return CGRect(x: bounds.minX + cursor, y: bounds.minY + 19.5, width: side, height: depth)
+            case .left: return CGRect(x: bounds.minX + 19.5, y: bounds.maxY - cursor - side, width: depth, height: side)
+            case .right: return CGRect(x: bounds.maxX - 19.5 - depth, y: bounds.maxY - cursor - side, width: depth, height: side)
             }
         }
         let thickness = size + 24
