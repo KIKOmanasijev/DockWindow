@@ -23,7 +23,13 @@ import ApplicationServices
     private let pins: PinnedAppsStore
     private let opener: NewWindowOpener
     private let panel = DockPanel()
+    /// The panel never leaves its display. Hiding slides the Dock inside this clipping view, so
+    /// it disappears into the screen edge instead of landing on a display arranged beyond it.
+    private let clip = DockContentClip()
     private let view: DockView
+    private var contentAnimating = false
+    /// Set while the Dock re-lays out on its new display, hidden, before it slides in.
+    private var arrivingDisplay = false
     private var subscriptions: Set<AnyCancellable> = []
     private var localMonitor: Any?
     private var globalMonitor: Any?
@@ -69,7 +75,7 @@ import ApplicationServices
     public init(tracker: WindowTracker, actions: WindowActions, settings: AppSettings,
                 pinnedApps: PinnedAppsStore, newWindowOpener: NewWindowOpener) {
         self.tracker = tracker; self.actions = actions; self.settings = settings; pins = pinnedApps; opener = newWindowOpener
-        view = DockView(settings: settings); panel.contentView = view
+        view = DockView(settings: settings); panel.contentView = clip; clip.addSubview(view)
         view.onClick = { [weak self] in self?.click($0) }
         view.onMenu = { [weak self] in self?.showMenu(item: $0, event: $1) }
         view.onResizeStarted = { [weak self] in self?.onIconClicked?() }
@@ -203,21 +209,55 @@ import ApplicationServices
         hideTask?.cancel(); hideTask = nil
         view.stopTracking(); panel.ignoresMouseEvents = true
         settings.dockDisplayID = id
+        // Like macOS: the Dock sinks into the edge of the old display, then rises from the
+        // edge of the new one. Its window never travels between displays.
         let arrive = { [weak self] in
             guard let self, self.started else { self?.movingDisplay = false; return }
             self.movingDisplay = false
             self.screen = next
-            self.reload()
-            guard !Theme.reducesMotion(self.settings) else { return }
-            self.panel.setFrame(DockLayout.hiddenFrame(self.shownFrame, position: self.settings.dockPosition), display: false)
+            self.hidden = true
+            self.arrivingDisplay = true; self.reload(); self.arrivingDisplay = false
             self.setHidden(false)
         }
         if hidden || Theme.reducesMotion(settings) { arrive(); return }
+        hidden = true
+        placeContent(animated: true, duration: 0.2, curve: Self.sinkCurve, completion: arrive)
+    }
+    private static let riseCurve = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
+    private static let sinkCurve = CAMediaTimingFunction(controlPoints: 0.4, 0, 1, 1)
+    /// Where the Dock content sits inside the panel: in place, or slid past the screen edge
+    /// far enough that its shadow and resize pill are gone too.
+    private func contentFrame() -> CGRect {
+        var frame = clip.bounds
+        guard hidden else { return frame }
+        let distance = max(view.reservedScreenDepth, 40) + 28
+        switch settings.dockPosition {
+        case .bottom: frame.origin.y -= distance
+        case .left: frame.origin.x -= distance
+        case .right: frame.origin.x += distance
+        }
+        return frame
+    }
+    private func placeContent(animated: Bool, duration: TimeInterval = 0.28, curve: CAMediaTimingFunction? = nil,
+                              completion: (() -> Void)? = nil) {
+        let target = contentFrame()
+        guard animated, !Theme.reducesMotion(settings) else {
+            // A reload mid-slide must not snap it; only a size change applies immediately.
+            if !contentAnimating || view.frame.size != target.size { view.frame = target }
+            completion?(); return
+        }
+        if view.frame.size != target.size { view.frame.size = target.size }
+        contentAnimating = true
         NSAnimationContext.runAnimationGroup({ context in
-            context.duration = 0.2
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0, 1, 1)
-            panel.animator().setFrame(DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition), display: true)
-        }, completionHandler: { MainActor.assumeIsolated { arrive() } })
+            context.duration = duration
+            context.timingFunction = curve ?? Self.riseCurve
+            view.animator().setFrameOrigin(target.origin)
+        }, completionHandler: { [weak self] in
+            MainActor.assumeIsolated {
+                self?.contentAnimating = false
+                completion?()
+            }
+        })
     }
     private func trackPendingLaunch(_ app: NSRunningApplication) {
         let pid = app.processIdentifier
@@ -264,8 +304,9 @@ import ApplicationServices
         }
         screen = nextScreen
         shownFrame = DockLayout.panelFrame(screen: nextScreen.frame, position: settings.dockPosition, depth: settings.dockPosition == .bottom ? max(210, view.displayedIconSize + 85) : max(360, view.displayedIconSize + 220))
-        if !settings.autohide { hidden = false; hideTask?.cancel(); hideTask = nil }
-        panel.setFrame(hidden ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame, display: true)
+        if !settings.autohide && !arrivingDisplay { hidden = false; hideTask?.cancel(); hideTask = nil }
+        if panel.frame != shownFrame { panel.setFrame(shownFrame, display: true) }
+        placeContent(animated: false)
         let spaces = currentSpaces(snapshot: snapshot)
         // AX window discovery precedes desktop membership discovery. Keep the same
         // item/layer through both phases instead of dropping and re-inserting it.
@@ -415,8 +456,8 @@ import ApplicationServices
         guard started, let screen else { return }
         let depth = settings.dockPosition == .bottom ? max(210, iconSize + 85) : max(360, iconSize + 220)
         shownFrame = DockLayout.panelFrame(screen: screen.frame, position: settings.dockPosition, depth: depth)
-        let frame = hidden ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame
-        if panel.frame != frame { panel.setFrame(frame, display: false) }
+        if panel.frame != shownFrame { panel.setFrame(shownFrame, display: false) }
+        placeContent(animated: false)
     }
     private func updatePointer() {
         guard started, settings.useDogBarDock, !settings.isPaused, let screen else { return }
@@ -445,15 +486,7 @@ import ApplicationServices
     private func setHidden(_ value: Bool) {
         hidden = value
         if value { view.stopTracking(); panel.ignoresMouseEvents = true }
-        if Theme.reducesMotion(settings) {
-            panel.setFrame(value ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame, display: true)
-            return
-        }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = Theme.reducesMotion(settings) ? 0 : 0.28
-            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
-            panel.animator().setFrame(value ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame, display: true)
-        }
+        placeContent(animated: true, duration: value ? 0.22 : 0.28, curve: value ? Self.sinkCurve : Self.riseCurve)
     }
     private func hover(item: DockItem?, rect: CGRect) {
         guard !menuVisible else { return }
@@ -678,4 +711,13 @@ import ApplicationServices
     }
     required init(coder: NSCoder) { fatalError("Dock menus are constructed programmatically") }
     @objc private func invoke() { handler() }
+}
+
+/// Clips the sliding Dock to the panel, which is always kept on the Dock's own display.
+@MainActor private final class DockContentClip: NSView {
+    override init(frame: NSRect) {
+        super.init(frame: frame)
+        wantsLayer = true; layer?.masksToBounds = true
+    }
+    required init?(coder: NSCoder) { nil }
 }

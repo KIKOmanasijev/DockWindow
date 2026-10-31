@@ -4,40 +4,51 @@ import XCTest
 final class DockDisplayPushTests: XCTestCase {
     // Main display, and a second display to its right whose bottom sits lower.
     private let screens = [CGRect(x: 0, y: 0, width: 1512, height: 982), CGRect(x: 1512, y: -200, width: 1920, height: 1080)]
+    private let edge = CGPoint(x: 2400, y: -200)
 
-    private func push(_ push: inout DockDisplayPush, at point: CGPoint, dy: CGFloat, times: Int, start: TimeInterval = 0,
-                      step: TimeInterval = 0.016, current: Int? = 0) -> Int? {
+    /// Feeds `count` downward moves of `dy` points, one every 16 ms from `start`.
+    private func push(_ state: inout DockDisplayPush, dy: CGFloat, count: Int, start: TimeInterval,
+                      at point: CGPoint? = nil, current: Int? = 0) -> Int? {
         var result: Int?
-        for i in 0..<times {
-            result = push.update(point: point, delta: CGVector(dx: 0, dy: dy), time: start + Double(i) * step,
-                                 screens: screens, current: current, position: .bottom) ?? result
+        for i in 0..<count {
+            result = state.update(point: point ?? edge, delta: CGVector(dx: 0, dy: dy), time: start + Double(i) * 0.016,
+                                  screens: screens, current: current, position: .bottom) ?? result
         }
         return result
     }
 
-    func testPushingDownAtAnotherDisplaysBottomEdgeMovesTheDock() {
+    func testADeliberatePushAfterSettlingMovesTheDock() {
         var state = DockDisplayPush()
-        XCTAssertNil(push(&state, at: CGPoint(x: 2400, y: -200), dy: 8, times: 3), "24 points is not yet a deliberate push")
-        XCTAssertEqual(push(&state, at: CGPoint(x: 2400, y: -200), dy: 8, times: 1, start: 0.05), 1)
+        XCTAssertNil(push(&state, dy: 0, count: 1, start: 0), "arriving at the edge")
+        XCTAssertNil(push(&state, dy: 10, count: 9, start: 0.3), "90 points is not enough")
+        XCTAssertEqual(push(&state, dy: 10, count: 1, start: 0.45), 1)
+    }
+
+    func testTheOvershootOfAFastMoveToTheEdgeDoesNotCount() {
+        var state = DockDisplayPush()
+        // A fling to the bottom keeps "pushing" hard for a moment after the pointer stops.
+        XCTAssertNil(push(&state, dy: 40, count: 12, start: 0), "480 points within the settle time are ignored")
     }
 
     func testRestingOrPushingOnTheCurrentDisplayDoesNothing() {
         var state = DockDisplayPush()
-        XCTAssertNil(push(&state, at: CGPoint(x: 700, y: 0), dy: 10, times: 10))
-        XCTAssertNil(push(&state, at: CGPoint(x: 2400, y: -200), dy: 0, times: 50), "resting at the edge never moves it")
+        XCTAssertNil(push(&state, dy: 20, count: 40, start: 0, at: CGPoint(x: 700, y: 0)))
+        XCTAssertNil(push(&state, dy: 0, count: 60, start: 1), "resting at the edge never moves it")
     }
 
     func testAPauseStartsThePushOver() {
         var state = DockDisplayPush()
-        XCTAssertNil(push(&state, at: CGPoint(x: 2400, y: -200), dy: 8, times: 3))
-        XCTAssertNil(push(&state, at: CGPoint(x: 2400, y: -200), dy: 8, times: 3, start: 1), "pushes 1 s apart do not add up")
+        _ = push(&state, dy: 0, count: 1, start: 0)
+        XCTAssertNil(push(&state, dy: 10, count: 8, start: 0.3))
+        XCTAssertNil(push(&state, dy: 10, count: 8, start: 1.5), "pushes more than 0.35 s apart do not add up")
     }
 
     func testSlidingAlongTheEdgeNeitherCountsNorCancels() {
         var state = DockDisplayPush()
-        XCTAssertNil(push(&state, at: CGPoint(x: 2400, y: -200), dy: 8, times: 2))
-        _ = state.update(point: CGPoint(x: 2410, y: -200), delta: CGVector(dx: 10, dy: 0), time: 0.05, screens: screens, current: 0, position: .bottom)
-        XCTAssertEqual(push(&state, at: CGPoint(x: 2420, y: -200), dy: 8, times: 2, start: 0.07), 1)
+        _ = push(&state, dy: 0, count: 1, start: 0)
+        XCTAssertNil(push(&state, dy: 10, count: 6, start: 0.3))
+        _ = state.update(point: CGPoint(x: 2410, y: -200), delta: CGVector(dx: 10, dy: 0), time: 0.42, screens: screens, current: 0, position: .bottom)
+        XCTAssertEqual(push(&state, dy: 10, count: 4, start: 0.44, at: CGPoint(x: 2420, y: -200)), 1)
     }
 
     func testAnEdgeSharedWithAnotherDisplayIsNotAnEdge() {

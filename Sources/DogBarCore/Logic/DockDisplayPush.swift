@@ -5,14 +5,18 @@ import Foundation
 /// edge of that display and keep pushing. Resting at the edge, or crossing into a neighbouring
 /// display, never moves it. Coordinates are AppKit global points (y up).
 public struct DockDisplayPush: Sendable {
-    /// Push distance past the edge, in points. A deliberate nudge, not a brush past.
-    public static let requiredDistance: CGFloat = 30
+    /// Push distance past the edge, in points: a deliberate shove, not a brush past.
+    public static let requiredDistance: CGFloat = 100
+    /// Motion in the first moments at the edge is the overshoot of the stroke that got the
+    /// pointer there, not a push. Without this, a quick move to the bottom moved the Dock.
+    public static let settleTime: TimeInterval = 0.25
     /// A pause longer than this starts the push over.
     public static let maximumPause: TimeInterval = 0.35
 
     private var target: Int?
+    private var arrived: TimeInterval = 0
     private var pushed: CGFloat = 0
-    private var lastPush: TimeInterval = 0
+    private var lastPush: TimeInterval?
 
     public init() {}
 
@@ -23,17 +27,18 @@ public struct DockDisplayPush: Sendable {
         guard let index = Self.outerEdgeScreen(point: point, screens: screens, position: position), index != current else {
             reset(); return nil
         }
-        if target != index || time - lastPush > Self.maximumPause { target = index; pushed = 0 }
+        if target != index { target = index; arrived = time; pushed = 0; lastPush = nil }
+        if let lastPush, time - lastPush > Self.maximumPause { pushed = 0; self.lastPush = nil }
         let push = Self.pushDistance(delta, position: position)
         // Sliding along the edge neither counts nor cancels; only a pause or leaving the edge does.
-        guard push > 0 else { return nil }
+        guard push > 0, time - arrived >= Self.settleTime else { return nil }
         pushed += push; lastPush = time
         guard pushed >= Self.requiredDistance else { return nil }
         reset()
         return index
     }
 
-    public mutating func reset() { target = nil; pushed = 0; lastPush = 0 }
+    public mutating func reset() { target = nil; arrived = 0; pushed = 0; lastPush = nil }
 
     /// The display whose Dock edge the pointer rests on, if that edge is a real outer edge.
     /// Where another display continues past it, the pointer simply crosses over instead.
