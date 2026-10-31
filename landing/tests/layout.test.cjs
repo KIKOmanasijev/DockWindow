@@ -29,7 +29,7 @@ test("feature illustrations never inherit album-cover dimensions", { skip: !JSDO
       assert.equal(computed.height, "auto", "grow with the visual inside");
     }
     // App icons inside the feature visuals keep their own fixed sizes.
-    const icon = document.querySelector(".feature-grid .fx-dock-app img");
+    const icon = document.querySelector(".fx-pop + .fx-dock .fx-dock-app img");
     assert.equal(dom.window.getComputedStyle(icon).width, "34px");
     // Cmd+Tab icons scale by width and keep their square shape instead of stretching.
     const appIcon = dom.window.getComputedStyle(document.querySelector(".fx-app img"));
@@ -71,7 +71,8 @@ test("closed preview, switcher and HUD shells stay invisible", { skip: !JSDOM &&
       assert.equal(display(sel), "none", `${sel}: no empty bubble, overlay or pointer`);
     }
     w.eval(fs.readFileSync(path.join(ROOT, "script.js"), "utf8"));
-    assert.equal(display("[data-preview]"), "flex", "the opening frame shows Safari's previews");
+    assert.equal(display("[data-preview]"), "none", "the opening frame shows the labelled Dock, not previews");
+    assert.equal(display("[data-dock-labels]"), "block", "pinned and desktop-only labels are visible");
     assert.equal(display("[data-switcher]"), "none");
     assert.equal(display("[data-keys]"), "none");
     assert.equal(display("[data-swipe]"), "none");

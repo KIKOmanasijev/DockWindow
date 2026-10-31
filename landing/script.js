@@ -39,6 +39,9 @@
   const menus = $("[data-menus]");
   const swipeHud = $("[data-swipe]");
   const pointer = $("[data-cursor]");
+  const dockLabels = $("[data-dock-labels]");
+  const labelPins = $("[data-label-pins]");
+  const labelHere = $("[data-label-here]");
   const keys = $("[data-keys]");
   const stage = $("#demo");
   const playBtn = $("[data-tour-toggle]");
@@ -47,13 +50,20 @@
   const APPS = {
     finder: { name: "Finder", img: "assets/apps/finder.png" },
     dogbar: { name: "DogBar", img: "assets/dog-96.png" },
+    mail: { name: "Mail", img: "assets/apps/mail.png" },
     safari: { name: "Safari", img: "assets/apps/safari.png" },
     slack: { name: "Slack", img: "assets/apps/slack.png" },
     notes: { name: "Notes", img: "assets/apps/notes.png" },
+    chrome: { name: "Chrome", img: "assets/apps/chrome.png" },
     music: { name: "Music", img: "assets/apps/music.png" },
+    tv: { name: "TV", img: "assets/apps/tv.png" },
+    photos: { name: "Photos", img: "assets/apps/photos.png" },
   };
-  const PINS = ["finder", "dogbar"];
-  const INTRO_TEXT = "Safari has two windows open, but you can only see one. DogBar’s Dock preview shows both.";
+  // Pinned apps sit on every desktop's Dock; everything after the divider belongs to one desktop.
+  const PINS = ["finder", "dogbar", "mail"];
+  const listOf = (names) => names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0] || "";
+  const PINNED_TEXT = `${listOf(PINS.map((a) => APPS[a].name))} are pinned, so they stay on every Dock.`;
+  const INTRO_TEXT = `Each desktop gets a Dock with just its apps. ${PINNED_TEXT}`;
 
   // Only the front window is shown on the desk, so every change reads at a glance.
   const initialWindows = () => ({
@@ -64,22 +74,27 @@
       { id: "n1", app: "notes", view: "notes", title: "Packing list" },
     ],
     2: [
-      { id: "s3", app: "safari", view: "hike", title: "Sunday hike", url: "trailmap.travel", fav: "#2bac76" },
       { id: "m1", app: "music", view: "music", title: "Up Next" },
+      { id: "c1", app: "chrome", view: "hike", title: "Sunday hike", url: "trailmap.travel", fav: "#2bac76" },
+      { id: "t1", app: "tv", view: "tv", title: "Watch Now" },
+      { id: "p1", app: "photos", view: "photos", title: "Library" },
     ],
   });
   // Front-to-back window order per desktop.
-  const initialOrder = () => ({ 1: ["s1", "s2", "k1", "n1"], 2: ["m1", "s3"] });
+  const initialOrder = () => ({ 1: ["s1", "s2", "k1", "n1"], 2: ["m1", "c1", "t1", "p1"] });
   // The front app's menus, as macOS shows them.
   const MENUS = {
     finder: ["File", "Edit", "View", "Go", "Window", "Help"],
     safari: ["File", "Edit", "View", "History", "Bookmarks", "Window", "Help"],
     slack: ["File", "Edit", "View", "Go", "Window", "Help"],
     notes: ["File", "Edit", "Format", "View", "Window", "Help"],
+    chrome: ["File", "Edit", "View", "History", "Bookmarks", "Window", "Help"],
     music: ["File", "Edit", "Song", "View", "Controls", "Window", "Help"],
+    tv: ["File", "Edit", "View", "Controls", "Window", "Help"],
+    photos: ["File", "Edit", "Image", "View", "Window", "Help"],
   };
 
-  const state = { desk: 1, windows: initialWindows(), order: initialOrder(), mode: "idle", sel: 0, previewApp: null };
+  const state = { desk: 1, windows: initialWindows(), order: initialOrder(), mode: "idle", sel: 0, previewApp: null, labels: false };
 
   const windowsHere = () => state.windows[state.desk];
   const byId = (id) => windowsHere().find((w) => w.id === id);
@@ -128,6 +143,16 @@
       <span class="mu-row"><i class="album-art" style="--art:#ff6b8b"></i><span><b>Slow Orbit</b>Juniper Lane</span></span>
       <span class="mu-row"><i class="album-art" style="--art:#6e24e6"></i><span><b>Paper Boats</b>Hollow Pines</span></span>
       <span class="mu-row"><i class="album-art" style="--art:#ffb020"></i><span><b>Afterglow</b>Mira Vale</span></span>
+    </span>`,
+    tv: `<span class="trip">
+      <span class="trip-img"></span>
+      <span class="trip-h">Watch Now</span>
+      <span class="trip-ln">Up next: Coastlines, episode 3</span>
+    </span>`,
+    photos: `<span class="trip">
+      <span class="trip-img"></span>
+      <span class="trip-h">Library</span>
+      <span class="trip-ln">Lisbon, last spring · 214 photos</span>
     </span>`,
   };
 
@@ -200,6 +225,33 @@
     };
     dock.innerHTML = PINS.map(item).join("") +
       (running.length ? `<li class="dock-sep"></li>` : "") + running.map(item).join("");
+    renderDockLabels();
+  }
+
+  // ----- Labels over the Dock: pinned apps versus this desktop's own apps -----
+  function renderDockLabels() {
+    dockLabels.hidden = !state.labels;
+    if (!state.labels) return;
+    const span = (keys) => {
+      const els = keys.map((k) => dock.querySelector(`[data-app="${k}"]`)).filter(Boolean);
+      if (!els.length) return null;
+      const first = offsetIn(els[0]).x, last = els.at(-1);
+      return { left: first, width: offsetIn(last).x + last.offsetWidth - first };
+    };
+    const place = (el, box) => {
+      el.hidden = !box;
+      if (!box) return;
+      el.style.left = `${box.left}px`;
+      el.style.width = `${box.width}px`;
+    };
+    place(labelPins, span(PINS));
+    place(labelHere, span(dockApps()));
+    labelHere.querySelector("[data-label-text]").textContent = `Only on Desktop ${state.desk}`;
+    dockLabels.style.bottom = `${Math.max(cam.clientHeight - offsetIn(dock).y + 8, 0)}px`;
+  }
+  function showDockLabels(on) {
+    state.labels = on;
+    renderDockLabels();
   }
 
   // ----- Bring one window to the front -----
@@ -249,7 +301,7 @@
   }
 
   // ----- Dock previews -----
-  function openPreview(appKey, { hint = false } = {}) {
+  function openPreview(appKey) {
     closeSwitcher();
     const icon = dock.querySelector(`[data-app="${appKey}"]`);
     if (!icon) return;
@@ -258,8 +310,7 @@
     dock.querySelectorAll(".dock-btn").forEach((b) => b.classList.toggle("is-open", b === icon));
     const wins = windowsHere().filter((w) => w.app === appKey);
     const name = APPS[appKey].name;
-    preview.innerHTML = (hint ? `<p class="pv-hint">${wins.length} ${name} windows</p>` : "") +
-      wins.map((w) => `<div class="pv">
+    preview.innerHTML = wins.map((w) => `<div class="pv">
         <span class="pv-lights"><i></i><i></i><i></i></span>
         <span class="pv-shot" data-focus="${w.id}">${miniMarkup(w)}</span>
         <span class="pv-name">${w.title}</span></div>`).join("");
@@ -311,29 +362,30 @@
     state.desk = n;
     renderDesk({ swap: dir });
     renderDock({ animate: true });
-    const names = dockApps().map((a) => APPS[a].name);
-    const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
-    say(`Desktop ${n} has its own Dock: ${list ? `just ${list}` : "only your pinned apps"}. Finder and DogBar stay on every Dock.`);
+    const list = listOf(dockApps().map((a) => APPS[a].name));
+    say(`Desktop ${n} has its own Dock: ${list ? `just ${list}` : "only your pinned apps"}. ${PINNED_TEXT}`);
   }
 
-  // The opening frame, also the still image under reduced motion: one window, and
-  // Safari's previews showing the second one.
+  // The opening frame, also the still image under reduced motion: Desktop 1 with its
+  // Dock labelled, pinned apps on one side and this desktop's own apps on the other.
   function reset() {
     closeAll();
     state.windows = initialWindows();
     state.order = initialOrder();
     state.desk = 1;
+    state.labels = false;
     renderDesk();
     renderDock();
   }
   function openingFrame() {
     reset();
-    openPreview("safari", { hint: true });
+    showDockLabels(true);
     say(INTRO_TEXT);
   }
 
   window.addEventListener("resize", () => {
     if (state.mode === "preview") placePreview(dock.querySelector(`[data-app="${state.previewApp}"]`));
+    renderDockLabels();
   });
 
   // ---------- Playback ----------
@@ -351,6 +403,23 @@
   }
 
   const SCENES = [
+    // A swipe to Desktop 2 and back. The labels show which apps are pinned everywhere
+    // and which belong to the desktop on screen, and the Dock changes with the desktop.
+    { ms: 7600, run: async (wait) => {
+      reset();
+      pointer.classList.remove("is-on");
+      showDockLabels(true);
+      say(INTRO_TEXT);
+      await wait(1900);
+      showSwipe(2, 1);
+      await wait(700);
+      setDesk(2);
+      await wait(2700);
+      showSwipe(1, -1);
+      await wait(700);
+      setDesk(1);
+      await wait(1600);
+    } },
     // Only the day plan is on screen. Hover Safari, the previews show both windows,
     // the pointer settles on "Hotel booking", and only the click brings it forward.
     { ms: 7800, run: async (wait) => {
@@ -372,9 +441,10 @@
       focusWindow("s2");
       await wait(2400);
     } },
-    // Option+Tab over the hotel booking: step to the Slack chat, let go, Slack is in front.
+    // The window switcher over the hotel booking: step to the Slack chat, let go, Slack is in front.
     { ms: 5600, run: async (wait) => {
       closeAll();
+      showDockLabels(false);
       if (state.desk !== 1) setDesk(1);
       pointer.classList.remove("is-on");
       keys.hidden = false;
@@ -385,22 +455,6 @@
       keys.hidden = true;
       releaseSwitcher();
       await wait(1700);
-    } },
-    // A swipe to Desktop 2 and back. The Dock visibly changes with the desktop.
-    { ms: 7000, run: async (wait) => {
-      closeAll();
-      if (state.desk !== 1) setDesk(1);
-      pointer.classList.remove("is-on");
-      say("Swipe to another desktop and the Dock changes to match.");
-      await wait(400);
-      showSwipe(2, 1);
-      await wait(700);
-      setDesk(2);
-      await wait(2900);
-      showSwipe(1, -1);
-      await wait(700);
-      setDesk(1);
-      await wait(2300);
     } },
   ];
 

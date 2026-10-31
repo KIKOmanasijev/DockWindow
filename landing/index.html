@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DogBar | Mac Window Switcher &amp; Dock Previews</title>
-  <meta name="description" content="Switch between individual Mac windows with DogBar. Get Dock previews, a Dock for each desktop, and window counts. Apple Silicon, macOS 14+.">
+  <meta name="description" content="Switch between individual Mac windows with DogBar. Get Dock previews, a Dock for each desktop, and window counts. Apple Silicon, macOS 26+.">
   <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#4a14b8">
   <link rel="canonical" href="https://dogbar.hristijan.dev/">
@@ -12,7 +12,7 @@
   <meta property="og:site_name" content="DogBar">
   <meta property="og:locale" content="en_US">
   <meta property="og:title" content="DogBar | Mac Window Switcher &amp; Dock Previews">
-  <meta property="og:description" content="A better alt-tab and Dock for your Mac. See every window, preview windows from the Dock, and get a separate Dock on every desktop. macOS 14+.">
+  <meta property="og:description" content="A better alt-tab and Dock for your Mac. See every window, preview windows from the Dock, and get a separate Dock on every desktop. macOS 26+.">
   <meta property="og:url" content="https://dogbar.hristijan.dev/">
   <meta property="og:image" content="https://dogbar.hristijan.dev/assets/dog-640.jpg">
   <meta property="og:image:alt" content="DogBar app icon: a cartoon dog holding two windows on purple">
@@ -44,7 +44,7 @@
       "url": "https://dogbar.hristijan.dev/",
       "description": "DogBar is a native macOS window switcher and Dock app with individual window previews, per-desktop Docks and window counts.",
       "applicationCategory": "DesktopEnhancementApplication",
-      "operatingSystem": "macOS 14 or later",
+      "operatingSystem": "macOS 26 or later",
       "processorRequirements": "Apple Silicon (arm64)",
       "image": "https://dogbar.hristijan.dev/assets/dog-640.jpg",
       "license": "https://github.com/KIKOmanasijev/DockWindow/blob/main/LICENSE",
@@ -79,7 +79,7 @@
           "name": "Which Macs can run DogBar?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "The current preview requires an Apple Silicon Mac running macOS 14 or later. It is self-signed and not notarized by Apple."
+            "text": "The current preview requires an Apple Silicon Mac running macOS 26 or later. It is self-signed and not notarized by Apple."
           }
         },
         {
@@ -129,6 +129,7 @@
   </script>
   <script src="release.js" defer></script>
   <script src="script.js" defer></script>
+  <script src="pricing.js" defer></script>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
@@ -184,7 +185,7 @@
           </a>
           <a class="btn-link" href="#demo" data-demo-start>Watch the demo</a>
         </div>
-        <p class="dl-note" id="hero-dl-note" data-download-note>Public release is being prepared. macOS 14+.</p>
+        <p class="dl-note" id="hero-dl-note" data-download-note>Public release is being prepared. macOS 26+.</p>
       </div>
 
       <section class="stage" id="demo" aria-labelledby="demo-title" aria-describedby="demo-desc" tabindex="-1">
@@ -215,6 +216,10 @@
             <div class="dock-wrap">
               <ul class="dock" data-dock></ul>
             </div>
+            <div class="dock-labels" data-dock-labels hidden>
+              <span class="dock-label" data-label-pins><span>Pinned everywhere</span></span>
+              <span class="dock-label is-here" data-label-here><span data-label-text>Only on Desktop 1</span></span>
+            </div>
             <div class="preview" data-preview hidden></div>
             <svg class="cursor" data-cursor focusable="false"><use href="#i-cursor"/></svg>
           </div>
@@ -228,18 +233,18 @@
 
         <div class="tour" role="group" aria-label="Demo chapters">
           <ol class="tour-steps">
-            <li><button type="button" class="tour-step" data-tour-step="0">Preview from the Dock<i class="tour-bar" aria-hidden="true"></i></button></li>
-            <li><button type="button" class="tour-step" data-tour-step="1">Switch to any window<i class="tour-bar" aria-hidden="true"></i></button></li>
-            <li><button type="button" class="tour-step" data-tour-step="2">A Dock per desktop<i class="tour-bar" aria-hidden="true"></i></button></li>
+            <li><button type="button" class="tour-step" data-tour-step="0">A Dock per desktop<i class="tour-bar" aria-hidden="true"></i></button></li>
+            <li><button type="button" class="tour-step" data-tour-step="1">Preview from the Dock<i class="tour-bar" aria-hidden="true"></i></button></li>
+            <li><button type="button" class="tour-step" data-tour-step="2">Switch to any window<i class="tour-bar" aria-hidden="true"></i></button></li>
           </ol>
           <button type="button" class="tour-toggle" data-tour-toggle aria-label="Play the demo">
             <svg class="tour-ic-play" aria-hidden="true" focusable="false"><use href="#i-play"/></svg>
             <svg class="tour-ic-pause" aria-hidden="true" focusable="false"><use href="#i-pause"/></svg>
           </button>
         </div>
-        <p class="caption" data-caption>Safari has two windows open, but you can only see one. DogBar’s Dock preview shows both.</p>
+        <p class="caption" data-caption>Each desktop gets a Dock with just its apps. Finder, DogBar and Mail are pinned, so they stay on every Dock.</p>
         <noscript><p class="caption">The demo needs JavaScript. The pictures below show the same ideas.</p></noscript>
-        <p class="sr-only" id="demo-desc">A short looping animation of DogBar on a Mac. First, hovering Safari in the Dock shows previews of its two windows, and clicking “Hotel booking” brings just that window forward. Next, the window switcher shows one tile per window and switches to a Slack chat. Last, swiping to Desktop 2 shows a Dock with only that desktop’s apps.</p>
+        <p class="sr-only" id="demo-desc">A short looping animation of DogBar on a Mac. First, the Dock on Desktop 1 is labelled: Finder, DogBar and Mail are pinned on every desktop, while Safari, Slack and Notes belong only to Desktop 1. Swiping to Desktop 2 swaps those for Music, Chrome, TV and Photos, and the pinned apps stay. Next, hovering Safari in the Dock shows previews of its two windows, and clicking “Hotel booking” brings just that window forward. Last, the window switcher shows one tile per window and switches to a Slack chat.</p>
       </section>
     </div>
   </header>
@@ -253,7 +258,7 @@
           <p>Keep work on one desktop and personal stuff on another. When you swipe between them, the Dock changes too, so it only shows what’s open where you are. Your pinned apps stay on every Dock.</p>
           <p class="feature-aside">Rather see everything? Settings can show windows from all desktops instead.</p>
         </div>
-        <figure class="feature-art reveal desks-art" role="img" aria-label="Two Mac desktops side by side, each with a different Dock. Desktop 1, Work, shows a Slack window, and its Dock has Slack, Figma, Mail, Calendar and Notes. Desktop 2, Personal, shows a Music window, and its Dock has Chrome, TV, Music, Photos and Messages. Finder and DogBar are pinned on both.">
+        <figure class="feature-art reveal desks-art" role="img" aria-label="Two Mac desktops side by side, each with an isolated Dock. Finder, DogBar and Mail are pinned on both. After the divider, Desktop 1, Work, shows Slack, Figma, Calendar and Notes, with a Slack window on screen. Desktop 2, Personal, shows Chrome, TV, Music and Photos, with a Music window on screen.">
           <div class="desks-art-row">
             <div class="desk-screen" data-wall="1">
               <span class="desk-screen-name">Desktop 1 · Work</span>
@@ -261,10 +266,10 @@
               <div class="fx-dock">
                 <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
                 <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
+                <span class="fx-dock-app is-pin"><img src="assets/apps/mail.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
                 <span class="fx-sep"></span>
                 <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/figma.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
-                <span class="fx-dock-app"><img src="assets/apps/mail.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/calendar.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/notes.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
               </div>
@@ -276,16 +281,16 @@
               <div class="fx-dock">
                 <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
                 <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
+                <span class="fx-dock-app is-pin"><img src="assets/apps/mail.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
                 <span class="fx-sep"></span>
                 <span class="fx-dock-app"><img src="assets/apps/chrome.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/tv.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/music.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/photos.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
-                <span class="fx-dock-app"><img src="assets/apps/messages.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
               </div>
             </div>
           </div>
-          <p class="fx-legend desks-art-legend"><span class="fx-pin-key"></span>Pinned on every desktop. Everything else belongs to that desktop.</p>
+          <p class="fx-legend desks-art-legend">Finder, DogBar and Mail are pinned on every desktop. Everything after the divider belongs to that desktop.</p>
         </figure>
       </article>
 
@@ -321,10 +326,45 @@
       <div class="familiar-head">
         <p class="kicker">A Dock you already know</p>
         <h2 class="section-title">Feels like the Mac Dock, with the parts it’s missing.</h2>
-        <p>Pinned apps, a divider and running dots sit where you expect them. DogBar adds window previews, a dot for every open window and a Dock for each desktop.</p>
+        <p>Pinned apps, a divider and running dots sit where you expect them. DogBar adds an isolated Dock for each desktop, window previews and a dot for every open window.</p>
       </div>
 
       <div class="feature-grid">
+        <article class="feature">
+          <figure class="feature-art reveal" role="img" aria-label="Two desktops with isolated Docks. Desktop 1 shows Slack, Figma and Calendar. Desktop 2 shows Chrome, TV and Music. Finder, DogBar and Mail are pinned on both.">
+            <div class="fx-stage fx-desks">
+              <div class="fx-desk">
+                <p class="fx-desk-name">Desktop 1 · Work</p>
+                <div class="fx-dock">
+                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app is-pin"><img src="assets/apps/mail.png" width="96" height="96" alt=""></span>
+                  <span class="fx-sep"></span>
+                  <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/figma.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/calendar.png" width="96" height="96" alt=""></span>
+                </div>
+              </div>
+              <div class="fx-desk">
+                <p class="fx-desk-name">Desktop 2 · Personal</p>
+                <div class="fx-dock">
+                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app is-pin"><img src="assets/apps/mail.png" width="96" height="96" alt=""></span>
+                  <span class="fx-sep"></span>
+                  <span class="fx-dock-app"><img src="assets/apps/chrome.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/tv.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/music.png" width="96" height="96" alt=""></span>
+                </div>
+              </div>
+              <p class="fx-legend"><span class="fx-pin-key"></span>Pinned on every desktop</p>
+            </div>
+          </figure>
+          <div class="feature-copy">
+            <h3>An isolated Dock for every desktop.</h3>
+            <p>Each desktop’s Dock shows only the apps open there, so work and personal stuff stay apart. Your pinned apps show up everywhere.</p>
+          </div>
+        </article>
         <article class="feature">
           <figure class="feature-art reveal" role="img" aria-label="The Safari Dock icon, with two dots for its two windows, shows two window previews above it: Lisbon day plan and Hotel booking. The pointer is on Hotel booking.">
             <div class="fx-stage">
@@ -360,39 +400,6 @@
           <div class="feature-copy">
             <h3>See how many windows each app has.</h3>
             <p>Each app gets one dot per open window. Want a bigger Dock? Drag its edge. Icons stay still, with no magnifying.</p>
-          </div>
-        </article>
-        <article class="feature">
-          <figure class="feature-art reveal" role="img" aria-label="Two desktops with different Docks. Desktop 1 shows Slack, Figma and Mail. Desktop 2 shows Chrome, TV and Music. Finder and DogBar are pinned on both.">
-            <div class="fx-stage fx-desks">
-              <div class="fx-desk">
-                <p class="fx-desk-name">Desktop 1 · Work</p>
-                <div class="fx-dock">
-                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
-                  <span class="fx-sep"></span>
-                  <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app"><img src="assets/apps/figma.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app"><img src="assets/apps/mail.png" width="96" height="96" alt=""></span>
-                </div>
-              </div>
-              <div class="fx-desk">
-                <p class="fx-desk-name">Desktop 2 · Personal</p>
-                <div class="fx-dock">
-                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
-                  <span class="fx-sep"></span>
-                  <span class="fx-dock-app"><img src="assets/apps/chrome.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app"><img src="assets/apps/tv.png" width="96" height="96" alt=""></span>
-                  <span class="fx-dock-app"><img src="assets/apps/music.png" width="96" height="96" alt=""></span>
-                </div>
-              </div>
-              <p class="fx-legend"><span class="fx-pin-key"></span>Pinned on every desktop</p>
-            </div>
-          </figure>
-          <div class="feature-copy">
-            <h3>Get a separate Dock on every desktop.</h3>
-            <p>Each desktop’s Dock only shows the apps open there, so work and personal stuff stay apart. Your pinned apps show up everywhere.</p>
           </div>
         </article>
       </div>
@@ -453,7 +460,7 @@
       <div class="get-inner">
         <img class="get-icon" src="assets/dog-640.jpg" width="640" height="640" alt="" loading="lazy" decoding="async">
         <h2 id="get-title" class="section-title">Get DogBar for your Mac.</h2>
-        <p class="get-sub">A native Mac app for macOS 14 or later.</p>
+        <p class="get-sub">A native Mac app for macOS 26 or later.</p>
         <div class="actions">
           <a class="btn btn-download" data-download aria-describedby="get-dl-note">
             <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
@@ -474,6 +481,19 @@
           <p>Apple has not notarized this preview. Open the DMG and drag DogBar to Applications. If macOS blocks opening it, review the app and use System Settings → Privacy &amp; Security → Open Anyway. Then grant Accessibility and Screen Recording when requested.</p>
           <p><a href="https://support.apple.com/102445" target="_blank" rel="noopener noreferrer">Apple’s first-launch instructions</a></p>
         </details>
+        <section class="pwyw" aria-labelledby="pwyw-title" data-pwyw>
+          <h3 id="pwyw-title">Pay what you want</h3>
+          <p class="pwyw-sub">Pick your price, from $5 up. Paddle handles the payment.</p>
+          <div class="pwyw-row">
+            <label class="pwyw-label" for="pwyw-amount">Your price</label>
+            <output class="pwyw-value" for="pwyw-amount" data-pwyw-value>$5</output>
+          </div>
+          <input class="pwyw-range" id="pwyw-amount" type="range" min="5" max="50" step="1" value="5" aria-valuetext="$5" aria-describedby="pwyw-scale" data-pwyw-range>
+          <p class="pwyw-scale" id="pwyw-scale"><span>$5 minimum</span><span>$50</span></p>
+          <p class="pwyw-total">Total <b data-pwyw-total>$5</b> <span>Any sales tax is shown at checkout.</span></p>
+          <button type="button" class="btn btn-pay" data-pwyw-pay disabled aria-describedby="pwyw-status">Pay <span data-pwyw-cta>$5</span></button>
+          <p class="pwyw-status" id="pwyw-status" data-pwyw-status>Payments aren’t open yet. Until they are, the preview download above is free.</p>
+        </section>
       </div>
     </section>
 
@@ -486,7 +506,7 @@
         </details>
         <details>
           <summary>Which Macs can run DogBar?</summary>
-          <p>The current preview requires an Apple Silicon Mac running macOS 14 or later. It is self-signed and not notarized by Apple.</p>
+          <p>The current preview requires an Apple Silicon Mac running macOS 26 or later. It is self-signed and not notarized by Apple.</p>
         </details>
         <details>
           <summary>Do I have to replace Apple’s Dock?</summary>
@@ -513,7 +533,7 @@
   </main>
 
   <footer class="footer">
-    <p><img src="assets/dog-96.png" width="20" height="20" alt=""> DogBar. A native Mac app for macOS 14+.</p>
+    <p><img src="assets/dog-96.png" width="20" height="20" alt=""> DogBar. A native Mac app for macOS 26+.</p>
     <ul class="footer-links">
       <li><a href="#demo">Demo</a></li>
       <li><a href="#features">Features</a></li>

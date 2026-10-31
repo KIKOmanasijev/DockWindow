@@ -21,7 +21,7 @@ const RELEASE_JS = fs.readFileSync(path.join(ROOT, "release.js"), "utf8");
 const SCRIPT_JS = fs.readFileSync(path.join(ROOT, "script.js"), "utf8");
 const MANIFEST = {
   available: true, version: "1.0.0", url: "/downloads/DogBar-1.0.0-arm64.dmg", sha256: "b".repeat(64),
-  architecture: "arm64", minimumMacOS: "14.0", notarized: true,
+  architecture: "arm64", minimumMacOS: "26.0", notarized: true,
 };
 
 // Loads the page with a stubbed fetch for /release.json, then runs both scripts.
@@ -98,7 +98,7 @@ test("download CTAs: a verified manifest enables both, same link", { skip }, asy
     assert.match(a.textContent, /Apple Silicon/);
     assert.doesNotMatch(a.textContent, /Coming soon/);
   }
-  for (const note of $$("[data-download-note]")) assert.equal(note.textContent, "Version 1.0.0 · Apple Silicon · macOS 14+");
+  for (const note of $$("[data-download-note]")) assert.equal(note.textContent, "Version 1.0.0 · Apple Silicon · macOS 26+");
   assert.equal($("[data-download-hash]").hidden, false);
   assert.equal($("[data-download-hash] code").textContent, "b".repeat(64));
   assert.equal(d.documentElement.dataset.release, "live");
@@ -216,7 +216,7 @@ test("explicit preview enables both downloads with honest status and installatio
   assert.equal(production.$("[data-preview-help]").hidden, true);
 });
 
-test("demo opens on a still frame: one window on screen, Safari's previews showing both", { skip }, async () => {
+test("demo opens on a still frame: Desktop 1's Dock labelled, pinned apps apart from this desktop's own", { skip }, async () => {
   const { w, $, $$ } = await page(json(null));
   const dockApps = () => $$(".dock-btn").map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
 
@@ -224,18 +224,18 @@ test("demo opens on a still frame: one window on screen, Safari's previews showi
   assert.equal($$(".win").length, 4);
   assert.equal($$(".win.is-front").length, 1, "one window on screen");
   assert.equal($(".win.is-front").dataset.win, "s1");
-  assert.equal(dockApps(), "finder:0,dogbar:0,safari:2,slack:1,notes:1");
+  assert.equal(dockApps(), "finder:0,dogbar:0,mail:0,safari:2,slack:1,notes:1");
   assert.equal($("[data-front-app]").textContent, "Safari");
   assert.match($('[data-win="s2"]').textContent, /casaluz-stays\.travel[\s\S]*Confirm your stay/);
   assert.doesNotMatch($("[data-desk]").textContent, /\bPR\b|staging|deploy|review|diff/i, "no developer jargon");
   for (const img of $$(".dock-btn img")) assert.match(img.getAttribute("src"), /^assets\/(apps\/[a-z]+|dog-96)\.png$/);
 
-  // Safari's previews are open with both windows; nothing is picked yet.
-  assert.equal($("[data-preview]").hidden, false);
-  assert.deepEqual($$(".pv-name").map((n) => n.textContent), ["Lisbon day plan", "Hotel booking"]);
-  assert.match($(".pv-hint").textContent, /2 Safari windows/);
-  assert.equal($$(".pv.is-hover").length, 0);
-  assert.ok($('.dock-btn[data-app="safari"]').classList.contains("is-open"));
+  // The Dock is labelled: pinned on every desktop versus only on this one. No previews yet.
+  assert.equal($("[data-dock-labels]").hidden, false);
+  assert.match($("[data-label-pins]").textContent, /Pinned everywhere/);
+  assert.match($("[data-label-here]").textContent, /Only on Desktop 1/);
+  assert.ok($("[data-preview]").hidden);
+  assert.match($("[data-caption]").textContent, /Each desktop gets a Dock with just its apps/);
   assert.equal($("#demo").dataset.tour, "idle");
 });
 
@@ -266,10 +266,22 @@ test("autoplay: plays on screen, highlights the preview before the click, never 
   assert.equal($("[data-tour-toggle]").getAttribute("aria-label"), "Pause the demo");
   assert.ok($('[data-tour-step="0"]').classList.contains("is-active"));
   assert.equal($('[data-tour-step="0"]').getAttribute("aria-current"), "step");
-  assert.ok($("[data-cursor]").classList.contains("is-on"), "the pointer is visible");
-  assert.ok($("[data-preview]").hidden, "scene 1 starts from just the day plan");
+  assert.equal($('[data-tour-step="0"]').textContent.trim(), "A Dock per desktop", "the isolated Docks come first");
+  assert.equal($("[data-dock-labels]").hidden, false);
 
-  // 1.2 s pointer to Safari, 0.9 s previews open, 1.4 s pointer to "Hotel booking", 0.8 s highlight.
+  // 1.9 s on Desktop 1, then the swipe: Desktop 2 keeps the pins and swaps everything else.
+  await pause(w, 2700);
+  assert.equal($("[data-desk]").dataset.wall, "2");
+  assert.equal($$dockApps(w), "finder:0,dogbar:0,mail:0,music:1,chrome:1,tv:1,photos:1");
+  assert.match($("[data-label-here]").textContent, /Only on Desktop 2/);
+
+  // Scene 2 (7.6 s in): previews. 1.2 s pointer to Safari, 0.9 s previews open,
+  // 1.4 s pointer to "Hotel booking", 0.8 s highlight.
+  await pause(w, 4900);
+  assert.ok($('[data-tour-step="1"]').classList.contains("is-active"));
+  assert.ok($("[data-cursor]").classList.contains("is-on"), "the pointer is visible");
+  assert.ok($("[data-preview]").hidden, "the preview scene starts from just the day plan");
+  assert.ok($("[data-dock-labels]").hidden, "labels belong to the desktop scene");
   await pause(w, 3500);
   assert.equal($("[data-preview]").hidden, false);
   await pause(w, 900);
@@ -287,15 +299,18 @@ test("pause freezes the walkthrough and play resumes it; chapters jump; reduced 
   const { w, $ } = still;
   await pause(w, 760);
   assert.equal($("#demo").dataset.tour, "idle", "no autoplay under reduced motion");
-  assert.equal($("[data-preview]").hidden, false, "the opening frame stays as a still");
+  assert.equal($("[data-dock-labels]").hidden, false, "the opening frame stays as a still");
 
   $('[data-tour-step="2"]').click();
   assert.equal($("#demo").dataset.tour, "playing", "a person can still start it");
   assert.ok($('[data-tour-step="2"]').classList.contains("is-active"));
   assert.ok($('[data-tour-step="0"]').classList.contains("is-done"));
-  await pause(w, 1300);
+  assert.equal($("[data-switcher]").hidden, false, "the switcher scene opens the switcher");
+
+  $('[data-tour-step="0"]').click();
+  await pause(w, 2700);
   assert.equal($("[data-desk]").dataset.wall, "2", "the swipe switched desktops");
-  assert.equal($$dockApps(w), "finder:0,dogbar:0,safari:1,music:1", "the Dock changed with the desktop");
+  assert.equal($$dockApps(w), "finder:0,dogbar:0,mail:0,music:1,chrome:1,tv:1,photos:1", "the Dock changed with the desktop");
   assert.equal($("[data-cam]").style.transform, "", "never zoomed");
 
   // Paused mid-scene: nothing moves on; Play continues from the same moment.
@@ -306,7 +321,7 @@ test("pause freezes the walkthrough and play resumes it; chapters jump; reduced 
   assert.equal($("[data-desk]").dataset.wall, "2", "still on Desktop 2 while paused");
   $("[data-tour-toggle]").click();
   assert.equal($("#demo").dataset.tour, "playing");
-  await pause(w, 3200);
+  await pause(w, 3400);
   assert.equal($("[data-desk]").dataset.wall, "1", "resumed and swiped back");
 });
 
@@ -324,7 +339,7 @@ test("product and FAQ structured data stay consistent with visible content", { s
     assert.equal(app.name, "DogBar");
     assert.equal(app.url, canonical);
     assert.match(d.querySelector(".lede").textContent, /DogBar is a window switcher and Dock for macOS/);
-    assert.equal(app.operatingSystem, "macOS 14 or later");
+    assert.equal(app.operatingSystem, "macOS 26 or later");
     assert.equal(app.aggregateRating, undefined, "never invent ratings");
     assert.equal(app.offers, undefined, "never invent price or commercial availability");
     const faq = graph.find((entry) => entry["@type"] === "FAQPage");
