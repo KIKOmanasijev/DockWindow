@@ -57,7 +57,7 @@ Building and verifying are covered in detail by [PreviewDistribution.md](Preview
 
    - Previews use `--prerelease`. Notarized releases use `--latest` instead.
    - Never replace a published file (`gh release upload --clobber`). Publish a new version instead.
-   - Preview notes must start with: *Unnotarized, self-signed preview for Apple Silicon Macs on macOS 14 or later.* Then list what changed, the install steps from the README (including System Settings → Privacy & Security → Open Anyway) and the SHA-256.
+   - Preview notes must start with: *Unnotarized, self-signed preview for Apple Silicon Macs on macOS 26 or later.* Then list what changed, the install steps from the README (including System Settings → Privacy & Security → Open Anyway) and the SHA-256.
 
 7. **Update the website.**
    - Copy the same DMG into `landing/downloads/` (ignored by git, but uploaded with the site). Keep older DMGs there too.

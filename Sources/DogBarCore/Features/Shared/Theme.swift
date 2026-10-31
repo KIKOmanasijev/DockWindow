@@ -104,7 +104,6 @@ import SwiftUI
 
 #if compiler(>=6.2)
 /// Native Liquid Glass backing when built with a macOS 26 or newer SDK.
-@available(macOS 26.0, *)
 @MainActor public struct GlassDockBackgroundProvider: DockBackgroundProvider {
     public init() {}
     public func makeBackgroundView() -> NSView { NSGlassEffectView() }
@@ -115,8 +114,8 @@ import SwiftUI
 }
 #endif
 
-/// Uses Apple's public Liquid Glass view on supported systems, including when the
-/// local build SDK predates its Swift declarations. No private selectors are used.
+/// Uses Apple's public Liquid Glass view when the build SDK predates its Swift
+/// declarations. No private selectors are used.
 @MainActor public struct RuntimeGlassDockBackgroundProvider: DockBackgroundProvider {
     public init() {}
     public func makeBackgroundView() -> NSView {
@@ -140,10 +139,14 @@ import SwiftUI
 }
 
 @MainActor public enum DockBackgroundProviders {
+    /// DogBar requires macOS 26, so the Dock always uses Liquid Glass: the typed view with
+    /// a macOS 26 SDK, otherwise the same public class looked up at runtime. The material
+    /// approximation remains only as that lookup's fallback.
     public static func preferred() -> any DockBackgroundProvider {
-        if #available(macOS 26.0, *), NSClassFromString("NSGlassEffectView") != nil {
-            return RuntimeGlassDockBackgroundProvider()
-        }
-        return MaterialDockBackgroundProvider()
+        #if compiler(>=6.2)
+        return GlassDockBackgroundProvider()
+        #else
+        return RuntimeGlassDockBackgroundProvider()
+        #endif
     }
 }

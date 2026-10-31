@@ -74,7 +74,7 @@ This helper deliberately does not call ThumbnailService.startRefreshingVisible o
 
 `DockBackgroundProviders.preferred()` returns an existential `DockBackgroundProvider`. Retain one provider, call `makeBackgroundView()`, insert the view behind icon layers, and call `updateBackgroundView(_:material:cornerRadius:theme:)` on setting or geometry changes. The provider view should fill the visible Dock background bounds, excluding magnification and label overflow. The caller controls its layout.
 
-The default MaterialDockBackgroundProvider supplies behind-window blur, rounded inner border, faint top highlight and soft shadow. GlassDockBackgroundProvider references NSGlassEffectView only inside `#if compiler(>=6.2)` and `@available(macOS 26.0, *)`. The factory also checks running OS availability. The installed SDK is 15.5, so only the fallback was compiled here. Installing Xcode 26 or newer permits the native implementation. No dynamically invented selector calls are used.
+DogBar requires macOS 26, so the Dock always uses Apple's public NSGlassEffectView. With a macOS 26 SDK (`#if compiler(>=6.2)`), GlassDockBackgroundProvider uses the typed API. The installed SDK here is 15.5, which lacks those Swift declarations, so RuntimeGlassDockBackgroundProvider creates the same public class by name and sets only its documented `style` and `cornerRadius` properties. MaterialDockBackgroundProvider (behind-window blur, inner border, highlight and shadow) remains only as the fallback if that class lookup fails. Installing Xcode 26 or newer compiles the typed implementation. No private selectors are used.
 
 ## Verification and remaining integration
 
@@ -92,4 +92,4 @@ Manual checks after coordinator and tap wiring:
 8. With and without Screen Recording, verify cached images or icon placeholders, live refresh, interval zero and no repeating refresh after close. Open previews concurrently after integration and confirm closing either surface does not stop the other's refresh.
 9. Change theme, material, corner radius, custom selection color, thumbnail dimensions and Reduce Motion live. Pause/disable during the appearance delay and confirm no late panel appears. Hot-plug a display while open.
 
-UI matching, under-50-ms presentation latency, memory and idle CPU still require the user's on-screen/performance verification. The guarded SDK26 implementation requires a newer Xcode build to validate.
+UI matching, under-50-ms presentation latency, memory and idle CPU still require the user's on-screen/performance verification. The typed SDK 26 implementation requires a newer Xcode build to validate.

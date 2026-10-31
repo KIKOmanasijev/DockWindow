@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Window management your Mac should have shipped with.</strong><br>
-  A better alt-tab and Dock for macOS 14 and later.
+  A better alt-tab and Dock for macOS 26 and later.
 </p>
 
 <p align="center">
@@ -21,7 +21,7 @@
 
 On a Mac, Cmd+Tab shows one icon per app, so two Safari windows look like one, and the Dock can’t tell you which window you’re about to get. DogBar fixes that. It shows you every window, lets you preview them from the Dock, and gives each desktop its own Dock.
 
-> **Status: in active development.** An [unnotarized preview](https://dogbar.hristijan.dev/#get) is available for Apple Silicon Macs on macOS 14 or later. It is self-signed, not notarized by Apple, so macOS asks you to confirm the first launch.
+> **Status: in active development.** An [unnotarized preview](https://dogbar.hristijan.dev/#get) is available for Apple Silicon Macs on macOS 26 or later. It is self-signed, not notarized by Apple, so macOS asks you to confirm the first launch.
 
 ## See it in action
 
@@ -104,7 +104,7 @@ The same release feeds support future OTA distribution. Preview installers remai
 ### Requirements
 
 - A Mac with Xcode and a Swift 6 toolchain. Development and release tooling are currently checked on Apple Silicon.
-- The app targets **macOS 14 or newer** and uses Swift 5 language mode.
+- The app targets **macOS 26 or newer** and uses Swift 5 language mode.
 - The native app uses Apple frameworks only. No third-party packages are required.
 
 ### Get the code
@@ -217,7 +217,7 @@ The [distribution guide](Docs/Distribution.md) explains owner setup, Keychain cr
 - Private macOS APIs load at runtime and can become unavailable. Cross-desktop window discovery is bounded, and app assignments or fullscreen behavior can defeat new-window placement requests.
 - Protected, minimized or other-desktop windows may need a cached thumbnail or icon placeholder.
 - The replacement Dock cannot reserve screen space. Minimize animations target the hidden native Dock, and app-specific third-party Dock menus are unavailable.
-- Older SDKs use a material approximation for the Dock background. Native Liquid Glass needs a newer SDK. Visual parity and performance budgets remain under verification.
+- The Dock background is Apple's public `NSGlassEffectView`. SDKs older than macOS 26 lack its Swift declarations, so those builds create it by its public class name at runtime; a macOS 26 SDK build uses the typed API. Visual parity and performance budgets remain under verification.
 
 DogBar saves the original native Dock preferences before hiding it and restores them on disable, Pause and Quit. After a crash, recovery runs on the next launch. Preserve application defaults while recovery is pending.
 

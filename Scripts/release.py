@@ -15,8 +15,9 @@ import tempfile
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
+MINIMUM_MACOS = '26.0'
 EMPTY = dict(available=False, version=None, url=None, sha256=None,
-             architecture='arm64', minimumMacOS='14.0', notarized=False)
+             architecture='arm64', minimumMacOS=MINIMUM_MACOS, notarized=False)
 ENTITLEMENTS = {'com.apple.security.automation.apple-events': True}
 TOOLS = ('security', 'codesign', 'spctl', 'hdiutil', 'ditto', 'xcrun', 'swift')
 
@@ -167,7 +168,7 @@ def verify_app(app, team, v, build):
     p = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
     expected = dict(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                     CFBundleName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=build,
-                    LSMinimumSystemVersion='14.0')
+                    LSMinimumSystemVersion=MINIMUM_MACOS)
     require(all(p.get(k) == val for k, val in expected.items()), 'App metadata does not match requested release')
     binary = app / 'Contents/MacOS/DogBar'
     require(run('xcrun', 'lipo', '-archs', binary).strip() == 'arm64', 'Release must be arm64 only')
@@ -218,7 +219,7 @@ def build_release(args):
     entitlements = ROOT / 'Resources/DogBar.entitlements'
     require(plistlib.loads(entitlements.read_bytes()) == ENTITLEMENTS, 'Review changed entitlements before releasing')
     scratch = out / 'build'
-    swift = ['swift', 'build', '--scratch-path', scratch, '-c', 'release', '--triple', 'arm64-apple-macosx14.0', '--product', 'DogBar']
+    swift = ['swift', 'build', '--scratch-path', scratch, '-c', 'release', '--triple', f'arm64-apple-macosx{MINIMUM_MACOS}', '--product', 'DogBar']
     run(*swift)
     bin_dir = Path(run(*swift, '--show-bin-path').strip())
     require(bin_dir.resolve().is_relative_to(scratch.resolve()), 'Swift binary must be inside isolated scratch directory')
@@ -229,7 +230,7 @@ def build_release(args):
     shutil.copy2(bin_dir / 'DogBar', app / 'Contents/MacOS/DogBar')
     shutil.copy2(ROOT / 'Resources/AppIcon.icns', app / 'Contents/Resources/AppIcon.icns')
     info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())
-    info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar', CFBundleName='DogBar', CFBundleDisplayName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=b, LSMinimumSystemVersion='14.0', DogBarBuildChannel='release')
+    info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar', CFBundleName='DogBar', CFBundleDisplayName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=b, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='release')
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps(info))
     # Never sign --deep. The current product has one executable, no nested code.
     run('codesign', '--force', '--sign', selected, '--options', 'runtime', '--timestamp', '--entitlements', entitlements, app)

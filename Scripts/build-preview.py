@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEVELOPMENT_IDENTITY = 'F6525801B1C563EA82693EBE71D63C6CA41538C6'
 ENTITLEMENTS = {'com.apple.security.automation.apple-events': True}
 OPEN_GUIDE = 'https://support.apple.com/102445'
+MINIMUM_MACOS = '26.0'
 
 
 class PreviewError(Exception):
@@ -109,7 +110,7 @@ def verify_app(app, identity, value, build):
     expected = dict(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                     CFBundleName='DogBar', CFBundleDisplayName='DogBar',
                     CFBundleShortVersionString=value.split('-')[0], DogBarPreviewVersion=value,
-                    CFBundleVersion=build, LSMinimumSystemVersion='14.0', DogBarBuildChannel='preview')
+                    CFBundleVersion=build, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='preview')
     require(all(info.get(key) == item for key, item in expected.items()), 'Preview app metadata mismatch')
     require(run('xcrun', 'lipo', '-archs', app / 'Contents/MacOS/DogBar').strip() == 'arm64', 'Preview executable must be arm64 only')
     verify_signature(app, identity, app=True)
@@ -155,7 +156,7 @@ def manifest(value, build, sha):
     require(isinstance(sha, str) and re.fullmatch(r'[a-f0-9]{64}', sha), 'Invalid SHA-256')
     return dict(available=True, notarized=False, channel='preview', signing='self-signed',
                 version=value, build=build, url='/downloads/' + filename(value), sha256=sha,
-                architecture='arm64', minimumMacOS='14.0')
+                architecture='arm64', minimumMacOS=MINIMUM_MACOS)
 
 
 def write_json(path, value):
@@ -180,7 +181,7 @@ def build_preview(args):
     parent.mkdir(exist_ok=True)
     out.mkdir()
     scratch = out / 'build'
-    command = ['swift', 'build', '--scratch-path', scratch, '-c', 'release', '--triple', 'arm64-apple-macosx14.0', '--product', 'DogBar']
+    command = ['swift', 'build', '--scratch-path', scratch, '-c', 'release', '--triple', f'arm64-apple-macosx{MINIMUM_MACOS}', '--product', 'DogBar']
     run(*command)
     binary_dir = Path(run(*command, '--show-bin-path').strip())
     require(binary_dir.resolve().is_relative_to(scratch.resolve()), 'Swift executable must come from the isolated preview build')
@@ -194,7 +195,7 @@ def build_preview(args):
     info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                 CFBundleName='DogBar', CFBundleDisplayName='DogBar',
                 CFBundleShortVersionString=value.split('-')[0], DogBarPreviewVersion=value,
-                CFBundleVersion=build, LSMinimumSystemVersion='14.0', DogBarBuildChannel='preview')
+                CFBundleVersion=build, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='preview')
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps(info))
     run('codesign', '--force', '--sign', identity, '--options', 'runtime', '--timestamp=none', '--entitlements', entitlements, app)
     verify_app(app, identity, value, build)
@@ -202,7 +203,7 @@ def build_preview(args):
     (stage / 'Read Me.txt').write_text(
         f'DogBar {value} (build {build})\n\n'
         'This is an experimental, self-signed preview, not notarized by Apple. macOS Gatekeeper may block it.\n'
-        'Requires Apple Silicon and macOS 14 or newer.\n\n'
+        f'Requires Apple Silicon and macOS {MINIMUM_MACOS.split(".")[0]} or newer.\n\n'
         'Copy DogBar.app to Applications, then open it. Grant Accessibility and Screen Recording in System Settings when requested.\n'
         'If macOS blocks opening, review the developer and source before using Apple\'s Privacy & Security > Open Anyway flow:\n'
         f'{OPEN_GUIDE}\n\n'

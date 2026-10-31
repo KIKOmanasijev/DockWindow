@@ -6,7 +6,7 @@ Releases can be published by your own enrolled team or another team that explici
 
 ## One-time owner setup
 
-1. Install full Xcode and select its command-line tools in Xcode Settings > Locations. Complete Xcode's first-launch setup. macOS 14 or later and an arm64-capable Swift toolchain are required. Releases target Apple Silicon and macOS 14.0 only.
+1. Install full Xcode and select its command-line tools in Xcode Settings > Locations. Complete Xcode's first-launch setup. macOS 26 or later and an arm64-capable Swift toolchain are required. Releases target Apple Silicon and macOS 26.0 only.
 2. After enrollment, use the account's Team ID. In Xcode Settings > Accounts, select the team and Manage Certificates, then create a **Developer ID Application** certificate. Alternatively, the Account Holder can follow [Apple's Developer ID certificate instructions](https://developer.apple.com/help/account/certificates/create-developer-id-certificates/) using a locally generated CSR in Keychain Access and install the issued certificate. Keep the corresponding private key in your local Keychain. Developer ID Installer, Apple Development, and a self-signed certificate are not substitutes.
 3. Confirm the identity is valid using `security find-identity -v -p codesigning`. The certificate name must be `Developer ID Application: ... (YOURTEAMID)`. Multiple matching identities require an explicit `--identity` SHA-1 fingerprint from this command. The fingerprint is an identifier, not a secret. The release additionally verifies Apple's certificate anchor, Developer ID Application certificate OID, and TeamIdentifier on the actual artifact.
 4. Create an app-specific password in your Apple Account. Store notarization credentials interactively in the local Keychain:
@@ -33,7 +33,7 @@ Use `python3 Scripts/release.py build` if preferred. Add `--identity FINGERPRINT
 python3 -m unittest discover -s Tests/ReleaseTests -v
 ```
 
-The helper never calls `Scripts/build-app.sh`, installs or launches an app, quits a running process, or touches `~/Applications/DogBar.app`. It builds with `swift build -c release --triple arm64-apple-macosx14.0 --product DogBar --scratch-path ...` inside a new `dist/DogBar-<version>-arm64/` directory. Bundle display/name is DogBar and the distribution bundle is `DogBar.app`; identifier `dev.hristijan.dogbar` and executable `DogBar` match the development build, so permissions and settings carry across.
+The helper never calls `Scripts/build-app.sh`, installs or launches an app, quits a running process, or touches `~/Applications/DogBar.app`. It builds with `swift build -c release --triple arm64-apple-macosx26.0 --product DogBar --scratch-path ...` inside a new `dist/DogBar-<version>-arm64/` directory. Bundle display/name is DogBar and the distribution bundle is `DogBar.app`; identifier `dev.hristijan.dogbar` and executable `DogBar` match the development build, so permissions and settings carry across.
 
 Release sequence:
 
@@ -63,7 +63,7 @@ Deploy the static landing site to Vercel separately after staging the verified r
 The UI contract is exactly:
 
 ```json
-{"available":false,"version":null,"url":null,"sha256":null,"architecture":"arm64","minimumMacOS":"14.0","notarized":false}
+{"available":false,"version":null,"url":null,"sha256":null,"architecture":"arm64","minimumMacOS":"26.0","notarized":false}
 ```
 
 On success, `available` and `notarized` become true, `version` is the validated release version, `url` is exactly `/downloads/DogBar-<version>-arm64.dmg`, and `sha256` is 64 lowercase hexadecimal characters. Hero and footer should consume the same manifest and enable downloads only for a valid ready response. Treat fetch failures, malformed/unsafe paths, or incomplete fields as unavailable. Do not invent a download URL, set notarized true for a demo, or fall back to an off-site asset. Initial public UI remains gated until a genuine release is staged.

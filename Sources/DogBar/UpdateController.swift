@@ -23,7 +23,7 @@ import CryptoKit
     }
     private var currentBuild: Int { Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0 }
     private func alert(_ title: String, _ message: String, confirm: String? = nil) -> Bool {
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         let a = NSAlert(); a.messageText = title; a.informativeText = message
         a.addButton(withTitle: confirm ?? "OK")
         if confirm != nil { a.addButton(withTitle: "Cancel") }

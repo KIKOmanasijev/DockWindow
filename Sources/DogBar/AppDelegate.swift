@@ -264,7 +264,7 @@ import Combine
         onboarding.contentView?.layoutSubtreeIfNeeded()
         onboarding.displayIfNeeded()
         onboarding.makeKeyAndOrderFront(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
 }

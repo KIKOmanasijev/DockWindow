@@ -131,18 +131,14 @@ func settingsLabel(_ raw: String) -> String {
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
-    @ViewBuilder private var rows: some View {
-        if #available(macOS 15.0, *) {
-            VStack(alignment: .leading, spacing: 0) {
-                Group(subviews: content) { subviews in
-                    ForEach(subviews) { row in
-                        if row.id != subviews.first?.id { Divider().opacity(0.6) }
-                        row.padding(.vertical, 10)
-                    }
+    private var rows: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Group(subviews: content) { subviews in
+                ForEach(subviews) { row in
+                    if row.id != subviews.first?.id { Divider().opacity(0.6) }
+                    row.padding(.vertical, 10)
                 }
             }
-        } else {
-            VStack(alignment: .leading, spacing: 14) { content }.padding(.vertical, 12)
         }
     }
 }

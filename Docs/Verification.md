@@ -2,7 +2,7 @@
 
 ## Established
 
-- Native Swift package, Swift 5 language mode, deployment target macOS 14, no dependencies.
+- Native Swift package, Swift 5 language mode, deployment target macOS 26, no dependencies.
 - Debug build and release bundle build pass without warnings.
 - All 102 native tests pass. Tests have no database integration.
 - Dock magnification is removed. Icon rasterization chooses Retina representations and updates for size or display-scale changes. Whole switcher cards render at 90 percent of their previous dimensions.

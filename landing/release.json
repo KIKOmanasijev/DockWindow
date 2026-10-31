@@ -4,6 +4,6 @@
   "url": null,
   "sha256": null,
   "architecture": "arm64",
-  "minimumMacOS": "14.0",
+  "minimumMacOS": "26.0",
   "notarized": false
 }

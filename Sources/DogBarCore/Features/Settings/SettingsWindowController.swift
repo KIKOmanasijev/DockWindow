@@ -63,7 +63,7 @@ import SwiftUI
         NSApp.setActivationPolicy(settings.showDogBarInDock ? .regular : .accessory)
         visibility.isVisible = true
         showWindow(nil)
-        NSApp.activate(ignoringOtherApps: true)
+        NSApp.activate()
         window?.makeKeyAndOrderFront(nil)
         content.prewarm()
     }

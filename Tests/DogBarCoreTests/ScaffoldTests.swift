@@ -9,6 +9,6 @@ final class ScaffoldTests: XCTestCase {
         XCTAssertEqual(plist["CFBundleDisplayName"] as? String, "DogBar")
         XCTAssertEqual(plist["CFBundleExecutable"] as? String, "DogBar")
         XCTAssertEqual(plist["LSUIElement"] as? Bool, false)
-        XCTAssertEqual(plist["LSMinimumSystemVersion"] as? String, "14.0")
+        XCTAssertEqual(plist["LSMinimumSystemVersion"] as? String, "26.0")
     }
 }

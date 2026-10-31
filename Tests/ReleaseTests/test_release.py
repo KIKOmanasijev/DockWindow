@@ -73,7 +73,7 @@ class ReleaseTests(unittest.TestCase):
         for change in ({'url': 'https://evil.test/a.dmg'}, {'url': '//evil/a'}, {'url': '/downloads/../evil'},
                        {'url': '/downloads/DogBar-0.0.1-arm64.dmg'}, {'sha256': 'a' * 63},
                        {'sha256': 'A' * 64}, {'notarized': False}, {'architecture': 'x86_64'},
-                       {'minimumMacOS': '13.0'}, {'available': 1}):
+                       {'minimumMacOS': '14.0'}, {'available': 1}):
             with self.subTest(change=change), self.assertRaises(r.ReleaseError):
                 r.validate_manifest(dict(good, **change))
 

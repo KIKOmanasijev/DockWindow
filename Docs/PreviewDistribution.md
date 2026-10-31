@@ -31,7 +31,7 @@ dist/DogBar-0.1.0-preview.1-arm64/
 
 The app uses identifier `dev.hristijan.dogbar` and executable `DogBar`, like the development build. The published 0.1.0-preview.1 predates the rename and still uses `com.dockwindow.app`, so moving from it to a later preview means granting permissions again. Its distribution bundle is `DogBar.app`. `CFBundleShortVersionString` is numeric (`0.1.0`); `DogBarPreviewVersion` carries the complete `0.1.0-preview.1` label. This keeps normal bundle-version metadata while marking the preview honestly.
 
-The helper builds for Apple Silicon and macOS 14.0, checks exact entitlements, signs the app with hardened runtime and the existing self-signed certificate, and verifies the code signature against that certificate and bundle ID. It packages only the app, Applications shortcut and installation note. It signs the DMG, checks UDZO image integrity, mounts it read-only, verifies the contained app again, checks the installation note and Applications shortcut, then detaches it. SHA-256 is calculated after signing and must remain unchanged through verification. A success manifest is created only after those checks pass. There is no notarization submission, stapled ticket, Gatekeeper-success claim or website publication.
+The helper builds for Apple Silicon and macOS 26.0, checks exact entitlements, signs the app with hardened runtime and the existing self-signed certificate, and verifies the code signature against that certificate and bundle ID. It packages only the app, Applications shortcut and installation note. It signs the DMG, checks UDZO image integrity, mounts it read-only, verifies the contained app again, checks the installation note and Applications shortcut, then detaches it. SHA-256 is calculated after signing and must remain unchanged through verification. A success manifest is created only after those checks pass. There is no notarization submission, stapled ticket, Gatekeeper-success claim or website publication.
 
 ## Verify before staging
 
@@ -59,7 +59,7 @@ The manifest explicitly contains:
   "url": "/downloads/DogBar-0.1.0-preview.1-arm64.dmg",
   "sha256": "the final 64-character lowercase SHA-256",
   "architecture": "arm64",
-  "minimumMacOS": "14.0"
+  "minimumMacOS": "26.0"
 }
 ```
 
