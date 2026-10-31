@@ -8,9 +8,11 @@ import SwiftUI
 /// Owns the focusable settings window and preserves the application's visible Dock identity.
 @MainActor public final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let visibility = SettingsVisibility()
+    private let settings: AppSettings
 
     public init(settings: AppSettings, permissions: PermissionsService, pinnedApps: PinnedAppsStore,
                 onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
+        self.settings = settings
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 820, height: 620),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "DogBar Settings"
@@ -28,7 +30,7 @@ import SwiftUI
 
     /// Brings Settings forward, including when DogBar is running as a menu bar app.
     public func show() {
-        NSApp.setActivationPolicy(.regular)
+        NSApp.setActivationPolicy(settings.showDogBarInDock ? .regular : .accessory)
         visibility.isVisible = true
         showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)
@@ -39,6 +41,6 @@ import SwiftUI
     public func windowWillClose(_ notification: Notification) {
         visibility.isVisible = false
         SettingsShortcutRecording.activeRecorder?.finish()
-        NSApp.setActivationPolicy(.regular)
+        NSApp.setActivationPolicy(settings.showDogBarInDock ? .regular : .accessory)
     }
 }

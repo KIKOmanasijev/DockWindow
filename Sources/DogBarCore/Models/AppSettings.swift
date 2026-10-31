@@ -144,6 +144,14 @@ public final class AppSettings: ObservableObject {
         get { read("activeAppClickBehavior", fallback: .cycle) }
         set { write("activeAppClickBehavior", value: newValue) }
     }
+    public var hideWindowlessApps: Bool {
+        get { read("hideWindowlessApps", fallback: true) }
+        set { write("hideWindowlessApps", value: newValue) }
+    }
+    public var showDogBarInDock: Bool {
+        get { read("showDogBarInDock", fallback: false) }
+        set { write("showDogBarInDock", value: newValue) }
+    }
     public var showTrash: Bool {
         get { read("showTrash", fallback: true) }
         set { write("showTrash", value: newValue) }
@@ -336,6 +344,8 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "bounceOnLaunch": encoded(true as Bool),
             keyPrefix + "showAppNameLabels": encoded(true as Bool),
             keyPrefix + "activeAppClickBehavior": encoded(ActiveAppClickBehavior.cycle),
+            keyPrefix + "hideWindowlessApps": encoded(true as Bool),
+            keyPrefix + "showDogBarInDock": encoded(false as Bool),
             keyPrefix + "showTrash": encoded(true as Bool),
             keyPrefix + "includeMinimizedInDock": encoded(true as Bool),
             keyPrefix + "showWindowlessAppsOnLastActiveDesktop": encoded(true as Bool),

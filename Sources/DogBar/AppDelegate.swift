@@ -119,6 +119,8 @@ import Combine
             previews.dismiss()
             lastDockMode = settings.useDogBarDock
         }
+        let desiredPolicy: NSApplication.ActivationPolicy = settings.showDogBarInDock ? .regular : .accessory
+        if NSApp.activationPolicy() != desiredPolicy { NSApp.setActivationPolicy(desiredPolicy) }
         statusItem?.isVisible = settings.showMenuBarIcon
         statusItem?.button?.title = ""
         if let status = statusItem?.menu?.items.first(where: { $0.identifier?.rawValue == "permissionStatus" }) {

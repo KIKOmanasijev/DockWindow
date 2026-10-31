@@ -5,6 +5,7 @@ import SwiftUI
     var body: some View {
         Group {
             Section("Dock mode") {
+                Toggle("Show DogBar in the Dock", isOn: $settings.showDogBarInDock).settingsDescription("Show DogBar’s own icon in the replacement Dock and Apple’s Dock. Settings remain available from the paw menu when hidden.")
                 Toggle("Use DogBar Dock", isOn: $settings.useDogBarDock).settingsDescription("Replace the native Dock while enabled and not paused.")
                 if !settings.useDogBarDock { Text("Native Dock mode supports previews and the switcher. Dock layout, window dots and desktop filtering require the replacement Dock.").font(.caption).foregroundStyle(.secondary) }
             }
@@ -19,7 +20,8 @@ import SwiftUI
                 SettingsChoice(title: "Dock shows apps from", description: "Show apps with windows in the selected desktop scope.", value: $settings.dockScope)
                 SettingsChoice(title: "Apps from other desktops", description: "Hide remote apps or keep them dimmed.", value: $settings.otherDesktopApps)
                 Toggle("Include minimized windows", isOn: $settings.includeMinimizedInDock).settingsDescription("Keep apps visible when their local windows are minimized.")
-                Toggle("Show windowless apps on last active desktop", isOn: $settings.showWindowlessAppsOnLastActiveDesktop).settingsDescription("Keep running apps without windows on their last desktop.")
+                Toggle("Hide apps with no open windows", isOn: $settings.hideWindowlessApps).settingsDescription("Hide windowless apps, including pinned and recent apps, until they have a window.")
+                Toggle("Show windowless apps on last active desktop", isOn: $settings.showWindowlessAppsOnLastActiveDesktop).settingsDescription("Keep running apps without windows on their last desktop.").disabled(settings.hideWindowlessApps)
             }.disabled(!settings.useDogBarDock)
             Section("Window indicators") {
                 SettingsChoice(title: "Indicator style", description: "Count open windows or show one running dot.", value: $settings.indicatorStyle)

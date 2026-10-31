@@ -85,6 +85,8 @@ In Settings you can choose whether the Dock, the switcher and previews each show
 
 DogBar saves your original Dock settings before hiding Apple’s Dock and puts them back when you pause, restore or quit. If DogBar crashes, it restores them the next time it launches.
 
+Apps without open windows and DogBar’s own Dock icon are hidden by default. Both options are available in **Settings → Dock**. The windowless filter also applies to pinned and recent apps.
+
 ## Updates
 
 Choose **Check for Updates…** from the paw menu or the DogBar app menu. DogBar checks the website's release feeds, offers a newer compatible installer, verifies its SHA-256, and opens the DMG. Quit DogBar, drag the new copy into Applications, and reopen it. This first version does not replace the running app automatically. **About DogBar** shows the installed version, build revision and running path.

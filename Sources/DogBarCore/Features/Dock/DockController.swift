@@ -168,6 +168,20 @@ import Combine
                 items.insert(contentsOf: [DockItem(id: "separator:recent", kind: .separator)] + extra, at: index)
             }
         }
+        items.removeAll { item in
+            guard item.kind == .application else { return false }
+            if item.id == "dev.hristijan.dogbar" { return !settings.showDogBarInDock }
+            guard settings.hideWindowlessApps else { return false }
+            guard let pid = item.app?.pid else { return true }
+            return !snapshot.windows.contains { $0.pid == pid }
+        }
+        // Do not leave a leading or duplicate divider after filtering apps.
+        var filtered: [DockItem] = []
+        for item in items {
+            if item.kind == .separator, filtered.isEmpty || filtered.last?.kind == .separator { continue }
+            filtered.append(item)
+        }
+        items = filtered
         // Always divide permanent pins from transient running/recent apps, including
         // recent apps which were already present in the running-app inventory.
         items.removeAll { $0.id == "separator:recent" }
