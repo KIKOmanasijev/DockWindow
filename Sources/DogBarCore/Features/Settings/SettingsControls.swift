@@ -95,7 +95,7 @@ extension EnvironmentValues {
 }
 
 func settingsLabel(_ raw: String) -> String {
-    let labels = ["currentDesktop": "Current desktop", "allDesktops": "All desktops", "withMouse": "Display with mouse", "main": "Main display", "all": "All displays", "perWindow": "One dot per window", "single": "Single dot", "none": "Do nothing", "cycle": "Cycle windows", "hudWindow": "HUD window", "reopen": "Application reopen"]
+    let labels = ["currentDesktop": "Current desktop", "allDesktops": "All desktops", "withMouse": "Display with mouse", "pushToMove": "Push at an edge to move", "main": "Main display", "all": "All displays", "perWindow": "One dot per window", "single": "Single dot", "none": "Do nothing", "cycle": "Cycle windows", "hudWindow": "HUD window", "reopen": "Application reopen"]
     return labels[raw] ?? raw.prefix(1).uppercased() + raw.dropFirst()
 }
 

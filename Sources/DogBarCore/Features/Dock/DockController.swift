@@ -49,6 +49,10 @@ import ApplicationServices
     private var runningOrder: [String] = []
     private var scrollState: (id: String, index: Int, time: TimeInterval)?
     private var hoverItem: DockItem?
+    private var displayPush = DockDisplayPush()
+    /// True while the Dock slides from one display to another. Reloads wait, so they cannot
+    /// snap the panel to its final frame mid-animation.
+    private var movingDisplay = false
     private let trashURL = FileManager.default.urls(for: .trashDirectory, in: .userDomainMask).first ?? URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".Trash")
     private var trashFull = false
     private var trashTimer: Timer?
@@ -83,11 +87,15 @@ import ApplicationServices
         pins.$apps.receive(on: RunLoop.main).sink { [weak self] _ in self?.reload() }.store(in: &subscriptions)
         let mask: NSEvent.EventTypeMask = [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .leftMouseUp, .flagsChanged, .scrollWheel]
         localMonitor = NSEvent.addLocalMonitorForEvents(matching: mask) { [weak self] event in
+            self?.trackDisplayPush(event)
             self?.updatePointer()
             if event.type == .scrollWheel, self?.scroll(event) == true { return nil }
             return event
         }
-        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .leftMouseUp]) { [weak self] _ in self?.updatePointer() }
+        globalMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .rightMouseDragged, .leftMouseUp]) { [weak self] event in
+            self?.trackDisplayPush(event)
+            self?.updatePointer()
+        }
         screenObserver = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screen = nil; self?.reload() }
         }
@@ -156,17 +164,60 @@ import ApplicationServices
         if settings.dockDisplay == .withMouse {
             return NSScreen.screens.first { $0.frame.contains(NSEvent.mouseLocation) } ?? NSScreen.screens.first
         }
+        if settings.dockDisplay == .pushToMove, !settings.dockDisplayID.isEmpty,
+           let chosen = NSScreen.screens.first(where: { Self.displayUUID($0) == settings.dockDisplayID }) {
+            return chosen
+        }
         // The first screen is the menu-bar/primary display. NSScreen.main follows key-window focus.
         return NSScreen.screens.first
     }
     private var spaces: Set<UInt64> { currentSpaces(snapshot: tracker.snapshot) }
     private func currentSpaces(snapshot: WindowSnapshot) -> Set<UInt64> {
-        let displayID = screen.flatMap { screen -> String? in
-            guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber,
-                  let uuid = CGDisplayCreateUUIDFromDisplayID(number.uint32Value)?.takeRetainedValue() else { return nil }
-            return CFUUIDCreateString(nil, uuid) as String
-        }
+        let displayID = screen.flatMap(Self.displayUUID)
         return SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: displayID, separateSpaces: NSScreen.screensHaveSeparateSpaces)
+    }
+    /// The display's stable UUID: it survives reconnection, unlike its index or display number.
+    private static func displayUUID(_ screen: NSScreen) -> String? {
+        guard let number = screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber,
+              let uuid = CGDisplayCreateUUIDFromDisplayID(number.uint32Value)?.takeRetainedValue() else { return nil }
+        return CFUUIDCreateString(nil, uuid) as String
+    }
+    /// Pushing the pointer against another display's Dock edge moves the Dock there, as in macOS.
+    private func trackDisplayPush(_ event: NSEvent) {
+        guard started, settings.useDogBarDock, !settings.isPaused, settings.dockDisplay == .pushToMove,
+              event.type == .mouseMoved, !movingDisplay, !menuVisible, !previewVisible, !view.isDragging else {
+            displayPush.reset(); return
+        }
+        let screens = NSScreen.screens
+        let current = screen.flatMap { current in screens.firstIndex { $0 === current } }
+        guard let index = displayPush.update(point: NSEvent.mouseLocation, delta: CGVector(dx: event.deltaX, dy: event.deltaY),
+                                             time: event.timestamp, screens: screens.map(\.frame), current: current,
+                                             position: settings.dockPosition),
+              screens.indices.contains(index) else { return }
+        moveDock(to: screens[index])
+    }
+    /// Slides the Dock off its display, then up on the new one, and remembers the choice.
+    private func moveDock(to next: NSScreen) {
+        guard let id = Self.displayUUID(next), next !== screen else { return }
+        movingDisplay = true
+        hideTask?.cancel(); hideTask = nil
+        view.stopTracking(); panel.ignoresMouseEvents = true
+        settings.dockDisplayID = id
+        let arrive = { [weak self] in
+            guard let self, self.started else { self?.movingDisplay = false; return }
+            self.movingDisplay = false
+            self.screen = next
+            self.reload()
+            guard !Theme.reducesMotion(self.settings) else { return }
+            self.panel.setFrame(DockLayout.hiddenFrame(self.shownFrame, position: self.settings.dockPosition), display: false)
+            self.setHidden(false)
+        }
+        if hidden || Theme.reducesMotion(settings) { arrive(); return }
+        NSAnimationContext.runAnimationGroup({ context in
+            context.duration = 0.2
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.4, 0, 1, 1)
+            panel.animator().setFrame(DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition), display: true)
+        }, completionHandler: { MainActor.assumeIsolated { arrive() } })
     }
     private func trackPendingLaunch(_ app: NSRunningApplication) {
         let pid = app.processIdentifier
@@ -200,7 +251,7 @@ import ApplicationServices
     private func reload(snapshot incoming: WindowSnapshot? = nil) {
         // @Published delivers before the property changes. Render its supplied value synchronously.
         let snapshot = incoming ?? tracker.snapshot
-        guard started else { return }
+        guard started, !movingDisplay else { return }
         guard settings.useDogBarDock, !settings.isPaused else {
             hideTask?.cancel(); hideTask = nil
             for task in openingTasks.values { task.cancel() }; openingTasks.removeAll()

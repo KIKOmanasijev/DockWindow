@@ -11,7 +11,7 @@ import SwiftUI
             }
             SettingsSection("Layout") {
                 SettingsChoice(title: "Position", description: "Place the replacement Dock on a screen edge.", value: $settings.dockPosition)
-                SettingsChoice(title: "Display", description: "Choose the display that hosts the replacement Dock.", value: $settings.dockDisplay, choices: [.main, .withMouse])
+                SettingsChoice(title: "Display", description: "Like macOS, push the pointer against the bottom of another display to move the Dock there. Or keep it on the main display, or have it follow the pointer instantly.", value: $settings.dockDisplay, choices: [.pushToMove, .main, .withMouse])
                 SettingsSlider(title: "Icon size", description: "Set the base size of Dock icons.", value: $settings.iconSize, range: 16...128, step: 1, unit: "pt")
                 Toggle("Keep maximized windows clear of the Dock", isOn: $settings.keepMaximizedWindowsClear).settingsDescription("Fit maximized windows above or beside DogBar. True full-screen windows and autohiding Docks are unaffected.")
                 Toggle("Automatically hide Dock", isOn: $settings.autohide).settingsDescription("Reveal the Dock when the pointer reaches its screen edge.")

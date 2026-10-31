@@ -8,7 +8,9 @@ public enum WindowScope: String, Codable, CaseIterable, Sendable { case currentD
 /// Edge used by the replacement Dock.
 public enum DockPosition: String, Codable, CaseIterable, Sendable { case bottom, left, right }
 /// Display on which a panel or Dock is placed.
-public enum DisplaySelection: String, Codable, CaseIterable, Sendable { case main, withMouse, all }
+/// `pushToMove` is the Dock's macOS behaviour: it stays put until the pointer pushes against
+/// another display's Dock edge. The switcher only uses `all` and `withMouse`.
+public enum DisplaySelection: String, Codable, CaseIterable, Sendable { case main, withMouse, all, pushToMove }
 /// Visibility of applications on other desktops.
 public enum OtherDesktopApps: String, Codable, CaseIterable, Sendable { case hidden, dimmed }
 /// Style of running window indicators.

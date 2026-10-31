@@ -86,8 +86,14 @@ public final class AppSettings: ObservableObject {
         set { write("dockPosition", value: newValue) }
     }
     public var dockDisplay: DisplaySelection {
-        get { read("dockDisplay", fallback: .main) }
+        get { read("dockDisplay", fallback: .pushToMove) }
         set { write("dockDisplay", value: newValue) }
+    }
+    /// The display the Dock was last moved to (a display UUID), used by `pushToMove`.
+    /// Empty, or a display that is not connected, means the main display.
+    public var dockDisplayID: String {
+        get { read("dockDisplayID", fallback: "") }
+        set { write("dockDisplayID", value: newValue) }
     }
     public var iconSize: Double {
         get { read("iconSize", fallback: 48) }
@@ -364,7 +370,8 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "isPaused": encoded(false as Bool),
             keyPrefix + "useDogBarDock": encoded(true as Bool),
             keyPrefix + "dockPosition": encoded(DockPosition.bottom),
-            keyPrefix + "dockDisplay": encoded(DisplaySelection.main),
+            keyPrefix + "dockDisplay": encoded(DisplaySelection.pushToMove),
+            keyPrefix + "dockDisplayID": encoded("" as String),
             keyPrefix + "iconSize": encoded(48 as Double),
             keyPrefix + "magnificationEnabled": encoded(false as Bool),
             keyPrefix + "magnificationSize": encoded(96 as Double),
