@@ -313,3 +313,25 @@ test("pause freezes the walkthrough and play resumes it; chapters jump; reduced 
 function $$dockApps(w) {
   return [...w.document.querySelectorAll(".dock-btn")].map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
 }
+
+test("product and FAQ structured data stay consistent with visible content", { skip }, () => {
+  const dom = new JSDOM(HTML);
+  try {
+    const d = dom.window.document;
+    const canonical = d.querySelector('link[rel="canonical"]').href;
+    const graph = JSON.parse(d.querySelector('script[type="application/ld+json"]').textContent)["@graph"];
+    const app = graph.find((entry) => entry["@type"] === "SoftwareApplication");
+    assert.equal(app.name, "DogBar");
+    assert.equal(app.url, canonical);
+    assert.match(d.querySelector(".lede").textContent, /DogBar is a window switcher and Dock for macOS/);
+    assert.equal(app.operatingSystem, "macOS 14 or later");
+    assert.equal(app.aggregateRating, undefined, "never invent ratings");
+    assert.equal(app.offers, undefined, "never invent price or commercial availability");
+    const faq = graph.find((entry) => entry["@type"] === "FAQPage");
+    const visible = [...d.querySelectorAll("#faq details")].map((entry) => ({
+      name: entry.querySelector("summary").textContent,
+      text: entry.querySelector("p").textContent,
+    }));
+    assert.deepEqual(faq.mainEntity.map((entry) => ({ name: entry.name, text: entry.acceptedAnswer.text })), visible);
+  } finally { dom.window.close(); }
+});

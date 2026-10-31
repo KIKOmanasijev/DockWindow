@@ -139,3 +139,19 @@ The preview DMG lives in ignored `landing/downloads/` and must be included in de
 ### Feature sizing regression
 
 Feature figures use `.feature-art`; Music cover thumbnails use `.album-art`. Keep their selectors separate. Feature figures explicitly fill their grid column with automatic height, while cover thumbnails use small fixed dimensions. `tests/layout.test.cjs` checks the CSS cascade so album-cover styles cannot shrink the four feature visuals, that their icons keep fixed sizes, and that `[hidden] { display: none !important; }` stays the last rule so closed preview and switcher shells never paint. It uses the same optional jsdom setup as the interaction tests and does not claim browser pixel-layout validation.
+
+## Responsive layout and search information
+
+The comparison uses a fixed-layout table with explicit columns: 64/18/18 on wider screens and 56/22/22 on phones. The DogBar header can wrap; its decorative icon is omitted below 640px so the name fits. The tour controls can shrink and wrap, window-switcher tiles use a two-column grid on phones, and previews can shrink within their screen. Navigation and CTAs wrap rather than rely on a horizontal page crop. These are source-level fixes for narrow phones, tablets, wide displays and browser zoom; rendered viewport checks remain necessary.
+
+The page identifies DogBar in plain text, includes compatibility and preview-status answers, and serves canonical/social metadata, `robots.txt`, a single-URL `sitemap.xml`, and static JSON-LD for the website, application and visible FAQ. Release versions and download links remain owned by the existing manifests. The structured data contains no invented price, rating, adoption or notarization claims. A regression check keeps FAQ answers aligned with the visible text.
+
+Search guidance used:
+
+- [Google: AI features and your website](https://developers.google.com/search/docs/appearance/ai-features): normal crawlability, useful textual content and consistent structured data apply; no special AI schema or AI text file is required.
+- [Google: mobile-first indexing](https://developers.google.com/search/docs/crawling-indexing/mobile/mobile-sites-mobile-first-indexing): use responsive HTML with the same meaningful content on mobile and desktop.
+- [Google: software application structured data](https://developers.google.com/search/docs/appearance/structured-data/software-app): describe the real app. We omit offers and reviews because they are not established, so this is factual entity markup, not a claim of eligibility for app rich results.
+- [Google: FAQ rich-result restrictions](https://developers.google.com/search/blog/2023/08/howto-faq-changes): FAQ markup is not a promise of a Google FAQ rich result for this utility site.
+- [Bing: AI Performance guidance](https://www.bing.com/webmasters/help/ai-performance-9f8e7d6c): clear headings, concise sections, tables and FAQ answers help engines understand and reference content.
+
+No ranking, indexing or answer-engine citation is guaranteed. Search Console and Bing Webmaster Tools ownership/submission are separate owner actions; no new account setup is part of this change.

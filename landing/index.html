@@ -3,20 +3,122 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DogBar: window management your Mac should have shipped with</title>
-  <meta name="description" content="DogBar gives your Mac a better alt-tab and Dock. See every window when you alt-tab, preview windows from the Dock, and get a separate Dock on every desktop. macOS 14+.">
+  <title>DogBar | Mac Window Switcher &amp; Dock Previews</title>
+  <meta name="description" content="Switch between individual Mac windows with DogBar. Get Dock previews, a Dock for each desktop, and window counts. Apple Silicon, macOS 14+.">
+  <meta name="robots" content="index, follow, max-image-preview:large">
   <meta name="theme-color" content="#4a14b8">
   <link rel="canonical" href="https://dogbar.hristijan.dev/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="DogBar: window management your Mac should have shipped with">
+  <meta property="og:site_name" content="DogBar">
+  <meta property="og:locale" content="en_US">
+  <meta property="og:title" content="DogBar | Mac Window Switcher &amp; Dock Previews">
   <meta property="og:description" content="A better alt-tab and Dock for your Mac. See every window, preview windows from the Dock, and get a separate Dock on every desktop. macOS 14+.">
   <meta property="og:url" content="https://dogbar.hristijan.dev/">
   <meta property="og:image" content="https://dogbar.hristijan.dev/assets/dog-640.jpg">
   <meta property="og:image:alt" content="DogBar app icon: a cartoon dog holding two windows on purple">
+  <meta property="og:image:width" content="640">
+  <meta property="og:image:height" content="640">
   <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="DogBar | Mac Window Switcher &amp; Dock Previews">
+  <meta name="twitter:description" content="A window switcher and Dock for macOS. Preview windows, switch to the one you need, and keep each desktop separate.">
+  <meta name="twitter:image" content="https://dogbar.hristijan.dev/assets/dog-640.jpg">
+  <meta name="twitter:image:alt" content="DogBar app icon: a cartoon dog holding two windows on purple">
   <link rel="icon" type="image/png" sizes="64x64" href="assets/favicon-64.png">
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
   <link rel="stylesheet" href="styles.css">
+  <script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "WebSite",
+      "@id": "https://dogbar.hristijan.dev/#website",
+      "name": "DogBar",
+      "url": "https://dogbar.hristijan.dev/",
+      "inLanguage": "en"
+    },
+    {
+      "@type": "SoftwareApplication",
+      "@id": "https://dogbar.hristijan.dev/#app",
+      "name": "DogBar",
+      "url": "https://dogbar.hristijan.dev/",
+      "description": "DogBar is a native macOS window switcher and Dock app with individual window previews, per-desktop Docks and window counts.",
+      "applicationCategory": "DesktopEnhancementApplication",
+      "operatingSystem": "macOS 14 or later",
+      "processorRequirements": "Apple Silicon (arm64)",
+      "image": "https://dogbar.hristijan.dev/assets/dog-640.jpg",
+      "license": "https://github.com/KIKOmanasijev/DockWindow/blob/main/LICENSE",
+      "sameAs": "https://github.com/KIKOmanasijev/DockWindow",
+      "featureList": [
+        "One preview tile per window in the Option+Tab switcher",
+        "Window previews when hovering the Dock",
+        "A separate Dock for each desktop",
+        "Window-count indicators",
+        "Optional Native Dock mode"
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://dogbar.hristijan.dev/#faq",
+      "url": "https://dogbar.hristijan.dev/#faq",
+      "inLanguage": "en",
+      "about": {
+        "@id": "https://dogbar.hristijan.dev/#app"
+      },
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is DogBar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "DogBar is a native macOS window switcher and Dock app. It shows a preview for each open window, lets you choose a window from the Dock, and can give each desktop its own Dock."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Which Macs can run DogBar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The current preview requires an Apple Silicon Mac running macOS 14 or later. It is self-signed and not notarized by Apple."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I have to replace Apple’s Dock?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Native Dock mode keeps Apple’s Dock and still adds window previews and the better alt-tab."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does DogBar need Accessibility and Screen Recording?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Accessibility lets it bring up, close and minimize single windows, and listen for its shortcut. Screen Recording lets it show what’s inside each window in the previews."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I get my normal Dock back?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Click the paw in the menu bar and choose Pause DogBar or Restore Native Dock. Either one brings your old Dock back."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How do I alt-tab with DogBar?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Hold Option and tap Tab. Add Shift to go back, or use the arrow keys. Let go of Option to switch, or press Escape to cancel."
+          }
+        }
+      ]
+    }
+  ]
+}
+  </script>
   <script src="release.js" defer></script>
   <script src="script.js" defer></script>
 </head>
@@ -59,7 +161,7 @@
       <div class="hero-copy" id="top">
         <p class="eyebrow">A better alt-tab and Dock for Mac</p>
         <h1 class="headline">Window management your Mac should have shipped with.</h1>
-        <p class="lede">Stop hunting for the right window. DogBar shows you all of them, so you find the one you need straight away.</p>
+        <p class="lede">DogBar is a window switcher and Dock for macOS. See every window, preview it from the Dock, and switch straight to the one you need.</p>
         <ul class="scribbles" aria-label="What DogBar gives you">
           <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>see every window when you alt-tab, not just apps</li>
           <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>hover an app in the Dock to preview its windows</li>
@@ -246,6 +348,8 @@
         <p>Your Mac switches apps. DogBar adds previews and controls for individual windows.</p>
       </div>
       <table class="vs">
+        <caption class="sr-only">Window-switching and Dock features in macOS and DogBar</caption>
+        <colgroup><col class="vs-feature-col"><col class="vs-product-col"><col class="vs-product-col"></colgroup>
         <thead>
           <tr>
             <th scope="col"><span class="sr-only">Feature</span></th>
@@ -317,8 +421,16 @@
     </section>
 
     <section class="faq" id="faq" aria-labelledby="faq-title">
-      <h2 id="faq-title" class="section-title">Questions</h2>
+      <h2 id="faq-title" class="section-title">Questions about DogBar</h2>
       <div class="faq-list">
+        <details>
+          <summary>What is DogBar?</summary>
+          <p>DogBar is a native macOS window switcher and Dock app. It shows a preview for each open window, lets you choose a window from the Dock, and can give each desktop its own Dock.</p>
+        </details>
+        <details>
+          <summary>Which Macs can run DogBar?</summary>
+          <p>The current preview requires an Apple Silicon Mac running macOS 14 or later. It is self-signed and not notarized by Apple.</p>
+        </details>
         <details>
           <summary>Do I have to replace Apple’s Dock?</summary>
           <p>No. Native Dock mode keeps Apple’s Dock and still adds window previews and the better alt-tab.</p>
