@@ -34,12 +34,8 @@ import Combine
         apps = profiles.lastSelected.flatMap { profiles.pins[$0] } ?? profiles.seed
     }
     public func activateDesktop(_ desktopKey: String?, knownDesktopKeys: Set<String>) {
-        guard let desktopKey, knownDesktopKeys.contains(desktopKey) else {
-            if activeDesktopKey != nil { activeDesktopKey = nil }
-            return
-        }
         var changed = false
-        if !profiles.migrated {
+        if !profiles.migrated, !knownDesktopKeys.isEmpty {
             for key in knownDesktopKeys where profiles.pins[key] == nil { profiles.pins[key] = profiles.seed }
             profiles.migrated = true; changed = true
         }
@@ -48,6 +44,11 @@ import Combine
         // some later version of the Dock when the user first visits them.
         for key in knownDesktopKeys where profiles.pins[key] == nil {
             profiles.pins[key] = template; changed = true
+        }
+        guard let desktopKey, knownDesktopKeys.contains(desktopKey) else {
+            if activeDesktopKey != nil { activeDesktopKey = nil }
+            if changed { save() }
+            return
         }
         if profiles.lastSelected != desktopKey { profiles.lastSelected = desktopKey; changed = true }
         if activeDesktopKey != desktopKey { activeDesktopKey = desktopKey }
