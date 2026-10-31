@@ -40,7 +40,12 @@ import Combine
         appMenu.addItem(withTitle: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "").target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit DogBar", action: #selector(quit), keyEquivalent: "q").target = self
-        appMenuItem.submenu = appMenu; mainMenu.addItem(appMenuItem); NSApp.mainMenu = mainMenu
+        appMenuItem.submenu = appMenu; mainMenu.addItem(appMenuItem)
+        let fileItem = NSMenuItem()
+        let fileMenu = NSMenu(title: "File")
+        fileMenu.addItem(withTitle: "Close Window", action: #selector(NSWindow.performClose(_:)), keyEquivalent: "w")
+        fileItem.submenu = fileMenu; mainMenu.addItem(fileItem)
+        NSApp.mainMenu = mainMenu
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         if let image = NSImage(systemSymbolName: "pawprint.fill", accessibilityDescription: "DogBar") {
             image.size = NSSize(width: 18, height: 18)

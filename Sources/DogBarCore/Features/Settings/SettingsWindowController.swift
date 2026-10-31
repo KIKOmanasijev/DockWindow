@@ -13,7 +13,7 @@ import SwiftUI
     public init(settings: AppSettings, permissions: PermissionsService, pinnedApps: PinnedAppsStore,
                 onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
         self.settings = settings
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 940, height: 700),
+        let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 940, height: 700),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "DogBar Settings"
         window.titlebarAppearsTransparent = true
@@ -43,5 +43,21 @@ import SwiftUI
         visibility.isVisible = false
         SettingsShortcutRecording.activeRecorder?.finish()
         NSApp.setActivationPolicy(settings.showDogBarInDock ? .regular : .accessory)
+    }
+}
+
+/// Accessory apps do not always participate in main-menu key-equivalent routing.
+/// Keep standard window commands available while Settings is the key window.
+@MainActor final class SettingsWindow: NSWindow {
+    override func performKeyEquivalent(with event: NSEvent) -> Bool {
+        guard isKeyWindow, !SettingsShortcutRecording.isRecording,
+              event.modifierFlags.intersection(.deviceIndependentFlagsMask).subtracting(.capsLock) == .command else {
+            return super.performKeyEquivalent(with: event)
+        }
+        switch event.charactersIgnoringModifiers?.lowercased() {
+        case "w": performClose(nil); return true
+        case "q": NSApp.terminate(nil); return true
+        default: return super.performKeyEquivalent(with: event)
+        }
     }
 }

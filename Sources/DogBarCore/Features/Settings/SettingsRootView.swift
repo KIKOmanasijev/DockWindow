@@ -75,13 +75,18 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                     case .advanced: advanced
                     }
                 }.formStyle(.grouped).scrollContentBackground(.hidden)
+                    // Each pane owns an independent form tree. Do not diff unrelated rows
+                    // (or animate their removal/insertion) when navigating between panes.
+                    .id(pane ?? .general)
+                    .transaction { $0.animation = nil }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color(nsColor: .windowBackgroundColor))
         }
         .toggleStyle(.switch)
         .controlSize(.regular)
-        .task(id: visibility.isVisible ? pane : nil) {
-            guard visibility.isVisible, pane == .general, !loginBusy else { return }
+        .onChange(of: pane) { _, _ in SettingsShortcutRecording.activeRecorder?.finish() }
+        .task(id: visibility.isVisible) {
+            guard visibility.isVisible, !loginBusy else { return }
             let request = UUID(); loginStatusRequest = request
             loginStatusChecking = true
             defer { if loginStatusRequest == request { loginStatusChecking = false } }
@@ -251,7 +256,8 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
                 TextField("Allowed window subroles", text: $subrolesText)
                     .onAppear { subrolesText = settings.allowedWindowSubroles.joined(separator: ", ") }
                     .onChange(of: subrolesText) { _, text in
-                        settings.allowedWindowSubroles = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                        let values = text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                        if settings.allowedWindowSubroles != values { settings.allowedWindowSubroles = values }
                     }.settingsDescription("Comma-separated AX subroles, normally AXStandardWindow and AXDialog.")
                 Button("Re-import pinned apps from native Dock") { reimportConfirmation = true }
                     .settingsDescription("Replace DogBar's pins after confirmation. The native Dock is unchanged.")
