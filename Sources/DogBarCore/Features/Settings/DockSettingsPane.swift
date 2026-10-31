@@ -17,8 +17,9 @@ import SwiftUI
                 Toggle("Automatically hide Dock", isOn: $settings.autohide).settingsDescription("Reveal the Dock when the pointer reaches its screen edge.")
                 SettingsSlider(title: "Autohide delay", description: "Wait this long before hiding the Dock.", value: $settings.autohideDelay, range: 0...3, step: 0.05, unit: "s")
             }.disabled(!settings.useDogBarDock)
-            SettingsSection("Desktop filtering") {
-                SettingsChoice(title: "Dock shows apps from", description: "Show apps with windows in the selected desktop scope.", value: $settings.dockScope)
+            SettingsSection("Display and desktop filtering") {
+                SettingsChoice(title: "Include apps from displays", description: "All displays includes the active desktop on each connected display. Current display uses only the display containing the Dock.", value: $settings.dockDisplayScope)
+                SettingsChoice(title: "Include apps from desktops", description: "Choose active desktops only or include inactive desktops too, independently of display scope.", value: $settings.dockScope)
                 SettingsChoice(title: "Apps from other desktops", description: "Hide remote apps or keep them dimmed.", value: $settings.otherDesktopApps)
                 Toggle("Include minimized windows", isOn: $settings.includeMinimizedInDock).settingsDescription("Keep apps visible when their local windows are minimized.")
                 Toggle("Hide apps with no open windows", isOn: $settings.hideWindowlessApps).settingsDescription("Hide unpinned running and recent apps without windows. Pinned apps always stay available.")

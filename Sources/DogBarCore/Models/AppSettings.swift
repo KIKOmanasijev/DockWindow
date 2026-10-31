@@ -119,6 +119,10 @@ public final class AppSettings: ObservableObject {
         get { read("autohideDelay", fallback: 0.5) }
         set { write("autohideDelay", value: newValue) }
     }
+    public var dockDisplayScope: DockDisplayScope {
+        get { read("dockDisplayScope", fallback: .allDisplays) }
+        set { write("dockDisplayScope", value: newValue) }
+    }
     public var dockScope: WindowScope {
         get { read("dockScope", fallback: .currentDesktop) }
         set { write("dockScope", value: newValue) }
@@ -378,6 +382,7 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "keepMaximizedWindowsClear": encoded(true as Bool),
             keyPrefix + "autohide": encoded(false as Bool),
             keyPrefix + "autohideDelay": encoded(0.5 as Double),
+            keyPrefix + "dockDisplayScope": encoded(DockDisplayScope.allDisplays),
             keyPrefix + "dockScope": encoded(WindowScope.currentDesktop),
             keyPrefix + "otherDesktopApps": encoded(OtherDesktopApps.hidden),
             keyPrefix + "indicatorStyle": encoded(IndicatorStyle.perWindow),

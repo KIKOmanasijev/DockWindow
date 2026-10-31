@@ -148,7 +148,12 @@ import SwiftUI
         presentation.bundleURL = item.pinnedApp?.url ?? app?.bundleURL
         presentation.appName = app?.name ?? item.pinnedApp?.url.deletingPathExtension().lastPathComponent ?? "Application"
         presentation.appIcon = app?.icon ?? presentation.bundleURL.map { NSWorkspace.shared.icon(forFile: $0.path) }
-        currentSpaces = SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: Self.displayIdentifier(screen), separateSpaces: NSScreen.screensHaveSeparateSpaces)
+        if native {
+            currentSpaces = SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: Self.displayIdentifier(screen), separateSpaces: NSScreen.screensHaveSeparateSpaces)
+        } else {
+            currentSpaces = SpacePolicy.dockSpaceIDs(snapshot: snapshot, displayID: Self.displayIdentifier(screen), separateSpaces: NSScreen.screensHaveSeparateSpaces,
+                displayScope: settings.dockDisplayScope, connectedDisplayIDs: Set(NSScreen.screens.compactMap(Self.displayIdentifier)))
+        }
         if let app {
             presentation.windows = WindowFilter(scope: settings.previewScope, currentSpaceIDs: currentSpaces,
                 includeMinimized: settings.previewIncludeMinimized, includeHiddenApps: true, pid: app.pid).apply(to: snapshot.windows)
@@ -252,7 +257,7 @@ import SwiftUI
         let bundleURL = presentation.bundleURL
         guard app != nil || bundleURL != nil else { report("This application's location is unavailable. Pin it again from Finder."); return }
         let name = presentation.appName
-        let space = currentSpaces.sorted().first ?? 0
+        let space = SpacePolicy.localTargetSpaceID(snapshot: tracker.snapshot, displayID: screen.flatMap(Self.displayIdentifier), separateSpaces: NSScreen.screensHaveSeparateSpaces) ?? 0
         let rule = settings.newWindowRule(for: app?.bundleIdentifier ?? item?.pinnedApp?.bundleIdentifier ?? "")
         pinned = true; presentation.opening = true
         let token = generation

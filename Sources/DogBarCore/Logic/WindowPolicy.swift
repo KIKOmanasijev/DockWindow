@@ -20,6 +20,18 @@ public enum SpacePolicy {
         let id = displayID.flatMap { snapshot.activeSpaceIDs[$0] } ?? snapshot.activeSpaceID
         return id == 0 ? [] : [id]
     }
+    /// Restrict the union to connected displays. Missing topology keeps the local fallback.
+    public static func dockSpaceIDs(snapshot: WindowSnapshot, displayID: String?, separateSpaces: Bool,
+                                    displayScope: DockDisplayScope, connectedDisplayIDs: Set<String>) -> Set<UInt64> {
+        let local = currentSpaceIDs(snapshot: snapshot, displayID: displayID, separateSpaces: separateSpaces)
+        guard separateSpaces, displayScope == .allDisplays, !connectedDisplayIDs.isEmpty else { return local }
+        let active = Set(snapshot.activeSpaceIDs.filter { connectedDisplayIDs.contains($0.key) }.values.filter { $0 != 0 })
+        return active.isEmpty ? local : active
+    }
+    /// Creation always targets the Dock/preview display, never an arbitrary member of a union.
+    public static func localTargetSpaceID(snapshot: WindowSnapshot, displayID: String?, separateSpaces: Bool) -> UInt64? {
+        currentSpaceIDs(snapshot: snapshot, displayID: displayID, separateSpaces: separateSpaces).sorted().first
+    }
     public static func membership(of window: TrackedWindow) -> [UInt64] {
         window.spaceIDs.isEmpty && window.isMinimized ? window.rememberedSpaceIDs : window.spaceIDs
     }

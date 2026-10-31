@@ -180,7 +180,8 @@ import ApplicationServices
     private var spaces: Set<UInt64> { currentSpaces(snapshot: tracker.snapshot) }
     private func currentSpaces(snapshot: WindowSnapshot) -> Set<UInt64> {
         let displayID = screen.flatMap(Self.displayUUID)
-        return SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: displayID, separateSpaces: NSScreen.screensHaveSeparateSpaces)
+        return SpacePolicy.dockSpaceIDs(snapshot: snapshot, displayID: displayID, separateSpaces: NSScreen.screensHaveSeparateSpaces,
+            displayScope: settings.dockDisplayScope, connectedDisplayIDs: Set(NSScreen.screens.compactMap(Self.displayUUID)))
     }
     /// The display's stable UUID: it survives reconnection, unlike its index or display number.
     private static func displayUUID(_ screen: NSScreen) -> String? {
@@ -264,7 +265,7 @@ import ApplicationServices
         guard pid > 0, app.activationPolicy == .regular, !app.isTerminated,
               pendingLaunches[pid] == nil,
               !tracker.snapshot.windows.contains(where: { $0.pid == pid }) else { return }
-        let spaces = Array(currentSpaces(snapshot: tracker.snapshot))
+        let spaces = Array(SpacePolicy.currentSpaceIDs(snapshot: tracker.snapshot, displayID: screen.flatMap(Self.displayUUID), separateSpaces: NSScreen.screensHaveSeparateSpaces))
         pendingLaunches[pid] = TrackedApp(pid: pid, bundleIdentifier: app.bundleIdentifier,
             name: app.localizedName ?? "Application", bundleURL: app.bundleURL,
             isHidden: app.isHidden, isFrontmost: app.isActive, lastActiveSpaceIDs: spaces)
@@ -422,7 +423,7 @@ import ApplicationServices
             CGRect(x: rect.minX, y: top - rect.maxY, width: rect.width, height: rect.height)
         }
         let visible = axRect(screen.visibleFrame), display = axRect(screen.frame)
-        let spaces = currentSpaces(snapshot: snapshot)
+        let spaces = SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: Self.displayUUID(screen), separateSpaces: NSScreen.screensHaveSeparateSpaces)
         let cancellation = clearanceCancellation
         let alive = Set(snapshot.windows.map(\.id))
         clearanceRequests = clearanceRequests.filter { alive.contains($0.key) }
@@ -525,7 +526,11 @@ import ApplicationServices
     }
     private func focus(_ id: CGWindowID) {
         guard let window = tracker.snapshot.windows.first(where: { $0.id == id }) else { return }
-        guard let target = spaces.first(where: { SpacePolicy.membership(of: window).contains($0) }) else {
+        let membership = Set(SpacePolicy.membership(of: window))
+        let localTarget = SpacePolicy.localTargetSpaceID(snapshot: tracker.snapshot, displayID: screen.flatMap(Self.displayUUID), separateSpaces: NSScreen.screensHaveSeparateSpaces)
+        let target = localTarget.flatMap { membership.contains($0) ? $0 : nil }
+            ?? spaces.intersection(membership).sorted().first
+        guard let target else {
             report("Cannot confirm this window's desktop. Wait for the window list to refresh, then try again."); return
         }
         let key = "focus"
@@ -544,7 +549,7 @@ import ApplicationServices
         guard app != nil || url != nil else { report("This application's location is unavailable. Pin it again from Finder."); return }
         let name = app?.name ?? url?.deletingPathExtension().lastPathComponent ?? "application"
         let rule = settings.newWindowRule(for: app?.bundleIdentifier ?? item.pinnedApp?.bundleIdentifier ?? "")
-        guard let space = spaces.sorted().first else { report("The current desktop is unavailable. Open a window from the app's File menu, then try again."); return }
+        guard let space = SpacePolicy.localTargetSpaceID(snapshot: tracker.snapshot, displayID: screen.flatMap(Self.displayUUID), separateSpaces: NSScreen.screensHaveSeparateSpaces) else { report("The current desktop is unavailable. Open a window from the app's File menu, then try again."); return }
         guard openingTasks[item.id] == nil else { return }
         openingTasks[item.id] = Task { [weak self] in
             guard let self else { return }

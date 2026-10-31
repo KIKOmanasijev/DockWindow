@@ -37,6 +37,26 @@ final class PolicyTests: XCTestCase {
         XCTAssertEqual(WindowSnapshot(activeSpaceIDs: ["Z": 9, "A": 7]).activeSpaceID, 7)
         XCTAssertTrue(SpacePolicy.currentSpaceIDs(snapshot: .init(), displayID: nil, separateSpaces: false).isEmpty)
     }
+    func testDockDisplayScopeUsesOnlyConnectedActiveSpacesAndKeepsCreationLocal() {
+        let snapshot = WindowSnapshot(apps: [app(10, "local"), app(11, "remote"), app(12, "inactive")],
+            windows: [window(1), window(2, pid: 11, spaces: [9]), window(3, pid: 12, spaces: [8])],
+            activeSpaceIDs: ["primary": 1, "secondary": 9, "disconnected": 8])
+        let connected: Set<String> = ["primary", "secondary"]
+        let union = SpacePolicy.dockSpaceIDs(snapshot: snapshot, displayID: "secondary", separateSpaces: true,
+            displayScope: .allDisplays, connectedDisplayIDs: connected)
+        XCTAssertEqual(union, [1, 9])
+        XCTAssertEqual(WindowFilter(currentSpaceIDs: union).apply(to: snapshot.windows).map(\.id), [1, 2])
+        XCTAssertEqual(DockCompositionPolicy.items(snapshot: snapshot, pinned: [], options: .init(currentSpaceIDs: union, showTrash: false)).filter { $0.app != nil }.map { $0.app!.pid }.sorted(), [10, 11])
+        XCTAssertEqual(DotPolicy.indicators(windows: snapshot.windows, filter: .init(currentSpaceIDs: union)).count, 2)
+        XCTAssertEqual(DockClickPolicy.action(app: snapshot.apps[1], windows: snapshot.windows, currentSpaceIDs: union), .focus(2))
+        XCTAssertEqual(SpacePolicy.dockSpaceIDs(snapshot: snapshot, displayID: "secondary", separateSpaces: true,
+            displayScope: .currentDisplay, connectedDisplayIDs: connected), [9])
+        XCTAssertEqual(SpacePolicy.localTargetSpaceID(snapshot: snapshot, displayID: "secondary", separateSpaces: true), 9)
+        XCTAssertEqual(SpacePolicy.dockSpaceIDs(snapshot: snapshot, displayID: "secondary", separateSpaces: false,
+            displayScope: .allDisplays, connectedDisplayIDs: connected), SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: "secondary", separateSpaces: false))
+        XCTAssertEqual(SpacePolicy.dockSpaceIDs(snapshot: snapshot, displayID: "secondary", separateSpaces: true,
+            displayScope: .allDisplays, connectedDisplayIDs: []), [9])
+    }
     func testSpaceAndMinimizedFiltering() {
         var fullscreen = window(7, spaces: [40]); fullscreen.isFullscreen = true
         let windows = [window(1), window(2, spaces: [2]), window(3, spaces: [1, 2]), window(4, spaces: [], minimized: true, remembered: [1]), window(5, spaces: [], minimized: true, remembered: [2]), window(6, spaces: [], minimized: true), fullscreen]
@@ -255,6 +275,8 @@ final class PolicyTests: XCTestCase {
             let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
             defer { defaults.removePersistentDomain(forName: suite) }
             let settings = AppSettings(defaults: defaults)
+            XCTAssertEqual(settings.dockDisplayScope, .allDisplays)
+            XCTAssertEqual(settings.dockScope, .currentDesktop)
             XCTAssertTrue(settings.switcherEnabled); XCTAssertEqual(settings.iconSize, 48)
             XCTAssertEqual(settings.switcherAppearanceDelay, 0.12)
             XCTAssertEqual(settings.newWindowRules.count, 7)
@@ -267,6 +289,7 @@ final class PolicyTests: XCTestCase {
             let token = settings.objectWillChange.sink { changes += 1 }
             let rules = [NewWindowRule(bundleIdentifier: "custom", strategy: .shortcut, menuTitles: ["Localized"], shortcut: .init(keyCode: 45, modifiers: [.command, .shift]))]
             settings.newWindowRules = rules; settings.dockScope = .allDesktops
+            settings.dockDisplayScope = .currentDisplay
             settings.pinnedApps = [pin("first")]
             settings.dotColor = .init(red: 1, green: 0, blue: 0)
             settings.iconSize = 64
@@ -274,12 +297,15 @@ final class PolicyTests: XCTestCase {
             XCTAssertEqual(second.newWindowRules, rules)
             XCTAssertEqual(second.pinnedApps, [pin("first")]); XCTAssertEqual(second.iconSize, 64)
             XCTAssertEqual(second.dockScope, .allDesktops)
+            XCTAssertEqual(second.dockDisplayScope, .currentDisplay)
             let beforeExternal = changes
             defaults.set(72.0, forKey: AppSettings.keyPrefix + "iconSize")
             settings.refresh()
             XCTAssertEqual(settings.iconSize, 72); XCTAssertGreaterThan(changes, beforeExternal)
             defaults.set("preserve", forKey: "nativeDockBackup")
             settings.reset()
+            XCTAssertEqual(settings.dockDisplayScope, .allDisplays)
+            XCTAssertEqual(settings.dockScope, .currentDesktop)
             XCTAssertEqual(settings.iconSize, 48); XCTAssertEqual(settings.newWindowRules, NewWindowRule.defaults)
             XCTAssertEqual(defaults.string(forKey: "nativeDockBackup"), "preserve")
             for (key, value) in AppSettings.registeredDefaults {

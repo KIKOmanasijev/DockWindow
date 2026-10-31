@@ -5,6 +5,8 @@ public enum SwitcherMode: String, Codable, CaseIterable, Sendable { case windows
 
 /// Scope of a window list, independent for Dock, switcher and previews.
 public enum WindowScope: String, Codable, CaseIterable, Sendable { case currentDesktop, allDesktops }
+/// Displays contributing apps, independent of desktop scope and Dock placement.
+public enum DockDisplayScope: String, Codable, CaseIterable, Sendable { case allDisplays, currentDisplay }
 /// Edge used by the replacement Dock.
 public enum DockPosition: String, Codable, CaseIterable, Sendable { case bottom, left, right }
 /// Display on which a panel or Dock is placed.
