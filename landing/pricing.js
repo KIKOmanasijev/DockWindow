@@ -33,7 +33,7 @@
     range.setAttribute("aria-valuetext", dollars(n));
     value.textContent = dollars(n);
     total.textContent = dollars(n);
-    cta.textContent = dollars(n);
+    cta.textContent = `Pay ${dollars(n)}`;
   }
   range.addEventListener("input", render);
   render();

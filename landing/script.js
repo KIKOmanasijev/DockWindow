@@ -374,6 +374,7 @@
     state.order = initialOrder();
     state.desk = 1;
     state.labels = false;
+    keys.hidden = true; // a chapter jump can leave the switcher's keycaps up
     renderDesk();
     renderDock();
   }
