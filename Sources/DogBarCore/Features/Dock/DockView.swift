@@ -37,7 +37,6 @@ import QuartzCore
     private var geometry = DockLayout(kinds: [], bounds: .zero, position: .bottom, baseSize: 48, maximumSize: 96)
     private var resizeSession: DockResizeSession?
     private var resizeMouseDown = false
-    private var dockHeld = false
     private var resizeHandle = CGRect.zero
     private let edgeRim = CAGradientLayer()
     private let edgeMask = CAShapeLayer()
@@ -87,7 +86,6 @@ import QuartzCore
     func stopTracking() {
         finishResize(cancelled: true)
         resizeMouseDown = false
-        dockHeld = false
         pointer = nil
         longPress?.cancel(); longPress = nil; pressed = nil
         hoverID = nil; onHover?(nil, .zero); render()
@@ -227,7 +225,10 @@ import QuartzCore
         let rimRect = geometry.background.insetBy(dx: 0.375, dy: 0.375)
         let radius = max(0, min(30, displayedIconSize * 0.3) - 0.375)
         edgeMask.path = CGPath(roundedRect: rimRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
-        let resizeArmed = dockHeld || resizeSession != nil || (!resizeMouseDown && pointer.map { geometry.containsResizeTarget($0, kinds: kinds) } == true)
+        // Only resize intent shows the pill: hovering or holding the top edge. Pressing or
+        // holding an app icon must not, even if the pointer then slides onto the edge.
+        let resizeArmed = resizeMouseDown || resizeSession != nil
+            || (pressed == nil && dragged == nil && pointer.map { geometry.containsResizeTarget($0, kinds: kinds) } == true)
         let edge = geometry.resizeEdge
         let length: CGFloat = 28
         let thickness: CGFloat = 3
@@ -272,7 +273,6 @@ import QuartzCore
     }
     private func item(at point: CGPoint) -> DockItem? { geometry.hitTest(point, kinds: items.map(\.kind)).map { items[$0] } }
     override func mouseDown(with event: NSEvent) {
-        dockHeld = true
         pressPoint = convert(event.locationInWindow, from: nil)
         if geometry.containsResizeTarget(pressPoint, kinds: items.map(\.kind)) {
             longPress?.cancel(); longPress = nil; pressed = nil
@@ -305,7 +305,6 @@ import QuartzCore
         }
     }
     override func mouseUp(with event: NSEvent) {
-        dockHeld = false
         if resizeMouseDown {
             finishResize(cancelled: false, point: screenPoint(for: event))
             resizeMouseDown = false; render()
@@ -382,7 +381,7 @@ import QuartzCore
     }
     override func cancelOperation(_ sender: Any?) { finishResize(cancelled: true) }
     override func viewWillMove(toWindow newWindow: NSWindow?) {
-        if newWindow == nil { finishResize(cancelled: true); resizeMouseDown = false; dockHeld = false }
+        if newWindow == nil { finishResize(cancelled: true); resizeMouseDown = false }
         super.viewWillMove(toWindow: newWindow)
     }
     private func screenPoint(for event: NSEvent) -> CGPoint {

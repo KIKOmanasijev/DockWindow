@@ -31,7 +31,6 @@
   const cam = $("[data-cam]");
   const desk = $("[data-desk]");
   const dock = $("[data-dock]");
-  const dockWrap = dock.parentElement;
   const switcher = $("[data-switcher]");
   const tilesEl = $("[data-tiles]");
   const preview = $("[data-preview]");
@@ -60,12 +59,12 @@
   const initialWindows = () => ({
     1: [
       { id: "s1", app: "safari", view: "trip", title: "Lisbon day plan", url: "wanderly.travel" },
-      { id: "s2", app: "safari", view: "booking", title: "Hotel booking", url: "casaluz-stays.travel" },
+      { id: "s2", app: "safari", view: "booking", title: "Hotel booking", url: "casaluz-stays.travel", fav: "#b48cff" },
       { id: "k1", app: "slack", view: "slack", title: "#lisbon-trip" },
       { id: "n1", app: "notes", view: "notes", title: "Packing list" },
     ],
     2: [
-      { id: "s3", app: "safari", view: "hike", title: "Sunday hike", url: "trailmap.travel" },
+      { id: "s3", app: "safari", view: "hike", title: "Sunday hike", url: "trailmap.travel", fav: "#2bac76" },
       { id: "m1", app: "music", view: "music", title: "Up Next" },
     ],
   });
@@ -136,7 +135,7 @@
   const barMarkup = (w) => w.url
     ? `<span class="win-bar is-safari"><span class="lights"><i></i><i></i><i></i></span>
         <span class="tb tb-side"></span><span class="tb-nav">‹ ›</span>
-        <span class="addr">${w.url}</span><span class="tb tb-share"></span><span class="tb tb-plus">+</span></span>`
+        <span class="addr"><i class="fav" style="--fav:${w.fav || "#ff8f7a"}"></i>${w.url}</span><span class="tb tb-share"></span><span class="tb tb-plus">+</span><span class="tb tb-tabs"></span></span>`
     : `<span class="win-bar"><span class="lights"><i></i><i></i><i></i></span><span class="t">${w.title}</span></span>`;
   const windowInner = (w) => `${barMarkup(w)}<span class="win-body">${VIEWS[w.view]}</span>`;
   const miniMarkup = (w) => `<span class="mini" data-app="${w.app}">${windowInner(w)}</span>`;
@@ -274,17 +273,24 @@
     preview.querySelectorAll(".pv").forEach((pv) => pv.classList.toggle("is-hover", pv.querySelector(`[data-focus="${id}"]`) !== null));
   }
   // Centre over the icon, keep inside the screen, sit just above the Dock. Uses layout
-  // offsets, so entrance transforms cannot skew the position.
+  // offsets summed up to the screen, so entrance transforms cannot skew the position.
+  // An icon's offsetLeft alone is relative to an element inside the Dock, which put the
+  // popover and its tail too far left.
   function placePreview(icon) {
     const width = preview.offsetWidth;
-    const half = width / 2;
-    const room = mac.clientWidth;
-    const center = dockWrap.offsetLeft + icon.offsetLeft + icon.offsetWidth / 2;
-    const left = Math.min(Math.max(center, half + 8), Math.max(half + 8, room - half - 8));
-    const tail = Math.min(Math.max(center - left + half, 22), Math.max(22, width - 22));
+    const room = cam.clientWidth;
+    const center = offsetIn(icon).x + icon.offsetWidth / 2;
+    const left = Math.min(Math.max(center - width / 2, 8), Math.max(8, room - width - 8));
+    const tail = Math.min(Math.max(center - left, 22), Math.max(22, width - 22));
     preview.style.left = `${left}px`;
-    preview.style.bottom = `${Math.max(mac.clientHeight - dockWrap.offsetTop - dock.offsetTop + 14, 0)}px`;
+    preview.style.bottom = `${Math.max(cam.clientHeight - offsetIn(dock).y + 14, 0)}px`;
     preview.style.setProperty("--tail", `${tail}px`);
+  }
+  // Layout position of an element within the screen, ignoring transforms.
+  function offsetIn(el) {
+    let x = 0, y = 0;
+    for (let n = el; n && n !== cam; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
+    return { x, y };
   }
   function closePreview() {
     if (state.mode !== "preview") return;
@@ -335,11 +341,8 @@
   // the walkthrough mid-scene and Play resumes from the same moment.
   const point = (el) => {
     if (!el) return;
-    let x = el.offsetWidth / 2;
-    let y = el.offsetHeight / 2;
-    for (let n = el; n && n !== cam; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
-    if (preview.contains(el)) x -= preview.offsetWidth / 2; // offsets ignore its translateX(-50%)
-    pointer.style.transform = `translate(${x}px, ${y}px)`;
+    const { x, y } = offsetIn(el);
+    pointer.style.transform = `translate(${x + el.offsetWidth / 2}px, ${y + el.offsetHeight / 2}px)`;
   };
   function press() {
     pointer.classList.remove("press");

@@ -219,10 +219,9 @@ html:not(.js) .tour { display: none; }
   border-radius: 18px;
   border: 7px solid #0e0c13;
   box-shadow: 0 0 0 1px rgba(255, 255, 255, .2), 0 40px 90px -30px rgba(20, 4, 60, .7), 0 12px 30px -12px rgba(20, 4, 60, .4);
-  background:
-    radial-gradient(60% 80% at 12% 18%, #efe6ff 0%, rgba(239, 230, 255, 0) 60%),
-    radial-gradient(60% 70% at 92% 92%, #ffe3d1 0%, rgba(255, 227, 209, 0) 60%),
-    linear-gradient(140deg, #c9b3ff 0%, #ebe0ff 50%, #ffd9e6 100%);
+  background: #c9b8ff url("assets/wallpaper-1.svg") center / cover;
+  /* Dock icon size; windows keep clear of the Dock based on it. */
+  --dock-ic: clamp(32px, 3.6vw, 46px);
   overflow: hidden;
   color: var(--ink);
 }
@@ -234,8 +233,9 @@ html:not(.js) .tour { display: none; }
   padding: 0 .75rem 0 .9rem;
   font-family: var(--font); font-size: .72rem; font-weight: 500; letter-spacing: -.005em;
   color: rgba(0, 0, 0, .86);
-  background: rgba(255, 255, 255, .42);
-  -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
+  background: rgba(255, 255, 255, .3);
+  -webkit-backdrop-filter: blur(30px) saturate(1.8); backdrop-filter: blur(30px) saturate(1.8);
+  box-shadow: inset 0 -.5px 0 rgba(255, 255, 255, .35);
   white-space: nowrap;
 }
 .menubar-left { display: flex; align-items: center; gap: 1.05rem; min-width: 0; overflow: hidden; }
@@ -278,17 +278,9 @@ html:not(.js) .tour { display: none; }
 /* Each desktop has its own wallpaper and slides in like macOS Spaces. */
 .desk {
   position: absolute; inset: 0;
-  background:
-    radial-gradient(60% 80% at 12% 18%, #efe6ff 0%, rgba(239, 230, 255, 0) 60%),
-    radial-gradient(60% 70% at 92% 92%, #ffe3d1 0%, rgba(255, 227, 209, 0) 60%),
-    linear-gradient(140deg, #c9b3ff 0%, #ebe0ff 50%, #ffd9e6 100%);
+  background: #c9b8ff url("assets/wallpaper-1.svg") center / cover;
 }
-.desk[data-wall="2"] {
-  background:
-    radial-gradient(60% 80% at 85% 15%, #e3fbf1 0%, rgba(227, 251, 241, 0) 60%),
-    radial-gradient(60% 70% at 10% 95%, #fff1c9 0%, rgba(255, 241, 201, 0) 60%),
-    linear-gradient(150deg, #9fe3cf 0%, #d6f3ea 50%, #bfe0ff 100%);
-}
+.desk[data-wall="2"] { background: #bfe8e6 url("assets/wallpaper-2.svg") center / cover; }
 .desk.slide-in { animation: slide-in .6s cubic-bezier(.65, 0, .35, 1); }
 .desk-ghost { pointer-events: none; animation: slide-out .6s cubic-bezier(.65, 0, .35, 1) forwards; }
 
@@ -313,11 +305,13 @@ html:not(.js) .tour { display: none; }
 
 .win {
   position: absolute;
-  left: 9%; top: calc(24px + 4%); width: 82%; height: calc(76% - 24px);
+  /* The bottom keeps a clear gap above the Dock (its icon plus chrome), as a window
+     placed by macOS would, instead of running into it. */
+  left: 9%; top: calc(24px + 3.5%); width: 82%; bottom: calc(var(--dock-ic) + 52px);
   display: flex; flex-direction: column;
   background: #fff;
-  border-radius: 10px;
-  box-shadow: 0 0 0 .5px rgba(0, 0, 0, .28), 0 22px 44px -12px rgba(0, 0, 0, .38), 0 4px 12px rgba(0, 0, 0, .08);
+  border-radius: 12px;
+  box-shadow: 0 0 0 .5px rgba(0, 0, 0, .24), 0 30px 60px -14px rgba(16, 6, 46, .48), 0 10px 22px -8px rgba(16, 6, 46, .22);
   overflow: hidden;
   transition: opacity .3s ease, visibility .3s;
 }
@@ -342,11 +336,13 @@ html:not(.js) .tour { display: none; }
 .tb { flex: none; display: grid; place-items: center; width: 1.2em; height: 1em; color: #6e6a78; font-weight: 400; font-size: 1.15em; }
 .tb-side { border: 1.5px solid #8a8694; border-radius: .22em; box-shadow: inset .35em 0 0 -.2em #8a8694; }
 .tb-nav { flex: none; letter-spacing: .5em; color: #8a8694; font-size: 1.3em; font-weight: 300; }
+.tb-tabs { width: .95em; height: .8em; border: 1.5px solid #8a8694; border-radius: .18em; box-shadow: .22em -.22em 0 -.06em #f6f5f8, .22em -.22em 0 0 #8a8694; }
+.fav { flex: none; display: inline-block; width: 1em; height: 1em; margin-right: .45em; vertical-align: -.15em; border-radius: .25em; background: linear-gradient(135deg, var(--fav, #ff8f7a), #6e24e6); }
 .tb-share { width: .85em; height: .95em; border: 1.5px solid #8a8694; border-top: 0; border-radius: 0 0 .15em .15em; }
 .addr {
   flex: 0 1 58%; margin: 0 auto;
-  padding: .32em .7em; border-radius: .5em;
-  background: rgba(26, 16, 51, .06);
+  padding: .32em .7em; border-radius: .65em;
+  background: rgba(26, 16, 51, .055); box-shadow: inset 0 0 0 .5px rgba(26, 16, 51, .06);
   font-size: .85em; font-weight: 500; color: #4d4566; text-align: center;
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
@@ -414,11 +410,13 @@ html:not(.js) .tour { display: none; }
   pointer-events: auto;
   display: flex; align-items: flex-end; gap: 4px;
   padding: 6px 7px 4px;
-  background: rgba(255, 255, 255, .5);
-  -webkit-backdrop-filter: blur(18px) saturate(1.4); backdrop-filter: blur(18px) saturate(1.4);
-  border: 1px solid rgba(255, 255, 255, .65);
-  border-radius: 18px;
-  box-shadow: 0 12px 30px -12px rgba(26, 16, 51, .4);
+  /* Glass: a bright rim, a lit top edge and the wallpaper blurred through it. */
+  background: linear-gradient(rgba(255, 255, 255, .42), rgba(255, 255, 255, .22));
+  -webkit-backdrop-filter: blur(24px) saturate(1.9); backdrop-filter: blur(24px) saturate(1.9);
+  border: 1px solid rgba(255, 255, 255, .55);
+  border-radius: 22px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .8), inset 0 -1px 1px rgba(255, 255, 255, .25),
+    0 0 0 .5px rgba(16, 6, 46, .12), 0 18px 40px -14px rgba(16, 6, 46, .5);
 }
 .dock-sep { width: 1px; align-self: stretch; margin: 6px 3px 10px; background: rgba(26, 16, 51, .2); }
 .dock-btn {
@@ -428,7 +426,7 @@ html:not(.js) .tour { display: none; }
   border-radius: 10px;
   transition: background-color .16s ease;
 }
-.dock-btn .ic { width: clamp(32px, 3.6vw, 46px); height: clamp(32px, 3.6vw, 46px); border-radius: 22%; transition: transform .16s var(--ease); }
+.dock-btn .ic { width: var(--dock-ic); height: var(--dock-ic); border-radius: 22%; transition: transform .16s var(--ease); filter: drop-shadow(0 2px 2.5px rgba(16, 6, 46, .22)); }
 .dock-btn:hover .ic { transform: translateY(-2px); }
 .dock-btn:active .ic { transform: translateY(1px); }
 .dock-btn.is-open { background: rgba(110, 36, 230, .16); }
@@ -472,27 +470,31 @@ html:not(.js) .tour { display: none; }
 .preview {
   position: absolute; z-index: 8;
   bottom: calc(10px + 74px);
-  transform: translateX(-50%);
-  transform-origin: 50% 100%;
+  width: max-content;
+  transform-origin: var(--tail, 50%) 100%;
   display: flex; gap: 10px;
   padding: 10px;
-  background: rgba(255, 255, 255, .94);
-  -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
-  border: 1px solid rgba(26, 16, 51, .1); border-radius: 14px;
-  box-shadow: 0 24px 50px -18px rgba(26, 16, 51, .5);
+  background: rgba(255, 255, 255, .7);
+  -webkit-backdrop-filter: blur(30px) saturate(1.9); backdrop-filter: blur(30px) saturate(1.9);
+  border: 1px solid rgba(255, 255, 255, .7); border-radius: 18px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .9), 0 0 0 .5px rgba(16, 6, 46, .14), 0 26px 54px -18px rgba(16, 6, 46, .55);
   animation: rise .22s var(--ease);
   max-width: calc(100% - 16px);
 }
 .preview::after {
   content: ""; position: absolute; left: var(--tail, 50%); bottom: -7px;
   width: 12px; height: 12px; margin-left: -6px;
-  background: #fff; border: solid rgba(26, 16, 51, .1); border-width: 0 1px 1px 0;
+  background: rgba(255, 255, 255, .7); border: solid rgba(255, 255, 255, .7); border-width: 0 1px 1px 0;
+  -webkit-backdrop-filter: blur(30px) saturate(1.9); backdrop-filter: blur(30px) saturate(1.9);
+  /* Only the half below the popover, so the translucent body is not doubled up. */
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
   transform: rotate(45deg);
 }
 .pv { position: relative; display: grid; gap: 5px; min-width: 0; flex: 1 1 0; width: clamp(112px, 14vw, 168px); }
 .pv-shot {
   position: relative; display: block; width: 100%; padding: 0;
-  border: 2px solid rgba(26, 16, 51, .08); border-radius: 10px;
+  border: 2px solid rgba(255, 255, 255, .6); border-radius: 10px;
+  box-shadow: 0 4px 12px -6px rgba(16, 6, 46, .35);
   transition: border-color .15s ease, transform .2s var(--ease);
 }
 /* The pointer resting on a preview: outlined and lifted, before the click. */
@@ -501,8 +503,8 @@ html:not(.js) .tour { display: none; }
 .pv-shot .mini { border-radius: 8px; }
 .pv-shot .mini .win-bar { height: 20px; }
 .pv-shot .mini .lights { visibility: hidden; }
-.pv-lights { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
-.pv-lights i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .2); }
+.pv-lights { position: absolute; top: 8px; left: 9px; display: flex; gap: 3px; z-index: 1; }
+.pv-lights i { width: 9px; height: 9px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .2); }
 .pv-lights i:nth-child(2) { background: #febc2e; }
 .pv-lights i:nth-child(3) { background: #28c840; }
 .pv-name { text-align: center; font-size: .75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -793,7 +795,7 @@ html:not(.js) .tour { display: none; }
 @keyframes press { 50% { transform: scale(.82); } }
 @keyframes settle { from { opacity: 0; transform: translateY(12px); } }
 @keyframes pop-in { from { opacity: 0; transform: scale(.94); } }
-@keyframes rise { from { opacity: 0; transform: translate(-50%, 10px) scale(.96); } }
+@keyframes rise { from { opacity: 0; transform: translateY(10px) scale(.96); } }
 @keyframes slide-in { from { transform: translateX(calc(var(--dir, 1) * 100%)); } }
 @keyframes slide-out { to { transform: translateX(calc(var(--dir, 1) * -100%)); } }
 @keyframes swipe-arrow { from { opacity: 0; transform: translateX(calc(var(--dir, 1) * 18px)) scaleX(var(--dir, 1)); } }
@@ -843,6 +845,9 @@ html:not(.js) .tour { display: none; }
   .vs td svg { width: 22px; height: 22px; }
   .native-note { padding: 1rem; }
   .menubar-menus { display: none; }
+  /* The switcher fills a phone screen; show compact keys over the menu bar instead. */
+  .keys { top: 2px; z-index: 11; gap: .25rem; padding: .1rem .4rem; font-size: .66rem; border-radius: 7px; }
+  .keys kbd { padding: 0 .3rem; border-radius: 4px; }
 }
 @media (max-width: 380px) {
   .btn { width: 100%; }
