@@ -14,6 +14,7 @@
   --yellow: #ffc93c;
   --yellow-hi: #ffd766;
   --gutter: clamp(1rem, 4vw, 3rem);
+  --container: 1280px; /* shared by the nav, hero and features so their edges line up */
   --shadow-1: 0 1px 2px rgba(26, 16, 51, .05), 0 10px 30px -12px rgba(26, 16, 51, .14);
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
   --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Inter, Roboto, "Helvetica Neue", Arial, sans-serif;
@@ -120,7 +121,7 @@ kbd { font: inherit; }
 }
 .nav {
   display: flex; align-items: center; gap: 1.5rem;
-  max-width: 1120px; margin: 0 auto;
+  max-width: var(--container); margin: 0 auto;
   padding: 1rem 0;
 }
 .brand {
@@ -144,7 +145,7 @@ kbd { font: inherit; }
   grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
   align-items: center;
   gap: clamp(2rem, 4vw, 4rem);
-  max-width: 1320px; margin: 0 auto;
+  max-width: var(--container); margin: 0 auto;
   min-height: calc(100svh - 68px);
   padding: clamp(1.5rem, 4vw, 3rem) 0 clamp(3rem, 6vw, 4.5rem);
 }
@@ -541,7 +542,7 @@ html:not(.js) .tour { display: none; }
   grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
   align-items: center;
   gap: clamp(2rem, 5vw, 4.5rem);
-  max-width: 1120px; margin: 0 auto;
+  max-width: var(--container); margin: 0 auto;
 }
 .feature-copy > p:not(.kicker) { margin-top: 1rem; max-width: 44ch; font-size: clamp(1rem, 1.3vw, 1.125rem); color: var(--muted); text-wrap: pretty; }
 .feature-copy h3 { font-size: 1.25rem; font-weight: 700; letter-spacing: -.015em; line-height: 1.2; }
@@ -550,7 +551,7 @@ html:not(.js) .tour { display: none; }
 .feature-grid {
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(2rem, 3vw, 2.5rem);
-  max-width: 1120px; margin: clamp(4rem, 8vw, 6rem) auto 0;
+  max-width: var(--container); margin: clamp(4rem, 8vw, 6rem) auto 0;
 }
 .feature-grid .feature { display: grid; align-content: start; gap: 1.25rem; }
 
