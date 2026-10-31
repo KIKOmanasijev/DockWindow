@@ -34,7 +34,7 @@
   const preview = $("[data-preview]");
   const caption = $("[data-caption]");
   const frontApp = $("[data-front-app]");
-  const deskChip = $("[data-desk-chip]");
+  const spaces = document.querySelectorAll("[data-space]");
   const tabBtn = $("[data-tab]");
   const releaseBtn = $("[data-release]");
   const resetBtn = $("[data-reset]");
@@ -57,10 +57,10 @@
   // Positions are percentages of the desk. `view` picks the window's content.
   const initialWindows = () => ({
     1: [
-      { id: "s1", app: "safari", view: "trip", title: "Lisbon day plan", url: "wanderly.travel", x: 6, y: 26, w: 48, h: 54 },
-      { id: "s2", app: "safari", view: "booking", title: "Hotel booking", url: "casaluz-stays.travel", x: 42, y: 6, w: 38, h: 56 },
-      { id: "k1", app: "slack", view: "slack", title: "#lisbon-trip", x: 2, y: 4, w: 38, h: 42 },
-      { id: "n1", app: "notes", view: "notes", title: "Packing list", x: 77, y: 18, w: 21, h: 54 },
+      { id: "s1", app: "safari", view: "trip", title: "Lisbon day plan", url: "wanderly.travel", x: 7, y: 27, w: 47, h: 56 },
+      { id: "s2", app: "safari", view: "booking", title: "Hotel booking", url: "casaluz-stays.travel", x: 40, y: 6, w: 37, h: 56 },
+      { id: "k1", app: "slack", view: "slack", title: "#lisbon-trip", x: 2, y: 4, w: 40, h: 44 },
+      { id: "n1", app: "notes", view: "notes", title: "Packing list", x: 73, y: 17, w: 25, h: 56 },
     ],
     2: [
       { id: "s3", app: "safari", view: "hike", title: "Sunday hike", url: "trailmap.travel", x: 4, y: 8, w: 52, h: 64 },
@@ -149,7 +149,7 @@
     }).join("");
     const front = mru()[0];
     frontApp.textContent = front ? APPS[front.app].name : "Finder";
-    deskChip.textContent = `Desktop ${state.desk}`;
+    spaces.forEach((el) => el.classList.toggle("on", Number(el.dataset.space) === state.desk));
     if (swap && !reduceMotion.matches) {
       desk.style.setProperty("--swap-from", `${swap * 40}px`);
       desk.classList.remove("swap");
@@ -350,7 +350,8 @@
     if (state.desk === 1 && byId(INTRO_PICK)) openPreview(INTRO_APP, { intro: true });
   }
 
-  function reset() {
+  // Restores the opening scenario. Only a person pressing Reset gets focus moved.
+  function reset({ focus = true } = {}) {
     closeAll();
     state.windows = initialWindows();
     state.order = initialOrder();
@@ -362,7 +363,7 @@
     renderDesk();
     renderDock();
     showIntro();
-    tabBtn.focus();
+    if (focus) tabBtn.focus();
   }
 
   // ----- Events -----
@@ -377,7 +378,7 @@
     if (w) focusWindow(w.id, "Released Option");
     tabBtn.focus();
   });
-  resetBtn.addEventListener("click", reset);
+  resetBtn.addEventListener("click", () => reset());
 
   tilesEl.addEventListener("click", (e) => {
     const t = e.target.closest("[data-tile]");
@@ -400,7 +401,7 @@
 
   // Hover previews for mouse pointers only; touch and keyboard use click.
   dock.addEventListener("pointerover", (e) => {
-    if (e.pointerType !== "mouse") return;
+    if (e.pointerType !== "mouse" || tour.playing) return;
     const b = e.target.closest(".dock-btn");
     if (!b) return;
     clearTimeout(leaveTimer);
@@ -414,7 +415,7 @@
   const scheduleLeave = (e) => {
     if (e.pointerType !== "mouse") return;
     clearTimeout(hoverTimer);
-    if (state.mode !== "preview" || state.intro) return;
+    if (state.mode !== "preview" || state.intro || tour.playing) return;
     const to = e.relatedTarget;
     if (to && (dock.contains(to) || preview.contains(to))) return;
     leaveTimer = setTimeout(() => {
@@ -477,4 +478,182 @@
   renderDesk();
   renderDock();
   showIntro();
+
+  // ---------- Guided tour ----------
+  // Plays the three ideas with a pointer and a camera that zooms into the Dock. It uses
+  // the same functions as the hands-on demo, never moves focus, and stops for good as
+  // soon as someone uses the demo. It starts only while the demo is on screen and never
+  // on its own under reduced motion.
+  const cam = $("[data-cam]");
+  const pointer = $("[data-cursor]");
+  const keys = $("[data-keys]");
+  const tourBtn = $("[data-tour-toggle]");
+  const tourLabel = $("[data-tour-label]");
+  const tourSteps = [...document.querySelectorAll("[data-tour-step]")];
+  const tour = { run: 0, scene: 0, playing: false, userTook: false };
+  const STOP = Symbol("tour stopped");
+
+  // Centre of an element in the camera's own (unzoomed) coordinates. Layout offsets
+  // ignore transforms, so the preview's translateX(-50%) is corrected by hand.
+  function spot(el, { bottom = false } = {}) {
+    let x = el.offsetWidth / 2;
+    let y = bottom ? el.offsetHeight : el.offsetHeight / 2;
+    for (let n = el; n && n !== cam; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
+    if (preview.contains(el)) x -= preview.offsetWidth / 2;
+    return { x, y };
+  }
+  function zoom(scale, el, opts) {
+    if (scale === 1 || !el) { cam.style.transform = ""; return; }
+    const p = spot(el, opts);
+    cam.style.transformOrigin = `${p.x}px ${p.y}px`;
+    cam.style.transform = `scale(${scale})`;
+  }
+  // Zoom as far as asked, but never so far that the element spills off a narrow screen.
+  const fit = (scale, el) => (el.offsetWidth ? Math.max(1, Math.min(scale, (cam.clientWidth * 0.94) / el.offsetWidth)) : scale);
+  const point = (el) => {
+    const p = spot(el);
+    pointer.style.transform = `translate(${p.x}px, ${p.y}px)`;
+  };
+  function press() {
+    pointer.classList.remove("press");
+    void pointer.offsetWidth;
+    pointer.classList.add("press");
+  }
+
+  const SCENES = [
+    { ms: 7600, run: async (wait) => {
+      reset({ focus: false });
+      closeAll();
+      say("Safari has two windows open: a day plan and a hotel booking. Watch the Dock.");
+      point(desk);
+      pointer.classList.add("is-on");
+      await wait(1100);
+      point(dock.querySelector('[data-app="safari"]'));
+      await wait(1000);
+      zoom(fit(1.55, dock), dock, { bottom: true });
+      openPreview("safari");
+      await wait(1500);
+      const shot = preview.querySelector('[data-focus="s2"]');
+      if (shot) { point(shot); peek("s2"); }
+      await wait(1300);
+      press();
+      focusWindow("s2", "Picked from the preview");
+      zoom(1);
+      await wait(2700);
+    } },
+    { ms: 5600, run: async (wait) => {
+      closeAll();
+      if (state.desk !== 1) setDesk(1);
+      pointer.classList.remove("is-on");
+      keys.hidden = false;
+      openSwitcher();
+      zoom(1.2, switcher);
+      await wait(1500);
+      stepSwitcher(1);
+      await wait(1300);
+      stepSwitcher(-1);
+      await wait(1100);
+      const w = mru()[state.sel];
+      keys.hidden = true;
+      if (w) focusWindow(w.id, "Released Option");
+      zoom(1);
+      await wait(1700);
+    } },
+    { ms: 8200, run: async (wait) => {
+      closeAll();
+      if (state.desk !== 1) setDesk(1);
+      point(desk);
+      pointer.classList.add("is-on");
+      say("Each desktop keeps its own Dock. Switching to Desktop 2.");
+      await wait(500);
+      point($('[data-space="2"]'));
+      await wait(1100);
+      press();
+      setDesk(2);
+      zoom(fit(1.8, dock), dock, { bottom: true });
+      await wait(3000);
+      setDesk(1);
+      await wait(2600);
+      zoom(1);
+      await wait(1000);
+    } },
+  ];
+
+  function markStep(i) {
+    tourSteps.forEach((b, n) => {
+      b.classList.remove("is-active");
+      void b.offsetWidth; // restart the progress fill
+      b.classList.toggle("is-active", n === i);
+      b.classList.toggle("is-done", n < i);
+      b.style.setProperty("--dur", `${SCENES[n].ms}ms`);
+      if (n === i) b.setAttribute("aria-current", "step");
+      else b.removeAttribute("aria-current");
+    });
+  }
+
+  function setTouring(on) {
+    tour.playing = on;
+    stage.dataset.tour = on ? "playing" : "stopped";
+    caption.setAttribute("aria-live", on ? "off" : "polite"); // no running commentary for screen readers
+    tourLabel.textContent = on ? "Pause tour" : "Play tour";
+    if (!on) {
+      zoom(1);
+      pointer.classList.remove("is-on", "press");
+      keys.hidden = true;
+      peek(null);
+    }
+  }
+
+  async function playTour(from = tour.scene) {
+    const id = ++tour.run;
+    const wait = (ms) => new Promise((resolve, reject) =>
+      setTimeout(() => (id === tour.run ? resolve() : reject(STOP)), ms));
+    setTouring(true);
+    try {
+      for (let i = from; ; i = (i + 1) % SCENES.length) {
+        tour.scene = i;
+        markStep(i);
+        await SCENES[i].run(wait);
+      }
+    } catch (err) {
+      if (err !== STOP) throw err;
+    }
+  }
+
+  function stopTour({ byUser = false } = {}) {
+    if (byUser) tour.userTook = true;
+    if (!tour.playing) return;
+    tour.run++;
+    setTouring(false);
+  }
+
+  tourBtn.addEventListener("click", () => {
+    if (tour.playing) stopTour({ byUser: true });
+    else { tour.userTook = false; playTour(); }
+  });
+  tourSteps.forEach((b) => b.addEventListener("click", () => {
+    tour.userTook = false;
+    playTour(Number(b.dataset.tourStep));
+  }));
+
+  // Any hands-on use of the demo ends the tour; the tour's own buttons do not.
+  const takeOver = (e) => {
+    if (!e.target.closest(".tour")) stopTour({ byUser: true });
+  };
+  stage.addEventListener("pointerdown", takeOver, true);
+  stage.addEventListener("keydown", takeOver, true);
+  stage.addEventListener("focusin", takeOver);
+
+  // Autoplay waits a moment after the demo comes into view, and pauses when it leaves.
+  if ("IntersectionObserver" in window) {
+    let inView = false;
+    new IntersectionObserver(([entry]) => {
+      inView = entry.isIntersecting;
+      if (!inView) { if (tour.playing) stopTour(); return; }
+      setTimeout(() => {
+        if (inView && !tour.playing && !tour.userTook && !reduceMotion.matches) playTour();
+      }, 700);
+    }, { threshold: 0.5 }).observe(stage);
+  }
+  setTouring(false);
 })();

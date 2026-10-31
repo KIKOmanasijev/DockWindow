@@ -23,12 +23,15 @@
 <body>
   <a class="skip" href="#main">Skip to content</a>
 
-  <!-- UI glyphs for buttons, the demo menu bar and feature visuals. -->
+  <!-- UI glyphs for buttons, the demo, the hero notes and the comparison table. -->
   <svg width="0" height="0" class="sr-only" aria-hidden="true" focusable="false">
     <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11m0 0-4.5-4.5M12 14.5l4.5-4.5M4.5 15.5v2.5A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-2.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M12 5v14m0 0-5-5m5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="6" ry="5"/><circle cx="5" cy="10" r="2.4"/><circle cx="9.5" cy="6" r="2.4"/><circle cx="14.5" cy="6" r="2.4"/><circle cx="19" cy="10" r="2.4"/></symbol>
-    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-scribble" viewBox="0 0 28 24"><path d="M3 13.5c2.2 1.4 4.3 3.6 6 6.4C12.6 12.2 17.6 6.4 25 3" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-yes" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="6" fill="#2f9e62"/><path d="m7 12.4 3.3 3.3L17 9" fill="none" stroke="#fff" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-no" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11m0-11-11 11" fill="none" stroke="#e5484d" stroke-width="3" stroke-linecap="round"/></symbol>
+    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
+    <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="5.5" width="4" height="13" rx="1.2" fill="currentColor"/><rect x="13.5" y="5.5" width="4" height="13" rx="1.2" fill="currentColor"/></symbol>
     <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5 3.5 19 12l-6.4 1.4L9.6 20z" fill="#1a1033" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   </svg>
 
@@ -46,61 +49,82 @@
       <a class="nav-cta" href="#get">Get DogBar</a>
     </nav>
 
-    <div class="hero-copy" id="top">
-      <p class="eyebrow">Window switcher and Dock for macOS</p>
-      <h1 class="headline">Go straight to the window you need.</h1>
-      <p class="lede">Cmd+Tab only gets you to an app. DogBar’s Option+Tab shows every window on its own, and Dock previews let you click the exact one.</p>
-      <div class="actions">
-        <a class="btn btn-download" data-download aria-describedby="hero-dl-note">
-          <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
-          <span>Download for Mac</span>
-          <span class="dl-tag" data-download-tag>Coming soon</span>
-        </a>
-        <a class="btn-link" href="#demo" data-demo-start>
-          <span>Try it below</span>
-          <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg>
-        </a>
-      </div>
-      <p class="dl-note" id="hero-dl-note" data-download-note>Public release is being prepared. macOS 14+.</p>
-    </div>
-
-    <section class="stage" id="demo" aria-labelledby="demo-title" tabindex="-1">
-      <h2 id="demo-title" class="sr-only">Interactive DogBar demo</h2>
-      <div class="controls">
-        <span class="controls-label" aria-hidden="true">Try it</span>
-        <div class="seg" role="group" aria-label="Desktop">
-          <button type="button" class="chip" data-desk-btn="1" aria-pressed="true">Desktop 1 <small>Planning</small></button>
-          <button type="button" class="chip" data-desk-btn="2" aria-pressed="false">Desktop 2 <small>Personal</small></button>
+    <div class="hero-inner">
+      <div class="hero-copy" id="top">
+        <p class="eyebrow">Window switcher and Dock for macOS</p>
+        <h1 class="headline">Go straight to the window you need.</h1>
+        <p class="lede">Stop clicking through piles of windows. DogBar shows you every one, so you land on the right window the first time.</p>
+        <ul class="scribbles" aria-label="What DogBar gives you">
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>every window, not just every app</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>peek inside before you click</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>a separate Dock for each desktop</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>window counts at a glance</li>
+        </ul>
+        <div class="actions">
+          <a class="btn btn-download" data-download aria-describedby="hero-dl-note">
+            <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+            <span>Download for Mac</span>
+            <span class="dl-tag" data-download-tag>Coming soon</span>
+          </a>
+          <a class="btn-link" href="#demo" data-demo-start>Try the demo</a>
         </div>
-        <button type="button" class="chip chip-key" data-tab><kbd aria-hidden="true">⌥</kbd> Option+Tab</button>
-        <button type="button" class="chip chip-release" data-release hidden>Release <kbd aria-hidden="true">⌥</kbd></button>
-        <button type="button" class="chip chip-quiet" data-reset hidden>Reset</button>
+        <p class="dl-note" id="hero-dl-note" data-download-note>Public release is being prepared. macOS 14+.</p>
       </div>
 
-      <div class="screen">
+      <section class="stage" id="demo" aria-labelledby="demo-title" tabindex="-1">
+        <h2 id="demo-title" class="sr-only">Interactive DogBar demo</h2>
         <div class="mac" data-demo>
-          <div class="menubar" aria-hidden="true">
-            <span class="menubar-app" data-front-app>Safari</span>
-            <span class="menubar-right">
-              <svg class="menubar-paw"><use href="#i-paw"/></svg>
-              <span class="desk-chip" data-desk-chip>Desktop 1</span>
-              <span class="menubar-clock">Thu 2:41 PM</span>
-            </span>
+          <!-- The camera wraps the whole screen so the tour can zoom into the Dock. -->
+          <div class="cam" data-cam>
+            <div class="menubar" aria-hidden="true">
+              <span class="menubar-app" data-front-app>Safari</span>
+              <span class="menubar-right">
+                <svg class="menubar-paw"><use href="#i-paw"/></svg>
+                <span class="spaces" data-spaces><i data-space="1" class="on">1</i><i data-space="2">2</i></span>
+                <span class="menubar-clock">Thu 2:41 PM</span>
+              </span>
+            </div>
+            <div class="desk" data-desk aria-hidden="true"></div>
+            <div class="switcher" data-switcher hidden>
+              <p class="sr-only" id="switcher-label">Window switcher</p>
+              <ul class="tiles" data-tiles aria-labelledby="switcher-label"></ul>
+            </div>
+            <div class="dock-wrap">
+              <ul class="dock" data-dock aria-label="Demo Dock"></ul>
+            </div>
+            <div class="preview" id="demo-preview" data-preview hidden></div>
+            <svg class="cursor" data-cursor aria-hidden="true" focusable="false"><use href="#i-cursor"/></svg>
           </div>
-          <div class="desk" data-desk aria-hidden="true"></div>
-          <div class="switcher" data-switcher hidden>
-            <p class="sr-only" id="switcher-label">Window switcher</p>
-            <ul class="tiles" data-tiles aria-labelledby="switcher-label"></ul>
-          </div>
-          <div class="dock-wrap">
-            <ul class="dock" data-dock aria-label="Demo Dock"></ul>
-          </div>
-          <div class="preview" id="demo-preview" data-preview hidden></div>
+          <p class="keys" data-keys aria-hidden="true" hidden><kbd>⌥ Option</kbd> + <kbd>⇥ Tab</kbd></p>
         </div>
-      </div>
-      <p class="caption" data-caption aria-live="polite">Planning a trip: Safari has two windows open. Pick “Hotel booking” to bring just that one forward.</p>
-      <noscript><p class="caption">The live demo needs JavaScript. The pictures below show the same ideas.</p></noscript>
-    </section>
+
+        <div class="tour" role="group" aria-label="Guided tour">
+          <button type="button" class="tour-toggle" data-tour-toggle>
+            <svg class="tour-ic-play" aria-hidden="true" focusable="false"><use href="#i-play"/></svg>
+            <svg class="tour-ic-pause" aria-hidden="true" focusable="false"><use href="#i-pause"/></svg>
+            <span data-tour-label>Play tour</span>
+          </button>
+          <ol class="tour-steps">
+            <li><button type="button" class="tour-step" data-tour-step="0">Dock previews<i class="tour-bar" aria-hidden="true"></i></button></li>
+            <li><button type="button" class="tour-step" data-tour-step="1">Every window<i class="tour-bar" aria-hidden="true"></i></button></li>
+            <li><button type="button" class="tour-step" data-tour-step="2">Dock per desktop<i class="tour-bar" aria-hidden="true"></i></button></li>
+          </ol>
+        </div>
+        <p class="caption" data-caption aria-live="polite">Planning a trip: Safari has two windows open. Pick “Hotel booking” to bring just that one forward.</p>
+        <noscript><p class="caption">The live demo needs JavaScript. The pictures below show the same ideas.</p></noscript>
+
+        <div class="controls">
+          <span class="controls-label">Try it yourself</span>
+          <div class="seg" role="group" aria-label="Desktop">
+            <button type="button" class="chip" data-desk-btn="1" aria-pressed="true">Desktop 1 <small>Planning</small></button>
+            <button type="button" class="chip" data-desk-btn="2" aria-pressed="false">Desktop 2 <small>Personal</small></button>
+          </div>
+          <button type="button" class="chip chip-key" data-tab><kbd aria-hidden="true">⌥</kbd> Option+Tab</button>
+          <button type="button" class="chip chip-release" data-release hidden>Release <kbd aria-hidden="true">⌥</kbd></button>
+          <button type="button" class="chip chip-quiet" data-reset hidden>Reset</button>
+        </div>
+      </section>
+    </div>
   </header>
 
   <main id="main">
@@ -111,7 +135,7 @@
           <h2 id="features-title" class="section-title">Cmd+Tab knows apps. You work in windows.</h2>
           <p>Two Safari windows hide behind one Safari icon in Cmd+Tab. In DogBar’s switcher, every window gets its own tile with its name, so you land on the one you meant. Hold Option, tap Tab, let go.</p>
         </div>
-        <figure class="feature-art compare reveal" role="img" aria-label="Comparison. macOS Cmd+Tab shows one icon each for Safari, Slack and Notes. DogBar Option+Tab shows four named tiles: Lisbon day plan and Hotel booking from Safari, lisbon-trip from Slack, and Packing list from Notes.">
+        <figure class="feature-art compare reveal" role="img" aria-label="Comparison. macOS Cmd+Tab shows one icon each for Safari, Slack and Notes. DogBar Option+Tab shows four named window tiles, each with its app icon: Lisbon day plan and Hotel booking from Safari, lisbon-trip from Slack, and Packing list from Notes.">
           <div class="compare-col">
             <p class="compare-label">macOS Cmd+Tab</p>
             <div class="fx-switch fx-switch-apps">
@@ -124,28 +148,28 @@
           <div class="compare-col is-dogbar">
             <p class="compare-label">DogBar Option+Tab</p>
             <div class="fx-switch">
-              <span class="fx-tile"><span class="thumb thumb-trip"></span><span class="fx-name">Lisbon day plan</span></span>
-              <span class="fx-tile is-on"><span class="thumb thumb-booking"></span><span class="fx-name">Hotel booking</span></span>
-              <span class="fx-tile"><span class="thumb thumb-slack"></span><span class="fx-name">#lisbon-trip</span></span>
-              <span class="fx-tile"><span class="thumb thumb-notes"></span><span class="fx-name">Packing list</span></span>
+              <span class="fx-tile"><span class="thumb thumb-trip"></span><img class="fx-badge" src="assets/apps/safari.png" width="96" height="96" alt=""><span class="fx-name">Lisbon day plan</span></span>
+              <span class="fx-tile is-on"><span class="thumb thumb-booking"></span><img class="fx-badge" src="assets/apps/safari.png" width="96" height="96" alt=""><span class="fx-name">Hotel booking</span></span>
+              <span class="fx-tile"><span class="thumb thumb-slack"></span><img class="fx-badge" src="assets/apps/slack.png" width="96" height="96" alt=""><span class="fx-name">#lisbon-trip</span></span>
+              <span class="fx-tile"><span class="thumb thumb-notes"></span><img class="fx-badge" src="assets/apps/notes.png" width="96" height="96" alt=""><span class="fx-name">Packing list</span></span>
             </div>
-            <p class="compare-note">One tile per window. Pick the hotel booking.</p>
+            <p class="compare-note">One tile per window, two of them Safari. Pick the hotel booking.</p>
           </div>
         </figure>
       </article>
 
       <div class="feature-grid">
         <article class="feature">
-          <figure class="feature-art reveal" role="img" aria-label="The Safari Dock icon with two window previews above it, Lisbon day plan and Hotel booking. The pointer is on Hotel booking.">
+          <figure class="feature-art reveal" role="img" aria-label="The Safari Dock icon, with two dots for its two windows, shows two window previews above it: Lisbon day plan and Hotel booking. The pointer is on Hotel booking.">
             <div class="fx-stage">
               <div class="fx-pop">
                 <span class="fx-pv"><span class="thumb thumb-trip"></span><span class="fx-name">Lisbon day plan</span></span>
                 <span class="fx-pv is-on"><span class="thumb thumb-booking"></span><span class="fx-name">Hotel booking</span><svg class="fx-cursor"><use href="#i-cursor"/></svg></span>
               </div>
               <div class="fx-dock">
-                <span class="fx-dock-app"><img src="assets/apps/finder.png" width="96" height="96" alt=""><i></i></span>
-                <span class="fx-dock-app is-on"><img src="assets/apps/safari.png" width="96" height="96" alt=""><i></i></span>
-                <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""><i></i></span>
+                <span class="fx-dock-app"><img src="assets/apps/finder.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
+                <span class="fx-dock-app is-on"><img src="assets/apps/safari.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
               </div>
             </div>
           </figure>
@@ -210,29 +234,49 @@
 
     <section class="modes" aria-labelledby="modes-title">
       <div class="modes-head">
-        <p class="kicker">Your choice</p>
-        <h2 id="modes-title" class="section-title">Use DogBar’s Dock, or keep Apple’s.</h2>
-        <p>The switcher and previews work either way. Pause DogBar whenever you like and your regular Dock comes back.</p>
+        <p class="kicker">Compared with macOS</p>
+        <h2 id="modes-title" class="section-title">What your Mac leaves out.</h2>
+        <p>The Dock and app switcher think in apps. DogBar adds the window-level tools on top.</p>
       </div>
-      <div class="modes-grid">
-        <div class="mode is-primary">
-          <h3>DogBar Dock</h3>
-          <p class="mode-sub">Replaces the Dock with one built around windows.</p>
-          <ul class="ticks">
-            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>A separate Dock for each desktop</li>
-            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>One dot per open window</li>
-            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Drag the edge to resize, no magnification</li>
-            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Window previews and Option+Tab</li>
-          </ul>
-        </div>
-        <div class="mode">
-          <h3>Native Dock mode</h3>
-          <p class="mode-sub">Keeps Apple’s Dock exactly where it is.</p>
-          <ul class="ticks">
-            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Window previews on Apple’s Dock</li>
-            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Option+Tab for every window</li>
-          </ul>
-        </div>
+      <table class="vs">
+        <thead>
+          <tr>
+            <th scope="col"><span class="sr-only">Feature</span></th>
+            <th scope="col">macOS</th>
+            <th scope="col" class="is-dogbar"><span class="vs-brand"><img src="assets/dog-96.png" width="24" height="24" alt="">DogBar</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <th scope="row">Individual window previews in the keyboard switcher</th>
+            <td><svg aria-hidden="true" focusable="false"><use href="#i-no"/></svg><span class="sr-only">No</span></td>
+            <td class="is-dogbar"><svg aria-hidden="true" focusable="false"><use href="#i-yes"/></svg><span class="sr-only">Yes</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Window previews when you hover the Dock</th>
+            <td><svg aria-hidden="true" focusable="false"><use href="#i-no"/></svg><span class="sr-only">No</span></td>
+            <td class="is-dogbar"><svg aria-hidden="true" focusable="false"><use href="#i-yes"/></svg><span class="sr-only">Yes</span></td>
+          </tr>
+          <tr>
+            <th scope="row">A separate Dock for each desktop</th>
+            <td><svg aria-hidden="true" focusable="false"><use href="#i-no"/></svg><span class="sr-only">No</span></td>
+            <td class="is-dogbar"><svg aria-hidden="true" focusable="false"><use href="#i-yes"/></svg><span class="sr-only">Yes</span></td>
+          </tr>
+          <tr>
+            <th scope="row">One dot for every open window</th>
+            <td><svg aria-hidden="true" focusable="false"><use href="#i-no"/></svg><span class="sr-only">No</span></td>
+            <td class="is-dogbar"><svg aria-hidden="true" focusable="false"><use href="#i-yes"/></svg><span class="sr-only">Yes</span></td>
+          </tr>
+          <tr>
+            <th scope="row">Close or minimize from Dock hover previews</th>
+            <td><svg aria-hidden="true" focusable="false"><use href="#i-no"/></svg><span class="sr-only">No</span></td>
+            <td class="is-dogbar"><svg aria-hidden="true" focusable="false"><use href="#i-yes"/></svg><span class="sr-only">Yes</span></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="native-note">
+        <h3>Rather keep Apple’s Dock?</h3>
+        <p>Native Dock mode leaves it in place and still adds window previews and the window switcher. A Dock per desktop and window dots need DogBar’s Dock. Pause DogBar anytime and your regular Dock comes back.</p>
       </div>
       <p class="modes-foot">You can also choose whether the Dock, the switcher and previews show the current desktop or all desktops, each on its own.</p>
     </section>

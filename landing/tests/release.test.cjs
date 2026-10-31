@@ -129,7 +129,7 @@ test("download CTA is yellow while decorative UI uses cream and lavender", () =>
   assert.match(rule(".btn-download:not([href])"), /var\(--yellow\)/, "coming soon retains the action color");
   assert.match(rule(".btn-download:not([href])"), /cursor: default/);
   assert.doesNotMatch(css, /\.btn-download:not\(\[href\]\):hover/, "no hover lift while unavailable");
-  for (const selector of [".headline", ".kicker", ".pv-hint", ".chip-key", ".nav-cta", ".mode.is-primary", ".fx-pv.is-on"]) {
+  for (const selector of [".headline", ".kicker", ".scribbles", ".pv-hint", ".chip-key", ".nav-cta", ".tour-toggle", ".vs .is-dogbar", ".fx-pv.is-on"]) {
     assert.doesNotMatch(rule(selector), /var\(--yellow\)/, selector);
   }
   // Yellow belongs to the download button only: every rule that uses it styles .btn-download.

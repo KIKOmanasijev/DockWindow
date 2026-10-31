@@ -25,10 +25,18 @@ const MANIFEST = {
 };
 
 // Loads the page with a stubbed fetch for /release.json, then runs both scripts.
-async function page(fetchImpl, url = "https://dogbar.hristijan.dev/") {
+async function page(fetchImpl, url = "https://dogbar.hristijan.dev/", { reduceMotion = false, inView = false } = {}) {
   const dom = new JSDOM(HTML, { url, runScripts: "outside-only", pretendToBeVisual: true });
   const w = dom.window;
-  w.matchMedia = () => ({ matches: false, addEventListener() {} });
+  w.matchMedia = () => ({ matches: reduceMotion, addEventListener() {} });
+  // Optional stand-in for IntersectionObserver that reports everything as on screen.
+  if (inView) {
+    w.IntersectionObserver = class {
+      constructor(cb) { this.cb = cb; }
+      observe(el) { this.cb([{ target: el, isIntersecting: true }], this); }
+      unobserve() {}
+    };
+  }
   const calls = [];
   w.fetch = (input, init) => { calls.push({ input, init }); return fetchImpl(input, init); };
   w.eval(RELEASE_JS);
@@ -142,6 +150,39 @@ test("feature visuals are labelled pictures that never collide with demo hooks",
   assert.deepEqual($$(".compare .is-dogbar .fx-name").map((n) => n.textContent), ["Lisbon day plan", "Hotel booking", "#lisbon-trip", "Packing list"]);
   assert.equal($$(".compare .fx-switch-apps .fx-app").length, 3, "Cmd+Tab shows one icon per app");
   assert.ok($$("#faq details summary").length >= 3, "short FAQ");
+
+  // Each DogBar tile carries its app icon, so two tiles visibly come from Safari.
+  const badges = $$(".compare .is-dogbar .fx-tile").map((t) => t.querySelector(".fx-badge")?.getAttribute("src"));
+  assert.deepEqual(badges, ["assets/apps/safari.png", "assets/apps/safari.png", "assets/apps/slack.png", "assets/apps/notes.png"]);
+  // Dots match the scenario: Safari has two windows, Slack one, Finder none.
+  const dots = (app) => $$(`#features .fx-pop + .fx-dock img[src$="${app}.png"] + .fx-dots i`).length;
+  assert.deepEqual([dots("finder"), dots("safari"), dots("slack")], [0, 2, 1]);
+});
+
+test("hero copy sells benefits without shortcut jargon", { skip }, async () => {
+  const { $, $$ } = await page(json(null));
+  assert.doesNotMatch($(".lede").textContent, /Option|Cmd|Command|Tab\b|⌥|⌘/);
+  assert.equal($$(".scribbles li").length, 4, "short handwritten benefit list");
+  for (const li of $$(".scribbles li")) assert.doesNotMatch(li.textContent, /Option|Cmd|Tab\b/);
+});
+
+test("comparison table marks what macOS lacks and DogBar adds", { skip }, async () => {
+  const { $, $$ } = await page(json(null));
+  const head = $$(".vs thead th").map((th) => th.textContent.trim());
+  assert.deepEqual(head.slice(1), ["macOS", "DogBar"]);
+  const rows = $$(".vs tbody tr");
+  assert.equal(rows.length, 5);
+  assert.equal(rows[0].querySelector("th").textContent, "Individual window previews in the keyboard switcher");
+  assert.equal(rows[4].querySelector("th").textContent, "Close or minimize from Dock hover previews");
+  for (const row of rows) {
+    assert.equal(row.querySelector("th").getAttribute("scope"), "row");
+    const [mac, dogbar] = [...row.querySelectorAll("td")];
+    assert.equal(mac.textContent.trim(), "No");
+    assert.ok(mac.querySelector('use[href="#i-no"]'));
+    assert.equal(dogbar.textContent.trim(), "Yes");
+    assert.ok(dogbar.querySelector('use[href="#i-yes"]'));
+  }
+  assert.match($(".native-note").textContent, /Native Dock mode/, "keeping Apple's Dock is still explained");
 });
 
 test("CTA hierarchy: download is the primary button, the demo a secondary link", { skip }, async () => {
@@ -263,7 +304,7 @@ test("demo: switcher, previews, desktops and reset", { skip }, async () => {
   $('[data-desk-btn="2"]').click();
   assert.equal(dockApps(), "finder:0,dockwindow:0,safari:1,music:1");
   assert.equal($('[data-desk-btn="2"]').getAttribute("aria-pressed"), "true");
-  assert.equal($("[data-desk-chip]").textContent, "Desktop 2");
+  assert.deepEqual($$("[data-space].on").map((el) => el.dataset.space), ["2"], "menu bar shows Desktop 2");
   assert.match(cap(), /Safari \(1 dot\), Music \(1 dot\)/);
   assert.match($('[data-win="s3"]').textContent, /Sunday hike/);
   assert.equal($$('[data-win="m1"] .album-art').length, 3, "album covers use their own class");
@@ -317,3 +358,55 @@ test("hovering a windowless Dock app does not open an empty preview", { skip }, 
   assert.equal(p.$("[data-preview]").hidden, true);
   assert.equal(p.$(".pv-empty"), null);
 });
+
+const pause = (w, ms) => new Promise((r) => w.setTimeout(r, ms));
+
+test("guided tour autoplays on screen, stays quiet for screen readers and never takes focus", { skip }, async () => {
+  const p = await page(json(null), undefined, { inView: true });
+  const { w, $, $$ } = p;
+  assert.equal($("#demo").dataset.tour, "stopped", "waits a moment before starting");
+  await pause(w, 760);
+  assert.equal($("#demo").dataset.tour, "playing");
+  assert.equal($("[data-caption]").getAttribute("aria-live"), "off", "no running commentary");
+  assert.equal($("[data-tour-label]").textContent, "Pause tour");
+  assert.ok($("[data-cursor]").classList.contains("is-on"), "the pointer is visible");
+  assert.ok($('[data-tour-step="0"]').classList.contains("is-active"));
+  assert.equal($('[data-tour-step="0"]').getAttribute("aria-current"), "step");
+  assert.equal(w.document.activeElement, w.document.body, "the tour does not move focus");
+  assert.equal($$(".reveal.in").length, $$(".reveal").length, "reveals still run");
+
+  // Using the demo hands it over for good: camera, pointer and announcements reset.
+  $('.dock-btn[data-app="slack"]').dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true }));
+  assert.equal($("#demo").dataset.tour, "stopped");
+  assert.equal($("[data-cam]").style.transform, "");
+  assert.ok(!$("[data-cursor]").classList.contains("is-on"));
+  assert.ok($("[data-keys]").hidden);
+  assert.equal($("[data-caption]").getAttribute("aria-live"), "polite");
+  assert.equal($("[data-tour-label]").textContent, "Play tour");
+  await pause(w, 1200);
+  assert.equal($("#demo").dataset.tour, "stopped", "pending tour steps do not resume");
+});
+
+test("tour steps can be chosen and the tour paused; reduced motion never autoplays", { skip }, async () => {
+  const still = await page(json(null), undefined, { inView: true, reduceMotion: true });
+  await pause(still.w, 760);
+  assert.equal(still.$("#demo").dataset.tour, "stopped");
+  assert.equal(still.$("[data-preview]").hidden, false, "the static opening example remains");
+
+  const { w, $ } = still;
+  $('[data-tour-step="2"]').click();
+  assert.equal($("#demo").dataset.tour, "playing", "a person can still start it");
+  assert.ok($('[data-tour-step="2"]').classList.contains("is-active"));
+  assert.ok($('[data-tour-step="0"]').classList.contains("is-done"));
+  await pause(w, 1700);
+  assert.deepEqual([...w.document.querySelectorAll("[data-space].on")].map((el) => el.dataset.space), ["2"], "the pointer switched desktops");
+  assert.match($("[data-cam]").style.transform, /scale\(1\.8\)/, "zoomed into the Dock");
+  assert.equal($$dockApps(w), "finder:0,dockwindow:0,safari:1,music:1", "the Dock changed with the desktop");
+  $("[data-tour-toggle]").click();
+  assert.equal($("#demo").dataset.tour, "stopped");
+  assert.equal($("[data-cam]").style.transform, "");
+});
+
+function $$dockApps(w) {
+  return [...w.document.querySelectorAll(".dock-btn")].map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
+}

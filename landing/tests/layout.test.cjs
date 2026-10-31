@@ -31,6 +31,11 @@ test("feature illustrations never inherit album-cover dimensions", { skip: !JSDO
     // App icons inside the feature visuals keep their own fixed sizes.
     const icon = document.querySelector(".fx-dock-app img");
     assert.equal(dom.window.getComputedStyle(icon).width, "34px");
+    // Cmd+Tab icons scale by width and keep their square shape instead of stretching.
+    const appIcon = dom.window.getComputedStyle(document.querySelector(".fx-app img"));
+    assert.equal(appIcon.width, "100%");
+    assert.equal(appIcon.height, "auto");
+    assert.equal(appIcon.aspectRatio, "1");
     const music = document.createElement("div");
     music.className = "music";
     music.innerHTML = '<i class="album-art"></i>';
