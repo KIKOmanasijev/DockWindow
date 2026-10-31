@@ -33,8 +33,9 @@ public struct AppResourceUsage: Sendable {
                     cpu = max(0, 100 * ticks / Double(sample.time - previous.time))
                 }
                 receive(AppResourceUsage(cpuPercent: cpu, residentBytes: sample.stats.values.reduce(0) { $0 + $1.memory }))
+                let delay: UInt64 = previous == nil ? 300_000_000 : 2_000_000_000
                 previous = sample
-                do { try await Task.sleep(nanoseconds: 2_000_000_000) } catch { return }
+                do { try await Task.sleep(nanoseconds: delay) } catch { return }
             }
         }
     }

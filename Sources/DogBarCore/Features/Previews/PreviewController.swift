@@ -98,7 +98,7 @@ import SwiftUI
         openingTask?.cancel(); openingTask = nil
         captureUpdateTask?.cancel(); captureUpdateTask = nil
         captures.stop(); visibleIDs = []
-        resourceMonitor.stop(); presentation.resourceUsage = nil
+        resourceMonitor.stop(); presentation.resourceUsage = nil; presentation.resourceUsageUnavailable = false
         if let localMonitor { NSEvent.removeMonitor(localMonitor) }
         if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }
         localMonitor = nil; globalMonitor = nil
@@ -118,7 +118,7 @@ import SwiftUI
             generation &+= 1; appearanceTask?.cancel(); appearanceTask = nil
             openingTask?.cancel(); openingTask = nil
             presentation.opening = false; presentation.message = nil
-            resourceMonitor.stop(); presentation.resourceUsage = nil
+            resourceMonitor.stop(); presentation.resourceUsage = nil; presentation.resourceUsageUnavailable = false
             visibleIDs = []; captures.stop(); presentation.contentID &+= 1
         }
         self.item = item; self.anchor = anchor; self.screen = screen; self.native = native
@@ -191,10 +191,11 @@ import SwiftUI
     private func updateResourceMonitor() {
         guard panel.isVisible, settings.previewShowCPUUsage || settings.previewShowMemoryUsage,
               let app = presentation.app else {
-            resourceMonitor.stop(); presentation.resourceUsage = nil; return
+            resourceMonitor.stop(); presentation.resourceUsage = nil; presentation.resourceUsageUnavailable = false; return
         }
         resourceMonitor.start(pid: app.pid, bundleURL: app.bundleURL) { [weak self] usage in
             self?.presentation.resourceUsage = usage
+            self?.presentation.resourceUsageUnavailable = usage == nil
         }
     }
     private func scheduleCaptures() {

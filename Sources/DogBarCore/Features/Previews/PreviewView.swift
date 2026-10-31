@@ -13,6 +13,7 @@ import SwiftUI
     @Published var message: String?
     @Published var opening = false
     @Published var resourceUsage: AppResourceUsage?
+    @Published var resourceUsageUnavailable = false
     @Published var desktopLabels: [CGWindowID: String] = [:]
     @Published var edge: DockPosition = .bottom
     @Published var pointerOffset: CGFloat = 0
@@ -75,17 +76,9 @@ import SwiftUI
                                 .onDisappear { presentation.visibility(window.id, false) }
                         }
                         if settings.previewShowNewWindowTile {
-                            Button(action: presentation.open) {
-                                VStack(spacing: 10) {
-                                    Image(systemName: "plus").font(.system(size: 30, weight: .light))
-                                    Text("New Window").font(.system(size: 12, weight: .medium))
-                                }
-                                .frame(width: presentation.thumbnailSize.width, height: presentation.thumbnailSize.height)
-                                .padding(8)
-                                .background(Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16))
-                                .contentShape(RoundedRectangle(cornerRadius: 16))
-                            }.buttonStyle(.plain).disabled(presentation.opening)
-                            .help("Open another \(presentation.appName) window")
+                            NewWindowPreviewTile(size: presentation.thumbnailSize, appName: presentation.appName,
+                                                 opening: presentation.opening, reduceMotion: Theme.reducesMotion(settings),
+                                                 action: presentation.open)
                         }
                     }.padding(3).id(presentation.contentID)
                 }
@@ -103,10 +96,10 @@ import SwiftUI
         }
     }
     private var resourceLabel: String {
-        guard let usage = presentation.resourceUsage else { return "Usage unavailable" }
+        guard let usage = presentation.resourceUsage else { return presentation.resourceUsageUnavailable ? "Usage unavailable" : "Measuring usage…" }
         var parts: [String] = []
         if settings.previewShowCPUUsage {
-            parts.append(usage.cpuPercent.map { String(format: "CPU %.1f%%", $0) } ?? "CPU —")
+            parts.append(usage.cpuPercent.map { String(format: "CPU %.1f%%", $0) } ?? "CPU measuring…")
         }
         if settings.previewShowMemoryUsage {
             parts.append("RAM " + ByteCountFormatter.string(fromByteCount: Int64(clamping: usage.residentBytes), countStyle: .memory))
@@ -127,4 +120,44 @@ import SwiftUI
     }
     public override var canBecomeKey: Bool { false }
     public override var canBecomeMain: Bool { false }
+}
+
+@MainActor private struct NewWindowPreviewTile: View {
+    let size: CGSize
+    let appName: String
+    let opening: Bool
+    let reduceMotion: Bool
+    let action: () -> Void
+    @State private var hovered = false
+    var body: some View {
+        Button(action: action) {
+            VStack(spacing: 10) {
+                Image(systemName: "plus").font(.system(size: 28, weight: .medium))
+                    .frame(width: 54, height: 54)
+                    .background(Color.accentColor.opacity(hovered ? 0.18 : 0), in: Circle())
+                Text(opening ? "Opening…" : "New Window").font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundStyle(hovered ? Color.accentColor : Color.primary)
+            .frame(width: size.width, height: size.height).padding(8)
+            .background(hovered ? Color.accentColor.opacity(0.13) : Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16))
+            .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(hovered ? Color.accentColor.opacity(0.75) : Color.white.opacity(0.10), lineWidth: hovered ? 1.5 : 1))
+            .contentShape(RoundedRectangle(cornerRadius: 16))
+        }
+        .buttonStyle(PreviewTilePressStyle(reduceMotion: reduceMotion))
+        .scaleEffect(hovered && !reduceMotion && !opening ? 1.015 : 1)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovered)
+        .onHover { hovered = $0 }
+        .disabled(opening)
+        .help("Open another \(appName) window")
+        .accessibilityLabel("New \(appName) window")
+    }
+}
+private struct PreviewTilePressStyle: ButtonStyle {
+    let reduceMotion: Bool
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
+            .opacity(configuration.isPressed ? 0.8 : 1)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.08), value: configuration.isPressed)
+    }
 }
