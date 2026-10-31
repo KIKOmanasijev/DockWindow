@@ -195,6 +195,7 @@ public final class AppSettings: ObservableObject {
         get { read("newWindowRules", fallback: NewWindowRule.defaults) }
         set { write("newWindowRules", value: newValue) }
     }
+    /// Legacy global value; desktop pins are owned by PinnedAppsStore (desktopPins.v2).
     public var pinnedApps: [PinnedApp] {
         get { read("pinnedApps", fallback: []) }
         set { write("pinnedApps", value: newValue) }

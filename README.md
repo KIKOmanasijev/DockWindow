@@ -42,7 +42,7 @@ On a Mac, Cmd+Tab shows one icon per app, so two Safari windows look like one, a
 
 - **See every window when you alt-tab, not just apps.** Hold Option and tap Tab. Every window gets its own tile with a preview and its name, including several windows from the same app.
 - **Hover an app in the Dock to preview its windows.** Click the one you want and only that window comes up. You can close, minimize or make it full screen right from the preview.
-- **Get a separate Dock on every desktop.** Each desktop’s Dock shows only the apps open there. Your pinned apps show up everywhere.
+- **Get a separate Dock on every desktop.** Each desktop’s Dock shows only the apps open there. Each desktop has independent pins and ordering, including removable Finder. New desktops copy the current Dock once; later edits affect only that desktop.
 - **See how many windows each app has.** One dot per open window, right under the icon.
 - **Resize the Dock by dragging its edge.** Icons stay still, with no magnifying. Size follows your drag directly, including when you reverse direction.
 - **Keep Apple’s Dock if you prefer.** Native Dock mode leaves Apple’s Dock in place and still gives you window previews and the better alt-tab.

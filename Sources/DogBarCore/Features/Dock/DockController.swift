@@ -53,6 +53,8 @@ import ApplicationServices
     private var pendingLaunchTasks: [pid_t: Task<Void, Never>] = [:]
     private var removedRunning: Set<String> = []
     private var runningOrder: [String] = []
+    private var pinDesktopKey: String?
+    private var desktopRunningState: [String: (order: [String], removed: Set<String>)] = [:]
     private var scrollState: (id: String, index: Int, time: TimeInterval)?
     private var hoverItem: DockItem?
     private var displayPush = DockDisplayPush()
@@ -313,6 +315,18 @@ import ApplicationServices
         if !settings.autohide && !arrivingDisplay { hidden = false; hideTask?.cancel(); hideTask = nil }
         if panel.frame != shownFrame { panel.setFrame(shownFrame, display: true) }
         placeContent(animated: false)
+        let localSpace = SpacePolicy.localTargetSpaceID(snapshot: snapshot, displayID: Self.displayUUID(nextScreen), separateSpaces: NSScreen.screensHaveSeparateSpaces)
+        let desktopKey = localSpace.flatMap { snapshot.desktopKeys[$0] }
+        if pinDesktopKey != desktopKey {
+            if let previous = pinDesktopKey { desktopRunningState[previous] = (runningOrder, removedRunning) }
+            pinDesktopKey = desktopKey
+            runningOrder = desktopKey.flatMap { desktopRunningState[$0]?.order } ?? []
+            removedRunning = desktopKey.flatMap { desktopRunningState[$0]?.removed } ?? []
+            scrollState = nil
+            lifecycleGeneration &+= 1 // Cancel a menu action begun on another desktop.
+            onIconClicked?()
+        }
+        pins.activateDesktop(desktopKey, knownDesktopKeys: Set(snapshot.desktopKeys.values))
         let spaces = currentSpaces(snapshot: snapshot)
         // AX window discovery precedes desktop membership discovery. Keep the same
         // item/layer through both phases instead of dropping and re-inserting it.
@@ -380,7 +394,7 @@ import ApplicationServices
         if let firstTransient = items.firstIndex(where: { $0.kind == .application && !$0.isPinned }), firstTransient > 0 {
             items.insert(DockItem(id: "separator:recent", kind: .separator), at: firstTransient)
         }
-        if !view.isDragging { view.items = items }
+        if !view.isDragging { view.items = items; view.pinProfileKey = pins.activeDesktopKey }
         for item in items {
             let path = item.pinnedApp?.url ?? item.app?.bundleURL
             // The bundle's own icon carries every size up to 1024 px; a running app's icon can
@@ -598,19 +612,18 @@ import ApplicationServices
         scrollState = (item.id, index, now); focus(windows[index].id); return true
     }
     private func reorder(_ item: DockItem, at index: Int, remove: Bool) {
-        guard item.id != DockCompositionPolicy.finderBundleIdentifier else { return }
+        guard pins.canEdit, view.pinProfileKey == pins.activeDesktopKey else { return }
         if remove {
             pins.unpin(bundleIdentifier: item.id)
             if item.app != nil { removedRunning.insert(item.id) }
         } else {
-            // Count pins before the insertion in the transient visual order. Finder is immutable.
-            let preceding = view.items.prefix(max(1, index)).filter { $0.isPinned && $0.id != item.id && $0.id != DockCompositionPolicy.finderBundleIdentifier }.count
-            let originalPinCount = pins.apps.filter { $0.bundleIdentifier != DockCompositionPolicy.finderBundleIdentifier && $0.bundleIdentifier != item.id }.count
-            let pinnedRegion = item.isPinned || index <= originalPinCount + 1
+            // Count only this desktop's pins before the insertion point.
+            let preceding = view.items.prefix(max(0, index)).filter { $0.isPinned && $0.id != item.id }.count
+            let originalPinCount = pins.apps.filter { $0.bundleIdentifier != item.id }.count
+            let pinnedRegion = item.isPinned || index <= originalPinCount
             if pinnedRegion, let url = item.pinnedApp?.url ?? item.app?.bundleURL {
                 pins.unpin(bundleIdentifier: item.id)
-                let offset = pins.apps.first?.bundleIdentifier == DockCompositionPolicy.finderBundleIdentifier ? 1 : 0
-                pins.pin(bundleIdentifier: item.id, url: url, at: preceding + offset)
+                pins.pin(bundleIdentifier: item.id, url: url, at: preceding)
             }
             runningOrder = view.items.filter { !$0.isPinned && $0.kind == .application }.map(\.id)
         }
@@ -676,7 +689,7 @@ import ApplicationServices
                     else if let url = item.app?.bundleURL, let identifier = item.app?.bundleIdentifier { self.pins.pin(bundleIdentifier: identifier, url: url) }
                 }
             }
-            pin.isEnabled = item.id != DockCompositionPolicy.finderBundleIdentifier && (item.isPinned || item.app?.bundleIdentifier != nil)
+            pin.isEnabled = pins.canEdit && (item.isPinned || item.app?.bundleIdentifier != nil)
             options.addItem(pin)
             _ = add("Show in Finder") {
                 if let url = item.pinnedApp?.url ?? item.app?.bundleURL { NSWorkspace.shared.activateFileViewerSelecting([url]) }

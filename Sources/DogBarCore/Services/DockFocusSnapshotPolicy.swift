@@ -10,6 +10,7 @@ internal struct DockFocusSnapshotPolicy {
     private var focusDates: [CGWindowID: (pid: pid_t, date: Date)] = [:]
     private var spaceDate = Date.distantPast
     private var activeSpaces: [String: UInt64]?
+    private var desktopKeys: [UInt64: String] = [:]
     private var membership: [CGWindowID: [UInt64]] = [:]
     private(set) var inventoryRevision: UInt64 = 0
     private(set) var activationRevision: UInt64 = 0
@@ -38,10 +39,11 @@ internal struct DockFocusSnapshotPolicy {
         merge()
         return true
     }
-    mutating func spaces(_ active: [String: UInt64], membership values: [CGWindowID: [UInt64]] = [:], revision: UInt64? = nil, at date: Date = Date()) {
+    mutating func spaces(_ active: [String: UInt64], membership values: [CGWindowID: [UInt64]] = [:], revision: UInt64? = nil, desktopKeys keys: [UInt64: String]? = nil, at date: Date = Date()) {
         guard date >= spaceDate else { return }
         spaceDate = date
         activeSpaces = active
+        if let keys, !keys.isEmpty { desktopKeys = keys }
         if revision == inventoryRevision {
             for (id, spaces) in values where !spaces.isEmpty { membership[id] = spaces }
         }
@@ -49,6 +51,7 @@ internal struct DockFocusSnapshotPolicy {
     }
     private mutating func merge() {
         if let activeSpaces { snapshot.activeSpaceIDs = activeSpaces }
+        snapshot.desktopKeys = desktopKeys
         if let activation {
             if activation.include, !snapshot.apps.contains(where: { $0.pid == activation.app.pid }) { snapshot.apps.append(activation.app) }
             for index in snapshot.apps.indices {

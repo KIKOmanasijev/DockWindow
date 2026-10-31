@@ -1,5 +1,6 @@
 import Foundation
 import CoreGraphics
+import Darwin
 
 /// Reads display topology and batched window membership without Accessibility traffic.
 public final class SpacesService {
@@ -8,6 +9,7 @@ public final class SpacesService {
         public var membership: [CGWindowID: [UInt64]]
         public var fullscreenSpaceIDs: Set<UInt64>
         public var hasSeparateSpaces: Bool
+        public var desktopKeys: [UInt64: String] = [:]
         public var desktopNumbers: [UInt64: Int]
     }
     public init() {}
@@ -42,9 +44,37 @@ public final class SpacesService {
             if let spaces = sky.spaces(containing: [id]), !spaces.isEmpty { membership[id] = spaces }
         }
         return State(activeSpaceIDs: active, membership: membership, fullscreenSpaceIDs: fullscreen,
-                     hasSeparateSpaces: !(UserDefaults.standard.persistentDomain(forName: "com.apple.spaces")?["spans-displays"] as? Bool ?? false), desktopNumbers: numbers)
+                     hasSeparateSpaces: !(UserDefaults.standard.persistentDomain(forName: "com.apple.spaces")?["spans-displays"] as? Bool ?? false), desktopKeys: DesktopIdentityPolicy.keys(displays: displays), desktopNumbers: numbers)
     }
     private static func id(_ space: [String: Any]) -> UInt64? {
         (space["ManagedSpaceID"] as? NSNumber ?? space["id64"] as? NSNumber)?.uint64Value
+    }
+}
+
+/// Desktop numbers and display arrangement are not identities. UUIDs follow reordered
+/// Spaces; macOS's single unnamed default desktop has a dedicated stable identity.
+internal enum DesktopIdentityPolicy {
+    static let bootSession: String = {
+        var count = 0
+        guard sysctlbyname("kern.bootsessionuuid", nil, &count, nil, 0) == 0, count > 1 else { return UUID().uuidString }
+        var bytes = [CChar](repeating: 0, count: count)
+        guard sysctlbyname("kern.bootsessionuuid", &bytes, &count, nil, 0) == 0 else { return UUID().uuidString }
+        return String(cString: bytes)
+    }()
+    static func keys(displays: [[String: Any]], session: String = bootSession) -> [UInt64: String] {
+        let entries = displays.flatMap { display in
+            (display["Spaces"] as? [[String: Any]] ?? []).filter { ($0["type"] as? NSNumber)?.intValue == 0 }
+                .map { (display["Display Identifier"] as? String ?? "Main", $0) }
+        }
+        let unnamed = entries.filter { (($0.1["uuid"] as? String) ?? "").isEmpty }
+        var result: [UInt64: String] = [:]
+        for (display, space) in entries {
+            guard let id = (space["ManagedSpaceID"] as? NSNumber ?? space["id64"] as? NSNumber)?.uint64Value else { continue }
+            if let uuid = space["uuid"] as? String, !uuid.isEmpty { result[id] = "space:" + uuid.lowercased() }
+            else if unnamed.count == 1 { result[id] = "system-default" }
+            else if unnamed.filter({ $0.0 == display }).count == 1 { result[id] = "default-display:" + display.lowercased() }
+            else { result[id] = "unidentified:\(session):\(id)" }
+        }
+        return result
     }
 }

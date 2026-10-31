@@ -2,8 +2,9 @@ import SwiftUI
 
 @MainActor struct AdvancedSettingsPane: View {
     @ObservedObject var settings: AppSettings
-    let pinnedApps: PinnedAppsStore
+    @ObservedObject var pinnedApps: PinnedAppsStore
     @State private var reimportConfirmation = false
+    @State private var reimportDesktopKey: String?
     @State private var subrolesText = ""
 
     var body: some View {
@@ -28,18 +29,21 @@ import SwiftUI
                         let values = Self.subroles(text)
                         if settings.allowedWindowSubroles != values { settings.allowedWindowSubroles = values }
                     }.settingsDescription("Comma-separated AX subroles, normally AXStandardWindow and AXDialog.")
-                SettingsRow("Pinned apps", description: "Replace DogBar's pins after confirmation. The native Dock is unchanged.") {
-                    Button("Re-import from Native Dock…") { reimportConfirmation = true }
+                SettingsRow("Pinned apps", description: "Replace only this desktop’s pins. Other desktops and the native Dock stay unchanged.") {
+                    Button("Re-import from Native Dock…") { reimportDesktopKey = pinnedApps.activeDesktopKey; reimportConfirmation = true }.disabled(!pinnedApps.canEdit)
                 }
             }
         }
         .onChange(of: settings.allowedWindowSubroles) { _, values in
             if Self.subroles(subrolesText) != values { subrolesText = values.joined(separator: ", ") }
         }
+        .onChange(of: pinnedApps.activeDesktopKey) { _, _ in reimportConfirmation = false }
         .alert("Replace pinned apps?", isPresented: $reimportConfirmation) {
             Button("Cancel", role: .cancel) {}
-            Button("Re-import", role: .destructive) { pinnedApps.reimportNativeDock() }
-        } message: { Text("Replace DogBar's pinned apps with the current native Dock list.") }
+            Button("Re-import", role: .destructive) {
+                if pinnedApps.activeDesktopKey == reimportDesktopKey { pinnedApps.reimportNativeDock() }
+            }
+        } message: { Text("Replace this desktop’s pinned apps with the current native Dock list. Other desktops are unchanged.") }
     }
     private static func subroles(_ text: String) -> [String] {
         text.split(separator: ",").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }

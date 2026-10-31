@@ -101,8 +101,8 @@ final class PolicyTests: XCTestCase {
         let snapshot = WindowSnapshot(apps: apps, windows: [window(1), window(2, pid: 12, spaces: [2])])
         let pinned = [pin("pinned"), pin("second"), pin("pinned"), pin("com.apple.finder")]
         let items = DockCompositionPolicy.items(snapshot: snapshot, pinned: pinned, options: .init(currentSpaceIDs: [1]))
-        XCTAssertEqual(items.map(\.id), ["com.apple.finder", "pinned", "second", "running", "separator:trash", "trash"])
-        XCTAssertTrue(items[0].isPinned); XCTAssertEqual(items[1].app?.pid, 11)
+        XCTAssertEqual(items.map(\.id), ["pinned", "second", "com.apple.finder", "running", "separator:trash", "trash"])
+        XCTAssertTrue(items[0].isPinned); XCTAssertEqual(items[0].app?.pid, 11)
         XCTAssertEqual(items.suffix(2).map(\.kind), [.separator, .trash])
         let dimmed = DockCompositionPolicy.items(snapshot: snapshot, pinned: pinned, options: .init(currentSpaceIDs: [1], otherDesktopApps: .dimmed, showTrash: false))
         XCTAssertEqual(dimmed.last?.id, "remote"); XCTAssertEqual(dimmed.last?.isDimmed, true)
@@ -112,11 +112,11 @@ final class PolicyTests: XCTestCase {
         XCTAssertFalse(all.contains { $0.isDimmed })
     }
     func testDockMinimizedAndWindowlessApps() {
-        let snapshot = WindowSnapshot(apps: [app(10, "min"), app(11, "local", spaces: [1]), app(12, "remote", spaces: [2]), app(13, "unknown")], windows: [window(1, spaces: [], minimized: true, remembered: [1])])
+        let snapshot = WindowSnapshot(apps: [app(10, "min"), app(11, "local", spaces: [1]), app(12, "remote", spaces: [2]), app(13, "remoteOther", spaces: [99])], windows: [window(1, spaces: [], minimized: true, remembered: [1])])
         let included = DockCompositionPolicy.items(snapshot: snapshot, pinned: [], options: .init(currentSpaceIDs: [1], showTrash: false))
-        XCTAssertEqual(included.map(\.id), ["com.apple.finder", "min", "local"])
+        XCTAssertEqual(included.map(\.id), ["min", "local"])
         let excluded = DockCompositionPolicy.items(snapshot: snapshot, pinned: [], options: .init(currentSpaceIDs: [1], includeMinimized: false, showWindowlessAppsOnLastActiveDesktop: false, showTrash: false))
-        XCTAssertEqual(excluded.map(\.id), ["com.apple.finder"])
+        XCTAssertEqual(excluded.map(\.id), [])
     }
     func testDotsAllCombinations() {
         let windows = [window(1), window(2), window(3, minimized: true), window(4, spaces: [2])]

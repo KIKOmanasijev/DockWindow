@@ -5,6 +5,7 @@ import QuartzCore
 @MainActor final class DockView: NSView, NSDraggingSource {
     static let itemType = NSPasteboard.PasteboardType("dev.hristijan.dogbar.dock-item")
     var items: [DockItem] = []
+    var pinProfileKey: String?
     var settings: AppSettings
     var indicators: [String: DotIndicators] = [:]
     var images: [String: NSImage] = [:]
@@ -299,7 +300,7 @@ import QuartzCore
         if resizeMouseDown { return }
         longPress?.cancel()
         let point = convert(event.locationInWindow, from: nil)
-        guard let pressed, pressed.kind == .application, pressed.id != DockCompositionPolicy.finderBundleIdentifier,
+        guard let pressed, pressed.kind == .application,
               hypot(point.x - pressPoint.x, point.y - pressPoint.y) > 5 else { return }
         self.pressed = nil; preDragItems = items; dragged = pressed
         let writer = NSPasteboardItem(); writer.setString(pressed.id, forType: Self.itemType)

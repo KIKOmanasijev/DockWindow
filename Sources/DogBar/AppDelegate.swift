@@ -69,9 +69,6 @@ import Combine
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit DogBar", action: #selector(quit), keyEquivalent: "q").target = self
         item.menu = menu; statusItem = item
-        if Bundle.main.bundleURL.pathExtension == "app" {
-            pinnedApps.pin(bundleIdentifier: "dev.hristijan.dogbar", url: Bundle.main.bundleURL)
-        }
         if !permissions.isGranted { showOnboarding() }
         startPermissionTimer()
         dock.onHover = { [weak self] item, anchor, screen in self?.previews.hover(item: item, anchor: anchor, screen: screen) }

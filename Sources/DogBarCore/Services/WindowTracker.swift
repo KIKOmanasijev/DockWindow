@@ -48,7 +48,7 @@ import Combine
         }, spaces: { [weak self] state, revision, date in
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.started, self.generation == session else { return }
-                self.eventState.spaces(state.activeSpaceIDs, membership: state.membership, revision: revision, at: date)
+                self.eventState.spaces(state.activeSpaceIDs, membership: state.membership, revision: revision, desktopKeys: state.desktopKeys, at: date)
                 self.publishEventState()
             }
         })

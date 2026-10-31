@@ -23,8 +23,9 @@ public struct WindowSnapshot: Equatable {
     public var apps: [TrackedApp]
     public var windows: [TrackedWindow]
     public var activeSpaceIDs: [String: UInt64]
-    public init(apps: [TrackedApp] = [], windows: [TrackedWindow] = [], activeSpaceIDs: [String: UInt64] = [:]) {
-        self.apps = apps; self.windows = windows; self.activeSpaceIDs = activeSpaceIDs
+    public var desktopKeys: [UInt64: String]
+    public init(apps: [TrackedApp] = [], windows: [TrackedWindow] = [], activeSpaceIDs: [String: UInt64] = [:], desktopKeys: [UInt64: String] = [:]) {
+        self.apps = apps; self.windows = windows; self.activeSpaceIDs = activeSpaceIDs; self.desktopKeys = desktopKeys
     }
     /// Prefer the explicit Main entry, then the lexically first display for deterministic fallback.
     public var activeSpaceID: UInt64 { activeSpaceIDs["Main"] ?? activeSpaceIDs.sorted { $0.key < $1.key }.first?.value ?? 0 }

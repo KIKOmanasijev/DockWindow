@@ -13,13 +13,12 @@ public struct DockCompositionOptions {
         self.scope = scope; self.currentSpaceIDs = currentSpaceIDs; self.otherDesktopApps = otherDesktopApps; self.includeMinimized = includeMinimized; self.showWindowlessAppsOnLastActiveDesktop = showWindowlessAppsOnLastActiveDesktop; self.showTrash = showTrash; self.displayFrame = displayFrame
     }
 }
-/// Finder, ordered pins, scoped running apps, dimmed apps, then separator and Trash.
+/// Ordered desktop pins, scoped running apps, dimmed apps, then separator and Trash.
 public enum DockCompositionPolicy {
     public static let finderBundleIdentifier = "com.apple.finder"
     public static func items(snapshot: WindowSnapshot, pinned: [PinnedApp], options: DockCompositionOptions = .init()) -> [DockItem] {
-        let finderPin = pinned.first { $0.bundleIdentifier == finderBundleIdentifier } ?? PinnedApp(bundleIdentifier: finderBundleIdentifier, url: URL(fileURLWithPath: "/System/Library/CoreServices/Finder.app"))
-        var result = [DockItem(id: finderBundleIdentifier, app: snapshot.apps.first { $0.bundleIdentifier == finderBundleIdentifier }, pinnedApp: finderPin, isPinned: true)]
-        var seen: Set<String> = [finderBundleIdentifier]
+        var result: [DockItem] = []
+        var seen = Set<String>()
         for pin in pinned where seen.insert(pin.bundleIdentifier).inserted {
             result.append(DockItem(id: pin.bundleIdentifier, app: snapshot.apps.first { $0.bundleIdentifier == pin.bundleIdentifier }, pinnedApp: pin, isPinned: true))
         }
