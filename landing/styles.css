@@ -234,9 +234,9 @@ html:not(.js) .tour { display: none; }
 .mac {
   position: relative;
   aspect-ratio: 16 / 10;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, .28);
-  box-shadow: 0 40px 90px -30px rgba(20, 4, 60, .6), 0 12px 30px -12px rgba(20, 4, 60, .35);
+  border-radius: 18px;
+  border: 7px solid #0e0c13;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, .2), 0 40px 90px -30px rgba(20, 4, 60, .7), 0 12px 30px -12px rgba(20, 4, 60, .4);
   background:
     radial-gradient(60% 80% at 12% 18%, #efe6ff 0%, rgba(239, 230, 255, 0) 60%),
     radial-gradient(60% 70% at 92% 92%, #ffe3d1 0%, rgba(255, 227, 209, 0) 60%),
@@ -244,22 +244,28 @@ html:not(.js) .tour { display: none; }
   overflow: hidden;
   color: var(--ink);
 }
+/* The macOS menu bar: Apple menu, bold app name, that app's menus, status icons and
+   the clock, on translucent glass over the wallpaper. */
 .menubar {
-  position: absolute; inset: 0 0 auto; height: 26px; z-index: 6;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 .9rem; font-size: .75rem; font-weight: 600;
-  background: rgba(255, 255, 255, .55);
-  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(26, 16, 51, .06);
+  position: absolute; inset: 0 0 auto; height: 24px; z-index: 6;
+  display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+  padding: 0 .75rem 0 .9rem;
+  font-family: var(--font); font-size: .72rem; font-weight: 500; letter-spacing: -.005em;
+  color: rgba(0, 0, 0, .86);
+  background: rgba(255, 255, 255, .42);
+  -webkit-backdrop-filter: blur(24px) saturate(1.6); backdrop-filter: blur(24px) saturate(1.6);
+  white-space: nowrap;
 }
-.menubar-right { display: inline-flex; align-items: center; gap: .6rem; }
-.menubar-paw { width: 13px; height: 13px; fill: var(--ink); }
-.spaces { display: inline-flex; gap: 3px; }
-.spaces i {
-  display: grid; place-items: center; width: 17px; height: 15px;
-  font-style: normal; font-size: .68rem; border-radius: 4px; border: 1px solid rgba(26, 16, 51, .35);
-}
-.spaces i.on { color: #fff; background: var(--purple); border-color: var(--purple); }
+.menubar-left { display: flex; align-items: center; gap: 1.05rem; min-width: 0; overflow: hidden; }
+.mb-apple { flex: none; width: 13px; height: 13px; margin-top: -2px; }
+.menubar-app { font-weight: 700; }
+.menubar-menus { display: flex; gap: 1.05rem; }
+.menubar-right { display: inline-flex; flex: none; align-items: center; gap: .85rem; }
+.mb-ic { width: 14px; height: 13px; fill: currentColor; color: inherit; }
+.mb-paw { width: 12px; }
+.mb-battery { width: 22px; height: 11px; }
+.mb-search { width: 12px; }
+.menubar-clock { font-weight: 500; }
 /* The camera holds the whole screen; the tour zooms it toward the Dock or the switcher. */
 .cam { position: absolute; inset: 0; transition: transform .9s cubic-bezier(.65, 0, .35, 1); will-change: transform; }
 .cursor {
@@ -277,30 +283,66 @@ html:not(.js) .tour { display: none; }
   background: rgba(26, 16, 51, .82); border-radius: 10px; white-space: nowrap;
 }
 .keys kbd { padding: .1rem .45rem; border: 1px solid rgba(255, 255, 255, .5); border-bottom-width: 2px; border-radius: 6px; }
-.desk { position: absolute; inset: 26px 0 0; }
-.desk.swap { animation: desk-swap .36s var(--ease); }
+/* Each desktop has its own wallpaper and slides in like macOS Spaces. */
+.desk {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(60% 80% at 12% 18%, #efe6ff 0%, rgba(239, 230, 255, 0) 60%),
+    radial-gradient(60% 70% at 92% 92%, #ffe3d1 0%, rgba(255, 227, 209, 0) 60%),
+    linear-gradient(140deg, #c9b3ff 0%, #ebe0ff 50%, #ffd9e6 100%);
+}
+.desk[data-wall="2"] {
+  background:
+    radial-gradient(60% 80% at 85% 15%, #e3fbf1 0%, rgba(227, 251, 241, 0) 60%),
+    radial-gradient(60% 70% at 10% 95%, #fff1c9 0%, rgba(255, 241, 201, 0) 60%),
+    linear-gradient(150deg, #9fe3cf 0%, #d6f3ea 50%, #bfe0ff 100%);
+}
+.desk.slide-in { animation: slide-in .6s cubic-bezier(.65, 0, .35, 1); }
+.desk-ghost { pointer-events: none; animation: slide-out .6s cubic-bezier(.65, 0, .35, 1) forwards; }
+
+/* A macOS-style HUD for desktop changes: a trackpad with three fingers swiping. */
+.swipe {
+  position: absolute; left: 50%; top: 42%; z-index: 10; transform: translate(-50%, -50%);
+  display: grid; justify-items: center; gap: .5rem;
+  padding: .9rem 1.2rem .8rem; min-width: 9.5rem;
+  color: #fff; background: rgba(28, 24, 36, .78);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border-radius: 16px; box-shadow: 0 20px 40px -16px rgba(0, 0, 0, .5);
+}
+.swipe.go { animation: hud .25s var(--ease); }
+.swipe-pad {
+  position: relative; display: flex; justify-content: center; align-items: center; gap: 6px;
+  width: 92px; height: 58px; border: 1.5px solid rgba(255, 255, 255, .45); border-radius: 10px;
+}
+.swipe-pad i { width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 0 0 4px rgba(255, 255, 255, .18); }
+.swipe.go .swipe-pad i { animation: fingers .7s cubic-bezier(.65, 0, .35, 1) both; }
+.swipe-label { font-size: .85rem; font-weight: 650; }
+.swipe-dots { display: flex; gap: 5px; }
+.swipe-dots i { width: 6px; height: 6px; border-radius: 50%; background: rgba(255, 255, 255, .35); }
+.swipe-dots i.on { background: #fff; }
 
 .win {
   position: absolute;
+  left: 9%; top: calc(24px + 4%); width: 82%; height: calc(76% - 24px);
   display: flex; flex-direction: column;
   background: #fff;
-  border: 1px solid rgba(26, 16, 51, .14);
   border-radius: 10px;
-  box-shadow: 0 14px 30px -14px rgba(26, 16, 51, .4), 0 2px 6px rgba(26, 16, 51, .06);
+  box-shadow: 0 0 0 .5px rgba(0, 0, 0, .28), 0 22px 44px -12px rgba(0, 0, 0, .38), 0 4px 12px rgba(0, 0, 0, .08);
   overflow: hidden;
   cursor: pointer;
   outline: 3px solid transparent; outline-offset: 2px;
-  transition: box-shadow .2s ease, outline-color .15s ease;
+  transition: opacity .3s ease, visibility .3s, outline-color .15s ease;
 }
-.win.is-front { box-shadow: 0 26px 50px -16px rgba(26, 16, 51, .5), 0 3px 10px rgba(26, 16, 51, .1); }
-.win:not(.is-front) .lights i { background: #dcd8e3; }
-.win.peek { outline-color: var(--purple); }
+[data-app="notes"].win, [data-app="music"].win { left: 24%; width: 52%; }
+/* Only the front window shows. Hovering a preview shows its window on top, like a peek. */
+.win:not(.is-front):not(.peek) { opacity: 0; visibility: hidden; }
+.win.peek { z-index: 40 !important; outline-color: var(--purple); }
 .win.flash { animation: win-flash .42s var(--ease); }
 
 /* Window UI scales with the window: 1em follows its width through container units,
    so the same markup renders on the desk, in Dock previews and in switcher tiles. */
 .win, .mini { container-type: inline-size; }
-.win > * { font-size: clamp(7.5px, 3.2cqi, 13.5px); }
+.win > * { font-size: clamp(8px, 2.3cqi, 15px); }
 .mini > * { font-size: 2.9cqi; }
 .win-bar {
   flex: none; height: 2.3em;
@@ -309,8 +351,13 @@ html:not(.js) .tour { display: none; }
   font-weight: 600; line-height: 1;
 }
 .win-bar .t { flex: 1; text-align: center; margin-right: 3.2em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win-bar.is-safari { height: 2.9em; gap: .8em; background: #f6f5f8; }
+.tb { flex: none; display: grid; place-items: center; width: 1.2em; height: 1em; color: #6e6a78; font-weight: 400; font-size: 1.15em; }
+.tb-side { border: 1.5px solid #8a8694; border-radius: .22em; box-shadow: inset .35em 0 0 -.2em #8a8694; }
+.tb-nav { flex: none; letter-spacing: .5em; color: #8a8694; font-size: 1.3em; font-weight: 300; }
+.tb-share { width: .85em; height: .95em; border: 1.5px solid #8a8694; border-top: 0; border-radius: 0 0 .15em .15em; }
 .addr {
-  flex: 0 1 62%; margin: 0 auto; transform: translateX(-1.6em);
+  flex: 0 1 58%; margin: 0 auto;
   padding: .32em .7em; border-radius: .5em;
   background: rgba(26, 16, 51, .06);
   font-size: .85em; font-weight: 500; color: #4d4566; text-align: center;
@@ -404,7 +451,7 @@ html:not(.js) .tour { display: none; }
 
 /* Switcher */
 .switcher {
-  position: absolute; inset: 26px 0 0; z-index: 7;
+  position: absolute; inset: 24px 0 0; z-index: 7;
   display: grid; place-items: center;
   background: rgba(26, 16, 51, .14);
 }
@@ -430,6 +477,7 @@ html:not(.js) .tour { display: none; }
 /* Minis are the real window markup at thumbnail scale; only the chrome keeps a floor. */
 .mini { width: 100%; aspect-ratio: 4 / 3; display: flex; flex-direction: column; overflow: hidden; color: var(--ink); text-align: left; background: #fff; border-radius: 6px; }
 .mini .win-bar { height: max(2.2em, 11px); }
+.mini .tb, .mini .tb-nav { display: none; }
 .mini .lights i { width: max(.82em, 4px); height: max(.82em, 4px); }
 .tile .ic { position: relative; width: 26px; height: 26px; margin-top: -16px; filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .3)); }
 .tile .name { max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -688,11 +736,12 @@ html:not(.js) .tour { display: none; }
 .get-inner { max-width: 820px; margin: 0 auto; }
 .get-icon { width: 88px; height: 88px; margin: 0 auto 1.5rem; border-radius: 22%; box-shadow: 0 18px 40px -16px rgba(0, 0, 0, .6); }
 .get-sub { margin-top: .9rem; font-size: clamp(1rem, 1.3vw, 1.125rem); color: rgba(255, 255, 255, .8); }
+.get .actions { justify-content: center; }
 .get .dl-note, .get .dl-hash { color: rgba(255, 255, 255, .72); }
 .steps {
   counter-reset: step;
   display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .9rem;
-  margin-top: 2.75rem; text-align: left;
+  margin-top: 2.75rem; text-align: center;
 }
 .steps li {
   counter-increment: step;
@@ -702,7 +751,7 @@ html:not(.js) .tour { display: none; }
 }
 .steps li::before {
   content: counter(step);
-  display: grid; place-items: center; width: 1.7rem; height: 1.7rem; margin-bottom: .7rem;
+  display: grid; place-items: center; width: 1.7rem; height: 1.7rem; margin: 0 auto .7rem;
   font-size: .85rem; font-weight: 700; color: var(--purple-600); background: #fff; border-radius: 50%;
 }
 .steps b { display: block; margin-bottom: .2rem; color: #fff; font-weight: 650; }
@@ -761,7 +810,10 @@ html:not(.js) .tour { display: none; }
 @keyframes settle { from { opacity: 0; transform: translateY(12px); } }
 @keyframes pop-in { from { opacity: 0; transform: scale(.94); } }
 @keyframes rise { from { opacity: 0; transform: translate(-50%, 8px); } }
-@keyframes desk-swap { from { opacity: 0; transform: translateX(var(--swap-from, 40px)); } }
+@keyframes slide-in { from { transform: translateX(calc(var(--dir, 1) * 100%)); } }
+@keyframes slide-out { to { transform: translateX(calc(var(--dir, 1) * -100%)); } }
+@keyframes fingers { from { transform: translateX(calc(var(--dir, 1) * 16px)); } to { transform: translateX(calc(var(--dir, 1) * -16px)); } }
+@keyframes hud { from { opacity: 0; transform: translate(-50%, -50%) scale(.94); } }
 @keyframes win-flash { from { transform: scale(.985); } }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(110, 36, 230, .45); } 100% { box-shadow: 0 0 0 9px rgba(110, 36, 230, 0); } }
 
@@ -790,7 +842,7 @@ html:not(.js) .tour { display: none; }
   .controls-label { display: none; }
   .chip { padding-inline: .7rem; font-size: .85rem; }
   .mac { aspect-ratio: 4 / 4.2; }
-  .menubar-clock { display: none; }
+  .menubar-clock, .mb-search, .menubar-menus span:nth-child(n+4) { display: none; }
   .win-bar .t { margin-right: 0; }
   .dock { gap: 3px; padding: 5px 5px 3px; }
   .tile { width: 72px; padding: 6px 3px; }

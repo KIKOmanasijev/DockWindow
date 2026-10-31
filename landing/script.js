@@ -34,7 +34,8 @@
   const preview = $("[data-preview]");
   const caption = $("[data-caption]");
   const frontApp = $("[data-front-app]");
-  const spaces = document.querySelectorAll("[data-space]");
+  const menus = $("[data-menus]");
+  const swipeHud = $("[data-swipe]");
   const tabBtn = $("[data-tab]");
   const releaseBtn = $("[data-release]");
   const resetBtn = $("[data-reset]");
@@ -54,19 +55,28 @@
   const INTRO_PICK = "s2";
   const INTRO_TEXT = "Planning a trip: Safari has two windows open. Pick “Hotel booking” to bring just that one forward.";
 
-  // Positions are percentages of the desk. `view` picks the window's content.
+  // Only the front window is shown on the desk, so every change reads at a glance;
+  // the others wait behind it. `view` picks the window's content.
   const initialWindows = () => ({
     1: [
-      { id: "s1", app: "safari", view: "trip", title: "Lisbon day plan", url: "wanderly.travel", x: 7, y: 27, w: 47, h: 56 },
-      { id: "s2", app: "safari", view: "booking", title: "Hotel booking", url: "casaluz-stays.travel", x: 40, y: 6, w: 37, h: 56 },
-      { id: "k1", app: "slack", view: "slack", title: "#lisbon-trip", x: 2, y: 4, w: 40, h: 44 },
-      { id: "n1", app: "notes", view: "notes", title: "Packing list", x: 73, y: 17, w: 25, h: 56 },
+      { id: "s1", app: "safari", view: "trip", title: "Lisbon day plan", url: "wanderly.travel" },
+      { id: "s2", app: "safari", view: "booking", title: "Hotel booking", url: "casaluz-stays.travel" },
+      { id: "k1", app: "slack", view: "slack", title: "#lisbon-trip" },
+      { id: "n1", app: "notes", view: "notes", title: "Packing list" },
     ],
     2: [
-      { id: "s3", app: "safari", view: "hike", title: "Sunday hike", url: "trailmap.travel", x: 4, y: 8, w: 52, h: 64 },
-      { id: "m1", app: "music", view: "music", title: "Up Next", x: 48, y: 19, w: 46, h: 56 },
+      { id: "s3", app: "safari", view: "hike", title: "Sunday hike", url: "trailmap.travel" },
+      { id: "m1", app: "music", view: "music", title: "Up Next" },
     ],
   });
+  // The front app's menus, as macOS shows them.
+  const MENUS = {
+    finder: ["File", "Edit", "View", "Go", "Window", "Help"],
+    safari: ["File", "Edit", "View", "History", "Bookmarks", "Window", "Help"],
+    slack: ["File", "Edit", "View", "Go", "Window", "Help"],
+    notes: ["File", "Edit", "Format", "View", "Window", "Help"],
+    music: ["File", "Edit", "Song", "View", "Controls", "Window", "Help"],
+  };
   // Front-to-back window order per desktop.
   const initialOrder = () => ({ 1: ["s1", "s2", "k1", "n1"], 2: ["m1", "s3"] });
 
@@ -133,29 +143,61 @@
   };
 
   // Title bar: Safari shows its address field, other apps their window title.
-  const barMarkup = (w) =>
-    `<span class="win-bar"><span class="lights"><i></i><i></i><i></i></span>${
-      w.url ? `<span class="addr">${w.url}</span>` : `<span class="t">${w.title}</span>`}</span>`;
+  const barMarkup = (w) => w.url
+    ? `<span class="win-bar is-safari"><span class="lights"><i></i><i></i><i></i></span>
+        <span class="tb tb-side"></span><span class="tb-nav">‹ ›</span>
+        <span class="addr">${w.url}</span><span class="tb tb-share"></span><span class="tb tb-plus">+</span></span>`
+    : `<span class="win-bar"><span class="lights"><i></i><i></i><i></i></span><span class="t">${w.title}</span></span>`;
   const windowInner = (w) => `${barMarkup(w)}<span class="win-body">${VIEWS[w.view]}</span>`;
   const miniMarkup = (w) => `<span class="mini" data-app="${w.app}">${windowInner(w)}</span>`;
 
   // ----- Desk -----
   function renderDesk({ swap = 0 } = {}) {
+    // Desktop switches slide like macOS Spaces: a copy of the old desktop slides out
+    // while the new one, with its own wallpaper, slides in. The Dock stays put.
+    if (swap && !reduceMotion.matches) {
+      desk.parentElement.querySelectorAll(".desk-ghost").forEach((g) => g.remove());
+      const ghost = desk.cloneNode(true);
+      ghost.removeAttribute("data-desk");
+      ghost.classList.remove("slide-in");
+      ghost.classList.add("desk-ghost");
+      ghost.querySelectorAll("[data-win]").forEach((el) => el.removeAttribute("data-win"));
+      ghost.style.setProperty("--dir", swap);
+      desk.before(ghost);
+      setTimeout(() => ghost.remove(), 700);
+    }
     const order = state.order[state.desk];
+    desk.dataset.wall = String(state.desk);
     desk.innerHTML = windowsHere().map((w) => {
       const z = order.length - order.indexOf(w.id);
       return `<div class="win${order[0] === w.id ? " is-front" : ""}" data-win="${w.id}" data-app="${w.app}"
-        style="left:${w.x}%;top:${w.y}%;width:${w.w}%;height:${w.h}%;z-index:${z}">${windowInner(w)}</div>`;
+        style="z-index:${z}">${windowInner(w)}</div>`;
     }).join("");
     const front = mru()[0];
-    frontApp.textContent = front ? APPS[front.app].name : "Finder";
-    spaces.forEach((el) => el.classList.toggle("on", Number(el.dataset.space) === state.desk));
+    const app = front ? front.app : "finder";
+    frontApp.textContent = APPS[app].name;
+    menus.innerHTML = MENUS[app].map((m) => `<span>${m}</span>`).join("");
     if (swap && !reduceMotion.matches) {
-      desk.style.setProperty("--swap-from", `${swap * 40}px`);
-      desk.classList.remove("swap");
+      desk.style.setProperty("--dir", swap);
+      desk.classList.remove("slide-in");
       void desk.offsetWidth;
-      desk.classList.add("swap");
+      desk.classList.add("slide-in");
     }
+  }
+
+  // A macOS-style HUD for desktop changes: a three-finger trackpad swipe, then which
+  // desktop you are on.
+  let swipeTimer = 0;
+  function showSwipe(n, dir) {
+    clearTimeout(swipeTimer);
+    swipeHud.querySelector("[data-swipe-label]").textContent = `Desktop ${n}`;
+    swipeHud.querySelectorAll("[data-swipe-dot]").forEach((d) => d.classList.toggle("on", Number(d.dataset.swipeDot) === n));
+    swipeHud.style.setProperty("--dir", dir);
+    swipeHud.hidden = false;
+    swipeHud.classList.remove("go");
+    void swipeHud.offsetWidth;
+    swipeHud.classList.add("go");
+    swipeTimer = setTimeout(() => { swipeHud.hidden = true; }, 1700);
   }
 
   // ----- Dock -----
@@ -333,10 +375,11 @@
   function closeAll() { closeSwitcher(); closePreview(); }
 
   // ----- Desktops -----
-  function setDesk(n) {
+  function setDesk(n, { hud = true } = {}) {
     if (n === state.desk) return;
     closeAll();
     const dir = n > state.desk ? 1 : -1;
+    if (hud) showSwipe(n, dir);
     state.desk = n;
     deskBtns.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.deskBtn) === n)));
     renderDesk({ swap: dir });
@@ -480,7 +523,7 @@
   showIntro();
 
   // ---------- Guided tour ----------
-  // Plays the three ideas with a pointer and a camera that zooms into the Dock. It uses
+  // Plays the three ideas with a pointer, a swipe HUD and a camera that zooms in. It uses
   // the same functions as the hands-on demo, never moves focus, and stops for good as
   // soon as someone uses the demo. It starts only while the demo is on screen and never
   // on its own under reduced motion.
@@ -521,10 +564,12 @@
   }
 
   const SCENES = [
+    // One window on screen: the Lisbon day plan. Its sibling, the hotel booking, is
+    // one hover away in Safari's Dock previews.
     { ms: 7600, run: async (wait) => {
       reset({ focus: false });
       closeAll();
-      say("Safari has two windows open: a day plan and a hotel booking. Watch the Dock.");
+      say("Safari has two windows, but you only see the day plan. Watch the Dock.");
       point(desk);
       pointer.classList.add("is-on");
       await wait(1100);
@@ -541,41 +586,47 @@
       zoom(1);
       await wait(2700);
     } },
+    // Option+Tab over a single window: step to the Slack chat, let go, and it replaces
+    // the hotel booking on screen.
     { ms: 5600, run: async (wait) => {
       closeAll();
-      if (state.desk !== 1) setDesk(1);
+      if (state.desk !== 1) setDesk(1, { hud: false });
       pointer.classList.remove("is-on");
       keys.hidden = false;
       openSwitcher();
       zoom(1.2, switcher);
       await wait(1500);
       stepSwitcher(1);
-      await wait(1300);
-      stepSwitcher(-1);
-      await wait(1100);
+      await wait(2400);
       const w = mru()[state.sel];
       keys.hidden = true;
       if (w) focusWindow(w.id, "Released Option");
       zoom(1);
       await wait(1700);
     } },
-    { ms: 8200, run: async (wait) => {
+    // A three-finger swipe to Desktop 2, then a close look at its Dock, and back.
+    { ms: 9200, run: async (wait) => {
       closeAll();
-      if (state.desk !== 1) setDesk(1);
-      point(desk);
-      pointer.classList.add("is-on");
-      say("Each desktop keeps its own Dock. Switching to Desktop 2.");
-      await wait(500);
-      point($('[data-space="2"]'));
-      await wait(1100);
-      press();
-      setDesk(2);
+      if (state.desk !== 1) setDesk(1, { hud: false });
+      pointer.classList.remove("is-on");
+      say("Each desktop keeps its own Dock. Swiping to Desktop 2.");
+      await wait(400);
+      showSwipe(2, 1);
+      await wait(700);
+      setDesk(2, { hud: false });
+      await wait(700);
       zoom(fit(1.8, dock), dock, { bottom: true });
-      await wait(3000);
-      setDesk(1);
       await wait(2600);
       zoom(1);
-      await wait(1000);
+      await wait(900);
+      showSwipe(1, -1);
+      await wait(700);
+      setDesk(1, { hud: false });
+      await wait(700);
+      zoom(fit(1.8, dock), dock, { bottom: true });
+      await wait(2000);
+      zoom(1);
+      await wait(500);
     } },
   ];
 
@@ -600,6 +651,7 @@
       zoom(1);
       pointer.classList.remove("is-on", "press");
       keys.hidden = true;
+      swipeHud.hidden = true;
       peek(null);
     }
   }

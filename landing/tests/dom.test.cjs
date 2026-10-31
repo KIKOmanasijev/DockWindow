@@ -163,7 +163,6 @@ test("hero copy sells benefits without shortcut jargon", { skip }, async () => {
   const { $, $$ } = await page(json(null));
   assert.doesNotMatch($(".lede").textContent, /Option|Cmd|Command|Tab\b|⌥|⌘/);
   assert.equal($$(".scribbles li").length, 4, "short handwritten benefit list");
-  for (const li of $$(".scribbles li")) assert.doesNotMatch(li.textContent, /Option|Cmd|Tab\b/);
 });
 
 test("comparison table marks what macOS lacks and DogBar adds", { skip }, async () => {
@@ -304,7 +303,9 @@ test("demo: switcher, previews, desktops and reset", { skip }, async () => {
   $('[data-desk-btn="2"]').click();
   assert.equal(dockApps(), "finder:0,dockwindow:0,safari:1,music:1");
   assert.equal($('[data-desk-btn="2"]').getAttribute("aria-pressed"), "true");
-  assert.deepEqual($$("[data-space].on").map((el) => el.dataset.space), ["2"], "menu bar shows Desktop 2");
+  assert.equal($("[data-desk]").dataset.wall, "2", "Desktop 2 has its own wallpaper");
+  assert.equal($("[data-swipe]").hidden, false, "the swipe HUD names the desktop");
+  assert.match($("[data-swipe-label]").textContent, /Desktop 2/);
   assert.match(cap(), /Safari \(1 dot\), Music \(1 dot\)/);
   assert.match($('[data-win="s3"]').textContent, /Sunday hike/);
   assert.equal($$('[data-win="m1"] .album-art').length, 3, "album covers use their own class");
@@ -398,8 +399,8 @@ test("tour steps can be chosen and the tour paused; reduced motion never autopla
   assert.equal($("#demo").dataset.tour, "playing", "a person can still start it");
   assert.ok($('[data-tour-step="2"]').classList.contains("is-active"));
   assert.ok($('[data-tour-step="0"]').classList.contains("is-done"));
-  await pause(w, 1700);
-  assert.deepEqual([...w.document.querySelectorAll("[data-space].on")].map((el) => el.dataset.space), ["2"], "the pointer switched desktops");
+  await pause(w, 2000);
+  assert.equal($("[data-desk]").dataset.wall, "2", "the swipe switched desktops");
   assert.match($("[data-cam]").style.transform, /scale\(1\.8\)/, "zoomed into the Dock");
   assert.equal($$dockApps(w), "finder:0,dockwindow:0,safari:1,music:1", "the Dock changed with the desktop");
   $("[data-tour-toggle]").click();

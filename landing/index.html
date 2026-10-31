@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DogBar: go straight to the window you need on your Mac</title>
+  <title>DogBar: window management your Mac should have shipped with</title>
   <meta name="description" content="DogBar is a window switcher and Dock for macOS. Option+Tab shows every open window, not one icon per app, and Dock previews let you pick the exact window. Each desktop gets its own Dock. macOS 14+.">
   <meta name="theme-color" content="#4a14b8">
   <link rel="canonical" href="https://dogbar.hristijan.dev/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="DogBar: go straight to the window you need">
+  <meta property="og:title" content="DogBar: window management your Mac should have shipped with">
   <meta property="og:description" content="A window switcher and Dock for macOS. Option+Tab shows every window, Dock previews let you pick the exact one, and each desktop gets its own Dock. macOS 14+.">
   <meta property="og:url" content="https://dogbar.hristijan.dev/">
   <meta property="og:image" content="https://dogbar.hristijan.dev/assets/dog-640.jpg">
@@ -32,6 +32,11 @@
     <symbol id="i-no" viewBox="0 0 24 24"><path d="M6.5 6.5l11 11m0-11-11 11" fill="none" stroke="#e5484d" stroke-width="3" stroke-linecap="round"/></symbol>
     <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10.5-6.5z" fill="currentColor"/></symbol>
     <symbol id="i-pause" viewBox="0 0 24 24"><rect x="6.5" y="5.5" width="4" height="13" rx="1.2" fill="currentColor"/><rect x="13.5" y="5.5" width="4" height="13" rx="1.2" fill="currentColor"/></symbol>
+    <symbol id="i-apple" viewBox="0 0 24 24"><path fill="currentColor" d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701"/></symbol>
+    <symbol id="i-battery" viewBox="0 0 30 14"><rect x=".75" y=".75" width="25" height="12.5" rx="3.6" fill="none" stroke="currentColor" stroke-opacity=".45" stroke-width="1.3"/><rect x="2.6" y="2.6" width="17" height="8.8" rx="2" fill="currentColor"/><path d="M27.6 4.8v4.4c.9-.3 1.5-1.2 1.5-2.2s-.6-1.9-1.5-2.2z" fill="currentColor" fill-opacity=".45"/></symbol>
+    <symbol id="i-wifi" viewBox="0 0 20 16"><path d="M10 13.6 7.7 11.3a3.3 3.3 0 0 1 4.6 0zM4.9 8.5a7.3 7.3 0 0 1 10.2 0l-1.6 1.6a5 5 0 0 0-7 0zM2.1 5.7a11.3 11.3 0 0 1 15.8 0l-1.6 1.6a9 9 0 0 0-12.6 0z" fill="currentColor"/></symbol>
+    <symbol id="i-search" viewBox="0 0 16 16"><circle cx="6.6" cy="6.6" r="4.6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="m10.1 10.1 4.1 4.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></symbol>
+    <symbol id="i-control" viewBox="0 0 18 16"><rect x="1" y="1.5" width="16" height="5.4" rx="2.7" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="13.9" cy="4.2" r="1.7" fill="currentColor"/><rect x="1" y="9.1" width="16" height="5.4" rx="2.7" fill="none" stroke="currentColor" stroke-width="1.4"/><circle cx="4.1" cy="11.8" r="1.7" fill="currentColor"/></symbol>
     <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5 3.5 19 12l-6.4 1.4L9.6 20z" fill="#1a1033" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   </svg>
 
@@ -52,13 +57,13 @@
     <div class="hero-inner">
       <div class="hero-copy" id="top">
         <p class="eyebrow">Window switcher and Dock for macOS</p>
-        <h1 class="headline">Go straight to the window you need.</h1>
+        <h1 class="headline">Window management your Mac should have shipped with.</h1>
         <p class="lede">Stop clicking through piles of windows. DogBar shows you every one, so you land on the right window the first time.</p>
         <ul class="scribbles" aria-label="What DogBar gives you">
-          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>every window, not just every app</li>
-          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>peek inside before you click</li>
-          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>a separate Dock for each desktop</li>
-          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>window counts at a glance</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>see every window when you alt-tab, not just apps</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>hover an app in the Dock to preview its windows</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>get a separate Dock on every desktop</li>
+          <li><svg aria-hidden="true" focusable="false"><use href="#i-scribble"/></svg>see how many windows each app has, right in the Dock</li>
         </ul>
         <div class="actions">
           <a class="btn btn-download" data-download aria-describedby="hero-dl-note">
@@ -77,11 +82,18 @@
           <!-- The camera wraps the whole screen so the tour can zoom into the Dock. -->
           <div class="cam" data-cam>
             <div class="menubar" aria-hidden="true">
-              <span class="menubar-app" data-front-app>Safari</span>
+              <span class="menubar-left">
+                <svg class="mb-apple"><use href="#i-apple"/></svg>
+                <b class="menubar-app" data-front-app>Safari</b>
+                <span class="menubar-menus" data-menus><span>File</span><span>Edit</span><span>View</span><span>History</span><span>Bookmarks</span><span>Window</span><span>Help</span></span>
+              </span>
               <span class="menubar-right">
-                <svg class="menubar-paw"><use href="#i-paw"/></svg>
-                <span class="spaces" data-spaces><i data-space="1" class="on">1</i><i data-space="2">2</i></span>
-                <span class="menubar-clock">Thu 2:41 PM</span>
+                <svg class="mb-ic mb-paw"><use href="#i-paw"/></svg>
+                <svg class="mb-ic mb-battery"><use href="#i-battery"/></svg>
+                <svg class="mb-ic"><use href="#i-wifi"/></svg>
+                <svg class="mb-ic mb-search"><use href="#i-search"/></svg>
+                <svg class="mb-ic"><use href="#i-control"/></svg>
+                <span class="menubar-clock">Thu Oct 31&nbsp;&nbsp;2:41 PM</span>
               </span>
             </div>
             <div class="desk" data-desk aria-hidden="true"></div>
@@ -96,6 +108,11 @@
             <svg class="cursor" data-cursor aria-hidden="true" focusable="false"><use href="#i-cursor"/></svg>
           </div>
           <p class="keys" data-keys aria-hidden="true" hidden><kbd>⌥ Option</kbd> + <kbd>⇥ Tab</kbd></p>
+          <div class="swipe" data-swipe aria-hidden="true" hidden>
+            <span class="swipe-pad"><i></i><i></i><i></i></span>
+            <span class="swipe-label" data-swipe-label>Desktop 2</span>
+            <span class="swipe-dots"><i data-swipe-dot="1"></i><i data-swipe-dot="2"></i></span>
+          </div>
         </div>
 
         <div class="tour" role="group" aria-label="Guided tour">
@@ -107,7 +124,7 @@
           <ol class="tour-steps">
             <li><button type="button" class="tour-step" data-tour-step="0">Dock previews<i class="tour-bar" aria-hidden="true"></i></button></li>
             <li><button type="button" class="tour-step" data-tour-step="1">Every window<i class="tour-bar" aria-hidden="true"></i></button></li>
-            <li><button type="button" class="tour-step" data-tour-step="2">Dock per desktop<i class="tour-bar" aria-hidden="true"></i></button></li>
+            <li><button type="button" class="tour-step" data-tour-step="2">Swipe desktops<i class="tour-bar" aria-hidden="true"></i></button></li>
           </ol>
         </div>
         <p class="caption" data-caption aria-live="polite">Planning a trip: Safari has two windows open. Pick “Hotel booking” to bring just that one forward.</p>
