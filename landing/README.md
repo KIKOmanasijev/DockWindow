@@ -24,12 +24,13 @@ This record is now configured. For future DNS changes, save and check the domain
 
 ```
 landing/
-  index.html      page and inline app-icon symbols
+  index.html      page, feature visuals (HTML/CSS) and UI glyph symbols
   styles.css      all styling, responsive and reduced-motion rules
   script.js       interactive hero demo and scroll reveals
-  release.js      Mac download CTAs, driven by release.json
-  release.json    release manifest (owned by the release process)
-  assets/         app icon rasters, mascot pose cutouts and four feature SVGs
+  release.js      Mac download CTAs, driven by release.json / preview.json
+  release.json    notarized release manifest (owned by the release process)
+  preview.json    self-signed preview manifest (owned by the preview process)
+  assets/         app icon rasters; feature-*.svg and mascot poses are kept for the repo README only
   assets/apps/    real macOS app icons for the demo (96px PNG, made by tools/app-icons.mjs)
   tools/          art and icon builds (not deployed)
   tests/          node:test suites (not deployed)
@@ -37,37 +38,53 @@ landing/
 
 ## Visual thesis
 
-A purple cartoon desk with cream and lavender supporting surfaces, inky hand-drawn borders and hard offset shadows. Yellow is concentrated on the primary download action and keyboard focus. Inside it sits a believable Mac: real app icons and real-looking app windows, drawn in HTML and CSS and framed in the same thick ink.
+Calm and Mac-native. A deep purple band carries the brand at the top and bottom; everything between is light paper with ink type, hairline borders and soft shadows. The product demo is the one picture that matters: a clean, code-drawn Mac desktop large enough to read, straddling the purple band and the paper. Yellow appears only on Download. The dog is the app icon in the nav, the demo Dock, the Get section and the footer, and nowhere else: no stickers, ink outlines, tilted cards or mascot art.
 
 ## Content plan
 
-- **Hero.** The DogBar name is the loudest element. Promise: "Switch windows, not apps." One line of proof: "Cmd+Tab brings back an app. DogBar brings back the exact window you meant." The demo is the one dominant visual.
-- **Hero demo scenario.** Desktop 1 (Planning) has two Safari windows: a Lisbon day plan and a hotel booking, alongside a friends’ Slack conversation and a Notes packing list. Both Safari previews open on arrival, with Hotel booking suggested, showing exact-window selection without requiring experimentation. Desktop 2 (Personal) has a Sunday hike and Music. All sample names, URLs and messages are fictional; no personal screenshots or data.
-- **Support (features).** Four alternating rows, each with one sentence-sized idea and its own illustration. In each, the dog does the feature.
-- **Detail.** A deep-purple band about settings: scopes, previews on the native Dock, and Pause/Restore.
-- **Get DogBar.** A cream banner near the footer with the same download CTA, permissions note and demo link. The nav pill and footer link here.
+Each section has one job, and the headings alone tell the story.
+
+- **Hero (promise).** A benefit headline, "Go straight to the window you need.", with the category ("Window switcher and Dock for macOS") as a small eyebrow and the brand in the nav. One sentence contrasts Cmd+Tab (gets you to an app) with DogBar (gets you to the exact window). Download, then "Try it below".
+- **Demo (proof).** Directly under the CTA. Controls sit above the screen so the interactivity is visible in the first viewport, and the live caption sits under it, next to the Dock. The scenario is everyday trip planning: Desktop 1 (Planning) has two Safari windows, a Lisbon day plan and a hotel booking, plus a friends’ Slack chat and a Notes packing list; Desktop 2 (Personal) has a Sunday hike and Music. Safari’s two previews open on arrival with Hotel booking suggested. All names, URLs and messages are fictional.
+- **Before/after (core benefit).** "Cmd+Tab knows apps. You work in windows." macOS Cmd+Tab’s three app icons next to DogBar’s four named window tiles, so the difference reads in one glance.
+- **Three supporting benefits.** Preview before you switch; a Dock for every desktop; count windows at a glance (with drag-to-resize and no magnification). Each has a small code-drawn scene with real app icons and a one-sentence explanation.
+- **Dock modes (objection).** "Use DogBar’s Dock, or keep Apple’s." DogBar Dock versus Native Dock mode, matching the Settings copy: native mode keeps previews and the switcher; per-desktop Docks and dots need the replacement Dock. Pause brings the regular Dock back.
+- **Get DogBar (convert).** App icon, the same download CTA, status note and checksum, three setup steps (install, allow Accessibility and Screen Recording with the reason for each, press Option+Tab) and the unnotarized-preview instructions when that channel is live.
+- **FAQ.** Four short answers: keeping Apple’s Dock, why the permissions, getting the normal Dock back (Pause DogBar / Restore Native Dock in the menu bar), switcher keys.
 
 ## CTA hierarchy
 
-"Download for Mac" is the only primary button: yellow fill, ink text, ink border and hard shadow, larger than anything near it. Yellow is reserved mainly for this action, with cream and lavender on the slogan, demo controls and preview hint. "Try the demo" is a plain underlined link with a play glyph. While unavailable, the download stays yellow but hatched, with a lavender status tag, no hover lift, default cursor and no `href`.
+"Download for Mac" is the only primary button and the only yellow on the page (a test enforces that every rule using `--yellow` styles `.btn-download`). "Try it below" / "Try the demo" are plain underlined text links. The nav’s "Get DogBar" is an outline pill that jumps to the Get section. While unavailable, the download stays yellow with a quiet hatch, a "Coming soon" tag, no hover lift, default cursor and no `href`.
 
 ## Interaction thesis
 
-1. **Entrance.** The hero mascot sticker drops in, the headline settles with a short stagger, and the suggested "Hotel booking" preview nudges a few times.
-2. **Demo state changes.** Picking a preview brings forward only that window and says the other Safari window stayed put. Hovering or focusing a preview outlines its window on the desk. Switching desktops swaps the Dock and windows while pins stay. Option+Tab pops a tile per window.
-3. **Hover and press.** The live download button and feature art lift on hover and squash on press. Feature art tilts in on scroll.
+1. **Entrance.** Hero copy fades up in a short stagger; the controls, screen and caption follow. The suggested "Hotel booking" preview pulses twice.
+2. **Demo state changes.** Picking a preview brings forward only that window and says the other Safari window stayed put. Hovering or focusing a preview outlines its window on the desk; inactive windows show grey traffic lights, so the front window is obvious. Switching desktops swaps the Dock and windows while pins stay. Option+Tab opens a tile per window.
+3. **Scroll.** Feature visuals fade up once; in the before/after, DogBar’s tiles arrive one by one.
 
 All motion collapses under `prefers-reduced-motion`. The demo only listens for keys inside itself (Escape, arrows), never globally. The opening preview does not take focus and survives outside clicks; any demo interaction replaces it, and Reset brings it back. Activating a Dock icon from the keyboard moves focus into its previews, and Escape returns it.
 
+## Research rationale
+
+References were checked live in October 2026. We borrowed patterns, not copy or visuals.
+
+- [Postiz](https://postiz.com): an outcome headline, the product in action right after it, feature blocks that pair a short claim with a real screen, and an FAQ at the end. We took that order (promise, product, benefits, objections, FAQ) and left out its doodles, logo strips, audience cards and testimonial wall, because DogBar has no verified adoption to show and one audience.
+- [Marc Lou](https://marclou.com): one plain, confident first-person line and very little chrome. This is why the headline is short and literal.
+- [SuperX](https://superx.so): every feature block follows the same pattern of label, headline, one paragraph and one visual. We used that rhythm for the feature grid. Its stats and creator counts were not copied: there are no invented metrics here.
+- [AltTab](https://alt-tab.app/) ("Find the right window. Keep your flow.") and [DockDoor](https://dockdoor.net) ("Every window, one hover away."): Mac window tools that lead with the window-level benefit, use one product illustration and repeat a single "Download for Mac". They confirm the category language visitors already know; DogBar’s wording is its own.
+- [rcmd](https://lowtechguys.com/rcmd/): a before/after of "Cmd+Tab, Tab, Tab" against its own shortcut, with keycaps. This is the model for the Cmd+Tab versus Option+Tab comparison and the keycap-styled demo button.
+- [CleanShot X](https://cleanshot.com): a calm, Mac-native palette with one primary CTA repeated at the end.
+- 2026 trend roundups ([SaaSFrame](https://www.saasframe.io/blog/10-saas-landing-page-trends-for-2026-with-real-examples), [SaaS Hero](https://www.saashero.net/design/top-landing-page-design-trends/)) agree on outcome-led heroes, an ungated interactive demo in or right under the hero, real use contexts over abstract illustration, and purposeful micro-animation. We used those, and skipped the ones that would add noise or need proof we lack (logo bars, review badges, personalisation, dark glassmorphism everywhere).
+
 ## Demo windows and app icons
 
-Window content is code: spans styled in `styles.css`, sized in container query units so the same markup renders on the desk, in Dock previews and in switcher tiles. The Finder, Safari, Slack, Notes and Music icons in `assets/apps/` are rendered from the apps installed on a Mac and re-encoded at 96px with no dependencies:
+Window content is code: spans styled in `styles.css`, sized in container query units so the same markup renders on the desk, in Dock previews and in switcher tiles. Feature visuals use their own `fx-*` and `thumb-*` classes, never the demo hooks (`.win`, `.dock-btn`, `.tile`, `.pv`, `[data-app]`), because the demo and its tests query those page-wide. The Finder, Safari, Slack, Notes and Music icons in `assets/apps/` are rendered from the apps installed on a Mac and re-encoded at 96px with no dependencies:
 
 ```
 node landing/tools/app-icons.mjs
 ```
 
-These icons are trademarks of their owners and appear only to depict those apps in the demo.
+These icons are trademarks of their owners and appear only to depict those apps in the demo and feature visuals.
 
 ## Download CTAs and release channels
 
@@ -87,13 +104,7 @@ Live CTAs get `href`, `download`, an "Apple Silicon" tag and the note "Version X
 
 ## Feature art
 
-The four `assets/feature-*.svg` files are generated and self-contained, because SVGs shown through `<img>` cannot load external images. Mascot poses (`assets/mascot-poses/*.png`) and the app icon are cropped, downscaled and embedded as PNG data URIs. Rebuild after changing a pose or a layout:
-
-```
-node landing/tools/build-art.mjs
-```
-
-The DogBar app icon (`dog-96.png`, `dog-640.jpg`) stays the identity in the nav, favicon, settings sketch and each illustrated Dock.
+The page no longer shows the four illustrated `assets/feature-*.svg` files: they were hard to read at a glance. They stay in `assets/` because the repository README embeds them, and `node landing/tools/build-art.mjs` still rebuilds them from `assets/mascot-poses/`. On the page, every feature visual is HTML and CSS with real app icons, wrapped in a `figure.feature-art` with `role="img"` and a full `aria-label`.
 
 ## Tests
 
@@ -102,7 +113,7 @@ node --test 'landing/tests/*.test.cjs'
 JSDOM_PATH=/path/to/node_modules/jsdom node --test 'landing/tests/*.test.cjs'
 ```
 
-`release.test.cjs` needs only Node: manifest verification, shipped markup and art checks. `dom.test.cjs` drives the page and demo in jsdom, which this repo does not install. Point `JSDOM_PATH` at any local copy, otherwise it skips.
+`release.test.cjs` needs only Node: manifest verification, shipped markup, colour and art checks. `dom.test.cjs` drives the page and demo in jsdom, which this repo does not install. Point `JSDOM_PATH` at any local copy, otherwise it skips.
 
 ## Copy guardrails
 
@@ -116,4 +127,4 @@ The preview DMG lives in ignored `landing/downloads/` and must be included in de
 
 ### Feature sizing regression
 
-Feature figures use `.feature-art`; Music cover thumbnails use `.album-art`. Keep their selectors separate. Feature figures explicitly fill their grid column with automatic height, while cover thumbnails use small fixed dimensions. `tests/layout.test.cjs` checks the CSS cascade so album-cover styles cannot shrink the four feature illustrations. It uses the same optional jsdom setup as the interaction tests and does not claim browser pixel-layout validation.
+Feature figures use `.feature-art`; Music cover thumbnails use `.album-art`. Keep their selectors separate. Feature figures explicitly fill their grid column with automatic height, while cover thumbnails use small fixed dimensions. `tests/layout.test.cjs` checks the CSS cascade so album-cover styles cannot shrink the four feature visuals, that their icons keep fixed sizes, and that `[hidden] { display: none !important; }` stays the last rule so closed preview and switcher shells never paint. It uses the same optional jsdom setup as the interaction tests and does not claim browser pixel-layout validation.

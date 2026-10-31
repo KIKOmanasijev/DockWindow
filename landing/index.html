@@ -3,13 +3,13 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DogBar: a Windows-style window switcher and Dock for macOS</title>
-  <meta name="description" content="DogBar brings Windows-style window switching to the Mac: Option+Tab shows every window, each desktop gets its own Dock, and Dock icons show window previews and counts. In development. macOS 14+.">
-  <meta name="theme-color" content="#6E24E6">
+  <title>DogBar: go straight to the window you need on your Mac</title>
+  <meta name="description" content="DogBar is a window switcher and Dock for macOS. Option+Tab shows every open window, not one icon per app, and Dock previews let you pick the exact window. Each desktop gets its own Dock. macOS 14+.">
+  <meta name="theme-color" content="#4a14b8">
   <link rel="canonical" href="https://dogbar.hristijan.dev/">
   <meta property="og:type" content="website">
-  <meta property="og:title" content="DogBar: a Windows-style window switcher and Dock for macOS">
-  <meta property="og:description" content="Option+Tab that shows every window, a separate Dock for each desktop, window previews and counts. A native Mac app in development. macOS 14+.">
+  <meta property="og:title" content="DogBar: go straight to the window you need">
+  <meta property="og:description" content="A window switcher and Dock for macOS. Option+Tab shows every window, Dock previews let you pick the exact one, and each desktop gets its own Dock. macOS 14+.">
   <meta property="og:url" content="https://dogbar.hristijan.dev/">
   <meta property="og:image" content="https://dogbar.hristijan.dev/assets/dog-640.jpg">
   <meta property="og:image:alt" content="DogBar app icon: a cartoon dog holding two windows on purple">
@@ -23,50 +23,61 @@
 <body>
   <a class="skip" href="#main">Skip to content</a>
 
-  <!-- UI glyphs for buttons and the demo menu bar. -->
+  <!-- UI glyphs for buttons, the demo menu bar and feature visuals. -->
   <svg width="0" height="0" class="sr-only" aria-hidden="true" focusable="false">
-    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11m0 0-4.5-4.5M12 14.5l4.5-4.5M4.5 15.5v2.5A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-2.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
-    <symbol id="i-play" viewBox="0 0 24 24"><path d="M8 5.5v13l10-6.5z" fill="currentColor" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3.5v11m0 0-4.5-4.5M12 14.5l4.5-4.5M4.5 15.5v2.5A2.5 2.5 0 0 0 7 20.5h10a2.5 2.5 0 0 0 2.5-2.5v-2.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M12 5v14m0 0-5-5m5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></symbol>
     <symbol id="i-paw" viewBox="0 0 24 24"><ellipse cx="12" cy="16" rx="6" ry="5"/><circle cx="5" cy="10" r="2.4"/><circle cx="9.5" cy="6" r="2.4"/><circle cx="14.5" cy="6" r="2.4"/><circle cx="19" cy="10" r="2.4"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12.5 4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+    <symbol id="i-cursor" viewBox="0 0 24 24"><path d="M5 3.5 19 12l-6.4 1.4L9.6 20z" fill="#1a1033" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/></symbol>
   </svg>
 
   <header class="hero">
     <nav class="nav" aria-label="Primary">
       <a class="brand" href="#top" aria-label="DogBar, back to top">
-        <img src="assets/dog-96.png" width="40" height="40" alt="">
+        <img src="assets/dog-96.png" width="32" height="32" alt="">
         <span>DogBar</span>
       </a>
       <ul class="nav-links">
         <li><a href="#demo">Demo</a></li>
         <li><a href="#features">Features</a></li>
+        <li><a href="#faq">FAQ</a></li>
       </ul>
-      <a class="status-pill" href="#get"><span class="dot" aria-hidden="true"></span>Get DogBar</a>
+      <a class="nav-cta" href="#get">Get DogBar</a>
     </nav>
 
-    <div class="hero-inner" id="top">
-      <div class="hero-copy">
-        <p class="eyebrow">Window switcher &amp; Dock manager for macOS</p>
-        <h1 class="brand-title">DogBar</h1>
-        <p class="promise">Switch windows, not apps.</p>
-        <p class="lede">Cmd+Tab brings back an app. DogBar brings back the exact window you meant.</p>
-        <div class="actions">
-          <a class="btn btn-download" data-download aria-describedby="hero-dl-note">
-            <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
-            <span>Download for Mac</span>
-            <span class="dl-tag" data-download-tag>Coming soon</span>
-          </a>
-          <a class="btn-link" href="#demo" data-demo-start>
-            <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-play"/></svg>
-            <span>Try the demo</span>
-          </a>
+    <div class="hero-copy" id="top">
+      <p class="eyebrow">Window switcher and Dock for macOS</p>
+      <h1 class="headline">Go straight to the window you need.</h1>
+      <p class="lede">Cmd+Tab only gets you to an app. DogBar’s Option+Tab shows every window on its own, and Dock previews let you click the exact one.</p>
+      <div class="actions">
+        <a class="btn btn-download" data-download aria-describedby="hero-dl-note">
+          <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+          <span>Download for Mac</span>
+          <span class="dl-tag" data-download-tag>Coming soon</span>
+        </a>
+        <a class="btn-link" href="#demo" data-demo-start>
+          <span>Try it below</span>
+          <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-arrow"/></svg>
+        </a>
+      </div>
+      <p class="dl-note" id="hero-dl-note" data-download-note>Public release is being prepared. macOS 14+.</p>
+    </div>
+
+    <section class="stage" id="demo" aria-labelledby="demo-title" tabindex="-1">
+      <h2 id="demo-title" class="sr-only">Interactive DogBar demo</h2>
+      <div class="controls">
+        <span class="controls-label" aria-hidden="true">Try it</span>
+        <div class="seg" role="group" aria-label="Desktop">
+          <button type="button" class="chip" data-desk-btn="1" aria-pressed="true">Desktop 1 <small>Planning</small></button>
+          <button type="button" class="chip" data-desk-btn="2" aria-pressed="false">Desktop 2 <small>Personal</small></button>
         </div>
-        <p class="dl-note" id="hero-dl-note" data-download-note>Public release is being prepared. macOS 14+.</p>
+        <button type="button" class="chip chip-key" data-tab><kbd aria-hidden="true">⌥</kbd> Option+Tab</button>
+        <button type="button" class="chip chip-release" data-release hidden>Release <kbd aria-hidden="true">⌥</kbd></button>
+        <button type="button" class="chip chip-quiet" data-reset hidden>Reset</button>
       </div>
 
-      <section class="stage" id="demo" aria-labelledby="demo-title" tabindex="-1">
-        <h2 id="demo-title" class="sr-only">Interactive DogBar demo</h2>
-        <img class="stage-dog" src="assets/dog-640.jpg" width="640" height="640" alt="DogBar mascot: a cartoon dog holding two windows">
-
+      <div class="screen">
         <div class="mac" data-demo>
           <div class="menubar" aria-hidden="true">
             <span class="menubar-app" data-front-app>Safari</span>
@@ -86,128 +97,205 @@
           </div>
           <div class="preview" id="demo-preview" data-preview hidden></div>
         </div>
-
-        <div class="controls">
-          <div class="seg" role="group" aria-label="Desktop">
-            <button type="button" class="chip" data-desk-btn="1" aria-pressed="true">Desktop 1 <small>Planning</small></button>
-            <button type="button" class="chip" data-desk-btn="2" aria-pressed="false">Desktop 2 <small>Personal</small></button>
-          </div>
-          <button type="button" class="chip chip-key" data-tab><kbd aria-hidden="true">⌥</kbd> Option+Tab</button>
-          <button type="button" class="chip chip-release" data-release hidden>Release <kbd aria-hidden="true">⌥</kbd></button>
-          <button type="button" class="chip chip-quiet" data-reset hidden>Reset</button>
-        </div>
-        <p class="caption" data-caption aria-live="polite">Planning a trip: Safari has two windows open. Pick “Hotel booking” to bring just that one forward.</p>
-        <noscript><p class="caption">The live demo needs JavaScript. The feature pictures below show the same ideas.</p></noscript>
-      </section>
-    </div>
+      </div>
+      <p class="caption" data-caption aria-live="polite">Planning a trip: Safari has two windows open. Pick “Hotel booking” to bring just that one forward.</p>
+      <noscript><p class="caption">The live demo needs JavaScript. The pictures below show the same ideas.</p></noscript>
+    </section>
   </header>
 
   <main id="main">
     <section class="features" id="features" aria-labelledby="features-title">
-      <h2 id="features-title" class="section-title">Built for Macs with a lot of windows open.</h2>
-
-      <article class="feature">
-        <figure class="feature-art reveal">
-          <img src="assets/feature-switcher.svg" width="640" height="480" loading="lazy" decoding="async"
-            alt="Option+Tab switcher showing five tiles, including two separate Safari windows. Below the screen, the DogBar dog presses the Option and Tab keys.">
-        </figure>
+      <article class="feature feature-wide">
         <div class="feature-copy">
-          <span class="num" aria-hidden="true">01</span>
-          <h3>Alt+Tab, finally on the Mac.</h3>
-          <p>Cmd+Tab shows one icon per app, even when that app has five windows open. DogBar’s Option+Tab shows <strong>every single window as its own tile</strong>, just like on Windows. Hold Option, tap Tab, let go, and you’re in the exact window you wanted.</p>
+          <p class="kicker">Option+Tab</p>
+          <h2 id="features-title" class="section-title">Cmd+Tab knows apps. You work in windows.</h2>
+          <p>Two Safari windows hide behind one Safari icon in Cmd+Tab. In DogBar’s switcher, every window gets its own tile with its name, so you land on the one you meant. Hold Option, tap Tab, let go.</p>
         </div>
+        <figure class="feature-art compare reveal" role="img" aria-label="Comparison. macOS Cmd+Tab shows one icon each for Safari, Slack and Notes. DogBar Option+Tab shows four named tiles: Lisbon day plan and Hotel booking from Safari, lisbon-trip from Slack, and Packing list from Notes.">
+          <div class="compare-col">
+            <p class="compare-label">macOS Cmd+Tab</p>
+            <div class="fx-switch fx-switch-apps">
+              <span class="fx-app is-on"><img src="assets/apps/safari.png" width="96" height="96" alt=""></span>
+              <span class="fx-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""></span>
+              <span class="fx-app"><img src="assets/apps/notes.png" width="96" height="96" alt=""></span>
+            </div>
+            <p class="compare-note">One icon per app. Which Safari window?</p>
+          </div>
+          <div class="compare-col is-dogbar">
+            <p class="compare-label">DogBar Option+Tab</p>
+            <div class="fx-switch">
+              <span class="fx-tile"><span class="thumb thumb-trip"></span><span class="fx-name">Lisbon day plan</span></span>
+              <span class="fx-tile is-on"><span class="thumb thumb-booking"></span><span class="fx-name">Hotel booking</span></span>
+              <span class="fx-tile"><span class="thumb thumb-slack"></span><span class="fx-name">#lisbon-trip</span></span>
+              <span class="fx-tile"><span class="thumb thumb-notes"></span><span class="fx-name">Packing list</span></span>
+            </div>
+            <p class="compare-note">One tile per window. Pick the hotel booking.</p>
+          </div>
+        </figure>
       </article>
 
-      <article class="feature">
-        <figure class="feature-art reveal">
-          <img src="assets/feature-desktops.svg" width="640" height="480" loading="lazy" decoding="async"
-            alt="Two desktops side by side, each with its own Dock. Finder and DogBar stay pinned on both, and the dog walks a new window over to Desktop 2.">
-        </figure>
-        <div class="feature-copy">
-          <span class="num" aria-hidden="true">02</span>
-          <h3>Every desktop is its own workspace.</h3>
-          <p>Each desktop gets a Dock with <strong>only the apps you use there</strong>, so work stays with work and personal stays personal. Click Safari when its windows live on another desktop, and DogBar asks for a new window right here instead of pulling you away. Pinned apps show up everywhere.</p>
-        </div>
-      </article>
+      <div class="feature-grid">
+        <article class="feature">
+          <figure class="feature-art reveal" role="img" aria-label="The Safari Dock icon with two window previews above it, Lisbon day plan and Hotel booking. The pointer is on Hotel booking.">
+            <div class="fx-stage">
+              <div class="fx-pop">
+                <span class="fx-pv"><span class="thumb thumb-trip"></span><span class="fx-name">Lisbon day plan</span></span>
+                <span class="fx-pv is-on"><span class="thumb thumb-booking"></span><span class="fx-name">Hotel booking</span><svg class="fx-cursor"><use href="#i-cursor"/></svg></span>
+              </div>
+              <div class="fx-dock">
+                <span class="fx-dock-app"><img src="assets/apps/finder.png" width="96" height="96" alt=""><i></i></span>
+                <span class="fx-dock-app is-on"><img src="assets/apps/safari.png" width="96" height="96" alt=""><i></i></span>
+                <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""><i></i></span>
+              </div>
+            </div>
+          </figure>
+          <div class="feature-copy">
+            <h3>Preview before you switch.</h3>
+            <p>Hover an app in the Dock to see each of its windows. Click one and only that window comes forward. Close, minimize or go full screen from the preview.</p>
+          </div>
+        </article>
 
-      <article class="feature">
-        <figure class="feature-art reveal">
-          <img src="assets/feature-previews.svg" width="640" height="480" loading="lazy" decoding="async"
-            alt="Hovering Safari in the Dock shows previews of two windows with traffic lights. The cursor picks one window while the dog peeks up from below the screen.">
-        </figure>
-        <div class="feature-copy">
-          <span class="num" aria-hidden="true">03</span>
-          <h3>See a window before you switch to it.</h3>
-          <p>Hover any app in the Dock to see <strong>a preview of each of its windows</strong>. No more guessing which Safari window is which. Click the one you want and exactly that window comes forward, or close, minimize or zoom it with its traffic lights.</p>
-        </div>
-      </article>
+        <article class="feature">
+          <figure class="feature-art reveal" role="img" aria-label="Two desktops with different Docks. Desktop 1 shows Safari, Slack and Notes. Desktop 2 shows Safari and Music. Finder and DogBar are pinned on both.">
+            <div class="fx-stage fx-desks">
+              <div class="fx-desk">
+                <p class="fx-desk-name">Desktop 1 · Planning</p>
+                <div class="fx-dock">
+                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
+                  <span class="fx-sep"></span>
+                  <span class="fx-dock-app"><img src="assets/apps/safari.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/notes.png" width="96" height="96" alt=""></span>
+                </div>
+              </div>
+              <div class="fx-desk">
+                <p class="fx-desk-name">Desktop 2 · Personal</p>
+                <div class="fx-dock">
+                  <span class="fx-dock-app is-pin"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app is-pin"><img src="assets/dog-96.png" width="96" height="96" alt=""></span>
+                  <span class="fx-sep"></span>
+                  <span class="fx-dock-app"><img src="assets/apps/safari.png" width="96" height="96" alt=""></span>
+                  <span class="fx-dock-app"><img src="assets/apps/music.png" width="96" height="96" alt=""></span>
+                </div>
+              </div>
+              <p class="fx-legend"><span class="fx-pin-key"></span>Pinned on every desktop</p>
+            </div>
+          </figure>
+          <div class="feature-copy">
+            <h3>A Dock for every desktop.</h3>
+            <p>Each desktop’s Dock shows the apps with windows there, so trip planning and your weekend stay apart. Pinned apps stay on every Dock.</p>
+          </div>
+        </article>
 
-      <article class="feature">
-        <figure class="feature-art reveal">
-          <img src="assets/feature-dock.svg" width="640" height="480" loading="lazy" decoding="async"
-            alt="A Dock with one dot per open window. The dog stands on the Dock and lifts its resize grip. Icons keep a fixed size.">
-        </figure>
-        <div class="feature-copy">
-          <span class="num" aria-hidden="true">04</span>
-          <h3>Know how many windows are open.</h3>
-          <p>Like the Windows taskbar, each app shows <strong>one dot for every open window</strong>. Three dots, three windows. Drag the Dock’s edge to make it bigger or smaller, and the icons stay put with no magnification wobble.</p>
-        </div>
-      </article>
+        <article class="feature">
+          <figure class="feature-art reveal" role="img" aria-label="A Dock where Safari has two dots, Slack one and Notes three, one dot per open window. A resize grip on the Dock's edge shows it can be dragged. Icons keep a fixed size.">
+            <div class="fx-stage fx-counts">
+              <div class="fx-dock fx-dock-lg">
+                <span class="fx-dock-app"><img src="assets/apps/safari.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/notes.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i><i></i></b></span>
+                <span class="fx-grip"></span>
+              </div>
+              <p class="fx-legend fx-legend-row"><span><b>2</b> Safari windows</span><span><b>1</b> Slack</span><span><b>3</b> Notes</span></p>
+            </div>
+          </figure>
+          <div class="feature-copy">
+            <h3>Count windows at a glance.</h3>
+            <p>One dot for every open window, like the Windows taskbar. Drag the Dock’s edge to resize it. Icons stay put, with no magnification.</p>
+          </div>
+        </article>
+      </div>
     </section>
 
-    <section class="detail" aria-labelledby="detail-title">
-      <div class="detail-copy">
-        <h2 id="detail-title" class="section-title">Set it your way.</h2>
-        <p>Show apps and windows from the current desktop or from all desktops, set separately for the Dock, the switcher and previews.</p>
-        <p>Rather keep Apple’s Dock? Native Dock mode still gives you previews and the switcher. Pause brings the regular Dock back anytime.</p>
+    <section class="modes" aria-labelledby="modes-title">
+      <div class="modes-head">
+        <p class="kicker">Your choice</p>
+        <h2 id="modes-title" class="section-title">Use DogBar’s Dock, or keep Apple’s.</h2>
+        <p>The switcher and previews work either way. Pause DogBar whenever you like and your regular Dock comes back.</p>
       </div>
-      <div class="settings reveal" aria-hidden="true">
-        <div class="settings-bar"><span class="lights"><i></i><i></i><i></i></span><b>DogBar Settings</b></div>
-        <img class="settings-dog" src="assets/dog-96.png" width="96" height="96" alt="">
-        <dl class="settings-rows">
-          <div><dt>Dock shows apps from</dt><dd class="pop">Current desktop</dd></div>
-          <div><dt>Switcher: Windows from</dt><dd class="pop">All desktops</dd></div>
-          <div><dt>Indicator style</dt><dd class="pop">One dot per window</dd></div>
-          <div><dt>Enable Dock previews</dt><dd><span class="toggle on"></span></dd></div>
-          <div><dt>Pause DogBar</dt><dd><span class="toggle"></span></dd></div>
-        </dl>
+      <div class="modes-grid">
+        <div class="mode is-primary">
+          <h3>DogBar Dock</h3>
+          <p class="mode-sub">Replaces the Dock with one built around windows.</p>
+          <ul class="ticks">
+            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>A separate Dock for each desktop</li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>One dot per open window</li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Drag the edge to resize, no magnification</li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Window previews and Option+Tab</li>
+          </ul>
+        </div>
+        <div class="mode">
+          <h3>Native Dock mode</h3>
+          <p class="mode-sub">Keeps Apple’s Dock exactly where it is.</p>
+          <ul class="ticks">
+            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Window previews on Apple’s Dock</li>
+            <li><svg aria-hidden="true" focusable="false"><use href="#i-check"/></svg>Option+Tab for every window</li>
+          </ul>
+        </div>
       </div>
+      <p class="modes-foot">You can also choose whether the Dock, the switcher and previews show the current desktop or all desktops, each on its own.</p>
     </section>
 
     <section class="get" id="get" aria-labelledby="get-title">
-      <div class="get-banner reveal">
-        <img class="get-dog" src="assets/dog-640.jpg" width="640" height="640" alt="" loading="lazy" decoding="async">
-        <div class="get-copy">
-          <h2 id="get-title" class="section-title">Get DogBar for your Mac.</h2>
-          <p>A native Swift app for macOS 14 or later. It asks for Accessibility and Screen Recording permission so it can see your windows.</p>
-          <div class="actions">
-            <a class="btn btn-download" data-download aria-describedby="get-dl-note">
-              <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
-              <span>Download for Mac</span>
-              <span class="dl-tag" data-download-tag>Coming soon</span>
-            </a>
-            <a class="btn-link" href="#demo" data-demo-start>
-              <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-play"/></svg>
-              <span>Try the demo</span>
-            </a>
-          </div>
-          <p class="dl-note" id="get-dl-note" data-download-note>The public release is being prepared. Until then, the demo shows how it works.</p>
-          <p class="dl-hash" data-download-hash hidden>SHA-256 <code></code></p>
-          <details class="install-note" id="install" data-preview-help hidden>
-            <summary>Installing this unnotarized preview</summary>
-            <p>Apple has not notarized this preview. Open the DMG and drag DogBar to Applications. If macOS blocks opening it, review the app and use System Settings → Privacy &amp; Security → Open Anyway. Then grant Accessibility and Screen Recording when requested.</p>
-            <p><a href="https://support.apple.com/102445" target="_blank" rel="noopener noreferrer">Apple’s first-launch instructions</a></p>
-          </details>
+      <div class="get-inner">
+        <img class="get-icon" src="assets/dog-640.jpg" width="640" height="640" alt="" loading="lazy" decoding="async">
+        <h2 id="get-title" class="section-title">Get DogBar for your Mac.</h2>
+        <p class="get-sub">A native Swift app for macOS 14 or later.</p>
+        <div class="actions">
+          <a class="btn btn-download" data-download aria-describedby="get-dl-note">
+            <svg class="btn-ic" aria-hidden="true" focusable="false"><use href="#i-download"/></svg>
+            <span>Download for Mac</span>
+            <span class="dl-tag" data-download-tag>Coming soon</span>
+          </a>
+          <a class="btn-link" href="#demo" data-demo-start>
+            <span>Try the demo</span>
+          </a>
         </div>
+        <p class="dl-note" id="get-dl-note" data-download-note>The public release is being prepared. Until then, the demo shows how it works.</p>
+        <p class="dl-hash" data-download-hash hidden>SHA-256 <code></code></p>
+        <ol class="steps">
+          <li><b>Install.</b> Open the DMG and drag DogBar to Applications.</li>
+          <li><b>Allow access.</b> Accessibility lets DogBar focus and control windows. Screen Recording lets it show window previews.</li>
+          <li><b>Switch.</b> Hold Option and tap Tab.</li>
+        </ol>
+        <details class="install-note" id="install" data-preview-help hidden>
+          <summary>Installing this unnotarized preview</summary>
+          <p>Apple has not notarized this preview. Open the DMG and drag DogBar to Applications. If macOS blocks opening it, review the app and use System Settings → Privacy &amp; Security → Open Anyway. Then grant Accessibility and Screen Recording when requested.</p>
+          <p><a href="https://support.apple.com/102445" target="_blank" rel="noopener noreferrer">Apple’s first-launch instructions</a></p>
+        </details>
+      </div>
+    </section>
+
+    <section class="faq" id="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title" class="section-title">Questions</h2>
+      <div class="faq-list">
+        <details>
+          <summary>Do I have to replace Apple’s Dock?</summary>
+          <p>No. Native Dock mode keeps Apple’s Dock and adds window previews and the Option+Tab switcher.</p>
+        </details>
+        <details>
+          <summary>Why does DogBar need Accessibility and Screen Recording?</summary>
+          <p>Accessibility lets it focus, close and minimize individual windows and handle its keyboard shortcut. Screen Recording lets it draw the window thumbnails in previews and the switcher.</p>
+        </details>
+        <details>
+          <summary>How do I get my normal Dock back?</summary>
+          <p>Click the paw in the menu bar and choose Pause DogBar or Restore Native Dock. Both bring back your original Dock settings.</p>
+        </details>
+        <details>
+          <summary>Which keys does the switcher use?</summary>
+          <p>Hold Option and tap Tab to move forward. Add Shift to go back, use the arrow keys to move around, and press Escape to cancel.</p>
+        </details>
       </div>
     </section>
   </main>
 
   <footer class="footer">
-    <p><img src="assets/dog-96.png" width="24" height="24" alt=""> DogBar. A native Swift app for macOS 14+.</p>
+    <p><img src="assets/dog-96.png" width="20" height="20" alt=""> DogBar. A native Swift app for macOS 14+.</p>
     <ul class="footer-links">
       <li><a href="#demo">Demo</a></li>
       <li><a href="#features">Features</a></li>
+      <li><a href="#faq">FAQ</a></li>
       <li><a href="#get">Download</a></li>
     </ul>
   </footer>

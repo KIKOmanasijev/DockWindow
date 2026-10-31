@@ -1,4 +1,4 @@
-// DogBar landing: interactive demo and scroll reveals. No dependencies.
+// DogBar landing: interactive hero demo and scroll reveals. No dependencies.
 (() => {
   "use strict";
   document.documentElement.classList.add("js");
@@ -54,8 +54,7 @@
   const INTRO_PICK = "s2";
   const INTRO_TEXT = "Planning a trip: Safari has two windows open. Pick “Hotel booking” to bring just that one forward.";
 
-  // Positions are percentages of the desk. `view` picks the window's content. The
-  // top-right corner (x > 80, y < 16) stays clear for the mascot sticker.
+  // Positions are percentages of the desk. `view` picks the window's content.
   const initialWindows = () => ({
     1: [
       { id: "s1", app: "safari", view: "trip", title: "Lisbon day plan", url: "wanderly.travel", x: 6, y: 26, w: 48, h: 54 },

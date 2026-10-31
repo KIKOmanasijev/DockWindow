@@ -112,8 +112,36 @@ test("page structure and accessibility basics", { skip }, async () => {
   assert.equal($$("h1").length, 1);
   assert.equal($$("[data-demo-start]").length, 2, "Try the demo in hero and banner");
   assert.ok($$("[data-demo-start]").every((a) => a.getAttribute("href") === "#demo"));
-  assert.equal($(".status-pill").getAttribute("href"), "#get");
+  assert.equal($(".nav-cta").getAttribute("href"), "#get");
   assert.ok($("#get [data-download]") && $(".hero [data-download]"), "CTA in hero and in the banner");
+});
+
+test("hero leads with a benefit, and the dog stays a brand mark", { skip }, async () => {
+  const { $, $$ } = await page(json(null));
+  const h1 = $("h1");
+  assert.ok(h1.closest(".hero"), "the headline is in the hero");
+  assert.notEqual(h1.textContent.trim(), "DogBar", "the product name is not the headline");
+  assert.match(h1.textContent, /window/i, "the headline names the benefit");
+  assert.ok($(".nav .brand").textContent.includes("DogBar"), "the brand lives in the nav");
+  assert.equal($$(".hero img").filter((img) => !img.closest(".nav, .mac")).length, 0, "no mascot art around the demo");
+  for (const img of $$("img")) assert.doesNotMatch(img.getAttribute("src"), /mascot|feature-[a-z]+\.svg/, img.getAttribute("src"));
+});
+
+test("feature visuals are labelled pictures that never collide with demo hooks", { skip }, async () => {
+  const { $$ } = await page(json(null));
+  const figures = $$("#features figure.feature-art");
+  assert.equal(figures.length, 4);
+  for (const fig of figures) {
+    assert.equal(fig.getAttribute("role"), "img");
+    assert.ok((fig.getAttribute("aria-label") || "").length > 40, "each visual has a text equivalent");
+    assert.equal(fig.querySelectorAll("a, button, input, [tabindex]").length, 0, "pictures hold no controls");
+  }
+  assert.equal($$("#features .win, #features .dock-btn, #features .tile, #features .pv, #features .pv-name, #features [data-app]").length, 0,
+    "demo selectors stay scoped to the demo");
+  // The before/after names both Safari windows, the core benefit.
+  assert.deepEqual($$(".compare .is-dogbar .fx-name").map((n) => n.textContent), ["Lisbon day plan", "Hotel booking", "#lisbon-trip", "Packing list"]);
+  assert.equal($$(".compare .fx-switch-apps .fx-app").length, 3, "Cmd+Tab shows one icon per app");
+  assert.ok($$("#faq details summary").length >= 3, "short FAQ");
 });
 
 test("CTA hierarchy: download is the primary button, the demo a secondary link", { skip }, async () => {

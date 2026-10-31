@@ -99,12 +99,12 @@ test("page ships download CTAs in the unavailable state", () => {
 });
 
 test("no em dashes in landing sources", () => {
-  for (const file of ["index.html", "styles.css", "script.js", "release.js", "README.md", "tools/build-art.mjs", "tools/png.mjs", "tools/app-icons.mjs", "tests/dom.test.cjs", "tests/release.test.cjs"]) {
+  for (const file of ["index.html", "styles.css", "script.js", "release.js", "README.md", "tools/build-art.mjs", "tools/png.mjs", "tools/app-icons.mjs", "tests/dom.test.cjs", "tests/release.test.cjs", "tests/layout.test.cjs"]) {
     assert.doesNotMatch(fs.readFileSync(path.join(ROOT, file), "utf8"), /\u2014/, file);
   }
 });
 
-test("feature art is standalone and uses a distinct mascot pose each", () => {
+test("README feature art (assets/feature-*.svg) stays standalone with a distinct pose each", () => {
   const poses = new Set();
   for (const [file, id] of [["feature-switcher.svg", "sw"], ["feature-desktops.svg", "dk"], ["feature-previews.svg", "pv"], ["feature-dock.svg", "dd"]]) {
     const svg = fs.readFileSync(path.join(ROOT, "assets", file), "utf8");
@@ -129,9 +129,21 @@ test("download CTA is yellow while decorative UI uses cream and lavender", () =>
   assert.match(rule(".btn-download:not([href])"), /var\(--yellow\)/, "coming soon retains the action color");
   assert.match(rule(".btn-download:not([href])"), /cursor: default/);
   assert.doesNotMatch(css, /\.btn-download:not\(\[href\]\):hover/, "no hover lift while unavailable");
-  for (const selector of [".promise", ".pv-hint", ".chip-key", ".status-pill .dot", ".detail .section-title"]) {
+  for (const selector of [".headline", ".kicker", ".pv-hint", ".chip-key", ".nav-cta", ".mode.is-primary", ".fx-pv.is-on"]) {
     assert.doesNotMatch(rule(selector), /var\(--yellow\)/, selector);
   }
+  // Yellow belongs to the download button only: every rule that uses it styles .btn-download.
+  for (const [, selector, body] of css.replace(/\/\*[\s\S]*?\*\//g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    if (/var\(--yellow/.test(body)) assert.match(selector.trim(), /^\.btn-download\b/, selector.trim());
+  }
+});
+
+test("the page uses code-native visuals and keeps the dog to brand marks", () => {
+  const html = fs.readFileSync(path.join(ROOT, "index.html"), "utf8");
+  const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8");
+  for (const text of [html, css]) assert.doesNotMatch(text, /mascot-poses|feature-(?:switcher|desktops|previews|dock)\.svg/);
+  assert.doesNotMatch(html, /<h1[^>]*>\s*DogBar\s*<\/h1>/, "the product name is not the headline");
+  assert.doesNotMatch(css, /--wobble|rotate\(-?1\.[0-9]deg\)/, "no hand-drawn wobble or tilted stickers");
 });
 
 test("hero demo uses local app icons and no hosted assets", () => {

@@ -23,11 +23,14 @@ test("feature illustrations never inherit album-cover dimensions", { skip: !JSDO
     for (const figure of figures) {
       assert.ok(figure.classList.contains("feature-art"));
       assert.equal(figure.matches(".music .art, .album-art"), false);
+      assert.equal(figure.querySelectorAll(".album-art, .art").length, 0);
       const computed = dom.window.getComputedStyle(figure);
       assert.equal(computed.width, "100%", "fill the feature column");
-      assert.equal(computed.height, "auto", "preserve the image aspect ratio");
-      assert.equal(dom.window.getComputedStyle(figure.querySelector("img")).width, "100%");
+      assert.equal(computed.height, "auto", "grow with the visual inside");
     }
+    // App icons inside the feature visuals keep their own fixed sizes.
+    const icon = document.querySelector(".fx-dock-app img");
+    assert.equal(dom.window.getComputedStyle(icon).width, "34px");
     const music = document.createElement("div");
     music.className = "music";
     music.innerHTML = '<i class="album-art"></i>';
@@ -36,6 +39,11 @@ test("feature illustrations never inherit album-cover dimensions", { skip: !JSDO
     assert.equal(cover.width, "2.6em");
     assert.equal(cover.height, "2.6em");
   } finally { dom.window.close(); }
+});
+
+test("the semantic [hidden] rule stays last, after every component and media rule", () => {
+  const css = fs.readFileSync(path.join(ROOT, "styles.css"), "utf8").trim();
+  assert.match(css, /\[hidden\] \{ display: none !important; \}$/);
 });
 
 test("closed preview and switcher shells stay invisible through demo transitions", { skip: !JSDOM && "jsdom not found" }, () => {
