@@ -13,11 +13,12 @@ import SwiftUI
     public init(settings: AppSettings, permissions: PermissionsService, pinnedApps: PinnedAppsStore,
                 onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
         self.settings = settings
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 820, height: 620),
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 940, height: 700),
                               styleMask: [.titled, .closable, .miniaturizable, .resizable], backing: .buffered, defer: false)
         window.title = "DogBar Settings"
+        window.titlebarAppearsTransparent = true
         window.identifier = NSUserInterfaceItemIdentifier("DogBar.Settings")
-        window.minSize = NSSize(width: 720, height: 520)
+        window.minSize = NSSize(width: 820, height: 580)
         window.isReleasedWhenClosed = false
         window.setFrameAutosaveName("DogBar.Settings")
         super.init(window: window)

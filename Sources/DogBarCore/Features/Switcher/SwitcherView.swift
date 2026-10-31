@@ -3,6 +3,7 @@ import SwiftUI
 
 @MainActor final class SwitcherPresentation: ObservableObject {
     @Published var session = SwitcherSession()
+    @Published var appMode = false
     @Published var apps: [TrackedApp] = []
     @Published var columns = 1
     @Published var thumbnailSize = CGSize(width: 320, height: 200)
@@ -73,15 +74,26 @@ import SwiftUI
         case .windowlessApp(let app):
             Button { presentation.activate(item.tileID) } label: {
                 VStack(spacing: 8) {
+                    if presentation.appMode {
+                        Image(nsImage: app.icon).resizable().scaledToFit().frame(width: 80, height: 80)
+                        Text(app.name).font(.system(size: 13, weight: .medium)).lineLimit(2).multilineTextAlignment(.center)
+                    } else {
                     WindowTitlePill(app: app, title: "No Open Windows")
                         .frame(width: presentation.thumbnailSize.width, height: 40)
                     VStack(spacing: 12) {
                         Image(nsImage: app.icon).resizable().scaledToFit().frame(width: 80, height: 80)
                         Text("No Open Windows").font(.callout).italic().foregroundStyle(.secondary).lineLimit(1)
                     }.frame(width: presentation.thumbnailSize.width, height: presentation.thumbnailSize.height)
-                }.padding(8)
-                    .background(presentation.session.selectedID == item.tileID ? Theme.selection(settings) : Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16))
-                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(Color.white.opacity(presentation.session.selectedID == item.tileID ? 0.65 : 0.08), lineWidth: presentation.session.selectedID == item.tileID ? 2.5 : 1))
+                    }
+                }.frame(width: presentation.thumbnailSize.width, height: presentation.thumbnailSize.height + 40).padding(8)
+                    .background(presentation.appMode
+                                ? Color.primary.opacity(presentation.session.selectedID == item.tileID ? 0.14 : 0)
+                                : (presentation.session.selectedID == item.tileID ? Theme.selection(settings) : Color.primary.opacity(0.045)),
+                                in: RoundedRectangle(cornerRadius: 16))
+                    .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(
+                        presentation.appMode ? Color.primary.opacity(presentation.session.selectedID == item.tileID ? 0.22 : 0)
+                        : Color.white.opacity(presentation.session.selectedID == item.tileID ? 0.65 : 0.08),
+                        lineWidth: presentation.appMode ? 1 : (presentation.session.selectedID == item.tileID ? 2.5 : 1)))
             }.buttonStyle(.plain).onHover { if $0 { presentation.select(item.tileID) } }
         }
     }

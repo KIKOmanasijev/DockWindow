@@ -184,8 +184,15 @@ public final class AppSettings: ObservableObject {
         get { read("hasImportedPinnedApps", fallback: false) }
         set { write("hasImportedPinnedApps", value: newValue) }
     }
+    public var switcherMode: SwitcherMode {
+        get { read("switcherEnabled", fallback: true) ? read("switcherMode", fallback: .windows) : .native }
+        set {
+            write("switcherMode", value: newValue)
+            write("switcherEnabled", value: newValue != .native)
+        }
+    }
     public var switcherEnabled: Bool {
-        get { read("switcherEnabled", fallback: true) }
+        get { read("switcherEnabled", fallback: true) && read("switcherMode", fallback: SwitcherMode.windows) != .native }
         set { write("switcherEnabled", value: newValue) }
     }
     public var switcherShortcut: KeyboardShortcut {
@@ -371,6 +378,7 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "pinnedApps": encoded([] as [PinnedApp]),
             keyPrefix + "hasImportedPinnedApps": encoded(false as Bool),
             keyPrefix + "switcherEnabled": encoded(true as Bool),
+            keyPrefix + "switcherMode": encoded(SwitcherMode.windows),
             keyPrefix + "switcherShortcut": encoded(KeyboardShortcut.switcher),
             keyPrefix + "sameAppShortcutEnabled": encoded(false as Bool),
             keyPrefix + "sameAppShortcut": encoded(KeyboardShortcut.sameApp),

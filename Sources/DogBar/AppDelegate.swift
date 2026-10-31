@@ -132,7 +132,7 @@ import Combine
         statusItem?.button?.toolTip = !permissions.hasCheckedPermissions ? "DogBar: checking current process access" : permissions.isGranted ? "DogBar" : "DogBar: current process access is unavailable"
         let enabled = permissions.isGranted && !settings.isPaused && !terminating
         previews.enabled = enabled && settings.previewsEnabled
-        switcher.enabled = enabled && !SettingsShortcutRecording.isRecording
+        switcher.enabled = enabled && settings.switcherEnabled && !SettingsShortcutRecording.isRecording
         var configuration = HotkeyConfiguration()
         configuration.enabled = enabled && settings.switcherEnabled && !SettingsShortcutRecording.isRecording
         configuration.shortcut = settings.switcherShortcut

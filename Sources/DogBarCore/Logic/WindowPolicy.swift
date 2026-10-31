@@ -72,7 +72,7 @@ public struct WindowCandidate {
     }
 }
 
-/// A switcher tile for a window or for an application with no windows anywhere.
+/// A window tile or app-level tile. Window mode uses app tiles only for windowless apps.
 public enum SwitcherItem: Hashable {
     case window(TrackedWindow)
     case windowlessApp(TrackedApp)
@@ -87,6 +87,14 @@ public enum SwitcherPolicy {
             }
         }
         return entries.sorted { $0.0 == $1.0 ? $0.1 < $1.1 : $0.0 > $1.0 }.map { $0.2 }
+    }
+    /// One stable tile per running app, including apps without windows, like macOS.
+    public static func applications(snapshot: WindowSnapshot, includeHidden: Bool) -> [SwitcherItem] {
+        snapshot.apps.filter { includeHidden || !$0.isHidden }.sorted {
+            if $0.isFrontmost != $1.isFrontmost { return $0.isFrontmost }
+            if $0.lastActivatedAt != $1.lastActivatedAt { return $0.lastActivatedAt > $1.lastActivatedAt }
+            return $0.pid < $1.pid
+        }.map { .windowlessApp($0) }
     }
     public static func nextIndex(current: Int, count: Int, delta: Int = 1) -> Int? {
         guard count > 0 else { return nil }

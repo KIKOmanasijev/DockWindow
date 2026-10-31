@@ -4,8 +4,28 @@ import ServiceManagement
 import SwiftUI
 
 private enum SettingsPane: String, CaseIterable, Identifiable {
-    case general = "General", dock = "Dock", switcher = "Window Switcher", previews = "Dock Previews", appearance = "Appearance", advanced = "Advanced"
+    case general = "General", dock = "Dock", switcher = "Switcher", previews = "Dock Previews", appearance = "Appearance", advanced = "Advanced"
     var id: String { rawValue }
+    var detail: String {
+        switch self {
+        case .general: return "Startup, permissions and your DogBar session."
+        case .dock: return "Choose what appears in your Dock and how it behaves."
+        case .switcher: return "Switch between windows, apps, or use the macOS default."
+        case .previews: return "Make window previews work the way you do."
+        case .appearance: return "Adjust the appearance of your Dock and panels."
+        case .advanced: return "Diagnostics and advanced configuration."
+        }
+    }
+    var searchTerms: String {
+        switch self {
+        case .general: return "startup login permissions accessibility screen recording pause reset menu bar"
+        case .dock: return "icons size resize hide pinned recent trash desktop windows magnification click scroll"
+        case .switcher: return "shortcut keyboard alt tab option command apps windows native minimized hidden thumbnails"
+        case .previews: return "hover delay preview cpu ram memory new window performance"
+        case .appearance: return "theme light dark color material opacity animation motion corners"
+        case .advanced: return "debug logs private api subroles import pinned diagnostics"
+        }
+    }
     var symbol: String {
         switch self {
         case .general: return "gearshape"
@@ -26,6 +46,7 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
     let onRestoreNativeDock: () -> Void
     let onShowPermissions: () -> Void
     @State private var pane: SettingsPane? = .general
+    @State private var search = ""
     @State private var resetConfirmation = false
     @State private var reimportConfirmation = false
     @State private var errorMessage: String?
@@ -36,22 +57,29 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
     @State private var subrolesText = ""
 
     var body: some View {
-        NavigationSplitView {
-            List(SettingsPane.allCases, selection: $pane) { pane in
-                Label(pane.rawValue, systemImage: pane.symbol).tag(pane)
-            }.navigationSplitViewColumnWidth(min: 170, ideal: 185, max: 220)
-        } detail: {
-            Form {
-                switch pane ?? .general {
-                case .general: general
-                case .dock: DockSettingsPane(settings: settings)
-                case .switcher: SwitcherSettingsPane(settings: settings)
-                case .previews: PreviewSettingsPane(settings: settings)
-                case .appearance: AppearanceSettingsPane(settings: settings)
-                case .advanced: advanced
-                }
-            }.formStyle(.grouped).navigationTitle((pane ?? .general).rawValue)
+        HStack(spacing: 0) {
+            sidebar
+            Divider()
+            VStack(alignment: .leading, spacing: 0) {
+                VStack(alignment: .leading, spacing: 5) {
+                    Text((pane ?? .general).rawValue).font(.system(size: 24, weight: .semibold))
+                    Text((pane ?? .general).detail).font(.callout).foregroundStyle(.secondary)
+                }.padding(.horizontal, 28).padding(.top, 24).padding(.bottom, 8)
+                Form {
+                    switch pane ?? .general {
+                    case .general: general
+                    case .dock: DockSettingsPane(settings: settings)
+                    case .switcher: SwitcherSettingsPane(settings: settings)
+                    case .previews: PreviewSettingsPane(settings: settings)
+                    case .appearance: AppearanceSettingsPane(settings: settings)
+                    case .advanced: advanced
+                    }
+                }.formStyle(.grouped).scrollContentBackground(.hidden)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(Color(nsColor: .windowBackgroundColor))
         }
+        .toggleStyle(.switch)
+        .controlSize(.regular)
         .task(id: visibility.isVisible ? pane : nil) {
             guard visibility.isVisible, pane == .general, !loginBusy else { return }
             let request = UUID(); loginStatusRequest = request
@@ -77,6 +105,50 @@ private enum SettingsPane: String, CaseIterable, Identifiable {
         .alert("Settings action failed", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("OK") { errorMessage = nil }
         } message: { Text(errorMessage ?? "") }
+    }
+
+    private var sidebar: some View {
+        VStack(alignment: .leading, spacing: 20) {
+            HStack(spacing: 10) {
+                Image(nsImage: NSApp.applicationIconImage).resizable().scaledToFit().frame(width: 36, height: 36)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("DogBar").font(.system(size: 17, weight: .semibold))
+                    Text("Settings").font(.caption).foregroundStyle(.secondary)
+                }
+            }.padding(.horizontal, 12).padding(.top, 18)
+            HStack(spacing: 7) {
+                Image(systemName: "magnifyingglass").foregroundStyle(.secondary)
+                TextField("Find a section", text: $search).textFieldStyle(.plain)
+                if !search.isEmpty {
+                    Button { search = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
+                        .buttonStyle(.plain).accessibilityLabel("Clear search")
+                }
+            }.padding(9).background(Color.primary.opacity(0.055), in: RoundedRectangle(cornerRadius: 8))
+                .padding(.horizontal, 10)
+            ScrollView {
+                VStack(spacing: 4) {
+                    ForEach(SettingsPane.allCases.filter { search.isEmpty || ($0.rawValue + " " + $0.searchTerms).localizedCaseInsensitiveContains(search) }) { item in
+                        Button { pane = item } label: {
+                            HStack(spacing: 10) {
+                                Image(systemName: item.symbol).font(.system(size: 15, weight: .medium))
+                                    .frame(width: 28, height: 28)
+                                    .background(Color.primary.opacity(0.06), in: RoundedRectangle(cornerRadius: 7))
+                                Text(item.rawValue).font(.system(size: 13, weight: pane == item ? .semibold : .regular))
+                                Spacer(minLength: 0)
+                            }.padding(.horizontal, 10).padding(.vertical, 7).contentShape(Rectangle())
+                                .background(pane == item ? Color.primary.opacity(0.09) : .clear, in: RoundedRectangle(cornerRadius: 9))
+                        }.buttonStyle(.plain)
+                            .accessibilityAddTraits(pane == item ? .isSelected : [])
+                    }
+                    if !search.isEmpty && !SettingsPane.allCases.contains(where: { ($0.rawValue + " " + $0.searchTerms).localizedCaseInsensitiveContains(search) }) {
+                        Text("No matching sections").font(.callout).foregroundStyle(.secondary).padding(.top, 12)
+                    }
+                }.padding(.horizontal, 10)
+            }
+            Spacer(minLength: 0)
+            Text("DogBar \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")")
+                .font(.caption).foregroundStyle(.tertiary).padding(.horizontal, 20).padding(.bottom, 18)
+        }.frame(width: 218).background(.regularMaterial)
     }
 
     private var general: some View {

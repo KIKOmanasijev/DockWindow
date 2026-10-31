@@ -26,6 +26,7 @@ import SwiftUI
     private var openingTask: Task<Void, Never>?
     private var refreshUpdateTask: Task<Void, Never>?
     private var screen: NSScreen?
+    private var sessionMode: SwitcherMode = .windows
     private var sessionPID: pid_t?
     private var currentSpaceIDs = Set<UInt64>()
     private var visibleIDs = Set<CGWindowID>()
@@ -130,6 +131,8 @@ import SwiftUI
         sessionPID = sameAppOnly ? tracker.snapshot.apps.first(where: \.isFrontmost)?.pid : nil
         // An unknown frontmost app cannot safely produce a same-app session.
         guard !sameAppOnly || sessionPID != nil else { onSessionEnded?(); return }
+        sessionMode = sameAppOnly ? .windows : settings.switcherMode
+        presentation.appMode = sessionMode == .apps
         presentation.message = nil; presentation.apps = tracker.snapshot.apps
         let items = filteredItems()
         guard !items.isEmpty else { onSessionEnded?(); return }
@@ -150,6 +153,9 @@ import SwiftUI
         currentSpaceIDs = SpacePolicy.currentSpaceIDs(snapshot: snapshot, displayID: displayID,
                                                       separateSpaces: NSScreen.screensHaveSeparateSpaces,
                                                       allDisplays: settings.switcherScreens == .all)
+        if sessionMode == .apps {
+            return SwitcherPolicy.applications(snapshot: snapshot, includeHidden: settings.switcherIncludeHiddenApps)
+        }
         let filter = WindowFilter(scope: settings.switcherScope, currentSpaceIDs: currentSpaceIDs,
                                   includeMinimized: settings.switcherIncludeMinimized, includeHiddenApps: settings.switcherIncludeHiddenApps,
                                   pid: sessionPID, displayFrame: settings.switcherScreens == .withMouse ? screen.map(Self.quartzFrame) : nil)
@@ -165,6 +171,7 @@ import SwiftUI
     private func settingsChanged() {
         if !isActive, hideTask != nil, Theme.reducesMotion(settings) { dismiss(animated: false) }
         guard enabled, settings.switcherEnabled, !settings.isPaused else { dismiss(); return }
+        if isActive, sessionPID == nil, sessionMode != settings.switcherMode { dismiss(animated: false); return }
         panel.appearance = Theme.appearance(settings.theme)
         updateSnapshot()
     }
@@ -188,6 +195,10 @@ import SwiftUI
                 _ = actions.focus(window, requiringSpace: space)
             } else { actions.focus(window) }
         case .windowlessApp(let app):
+            if sessionMode == .apps {
+                NSRunningApplication(processIdentifier: app.pid)?.activate(options: [.activateAllWindows])
+                return
+            }
             let rule = settings.newWindowRule(for: app.bundleIdentifier ?? "")
             let token = generation
             openingTask = Task { [weak self] in
@@ -224,8 +235,8 @@ import SwiftUI
         let bounds = screen?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
         let maxWidth = max(100, bounds.width * 0.9)
         let maxHeight = max(100, bounds.height * 0.85)
-        let width = min(max(64, settings.switcherThumbnailWidth), maxWidth - 56)
-        let height = min(max(48, settings.switcherThumbnailHeight), maxHeight - 104)
+        let width = sessionMode == .apps ? CGFloat(116) : min(max(64, settings.switcherThumbnailWidth), maxWidth - 56)
+        let height = sessionMode == .apps ? CGFloat(96) : min(max(48, settings.switcherThumbnailHeight), maxHeight - 104)
         let tileSize = SwitcherTileMetrics.size(thumbnail: CGSize(width: width, height: height))
         let columns = SwitcherTileMetrics.columns(availableWidth: maxWidth, tileWidth: tileSize.width,
                                                   itemCount: presentation.session.items.count, maximum: settings.switcherMaxTilesPerRow)

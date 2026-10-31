@@ -1,5 +1,8 @@
 import Foundation
 
+/// Presentation and ownership of the global switcher.
+public enum SwitcherMode: String, Codable, CaseIterable, Sendable { case windows, apps, native }
+
 /// Scope of a window list, independent for Dock, switcher and previews.
 public enum WindowScope: String, Codable, CaseIterable, Sendable { case currentDesktop, allDesktops }
 /// Edge used by the replacement Dock.
