@@ -86,6 +86,12 @@ In Settings you can choose whether the Dock, the switcher and previews each show
 
 DogBar saves your original Dock settings before hiding Apple’s Dock and puts them back when you pause, restore or quit. If DogBar crashes, it restores them the next time it launches.
 
+## Updates
+
+Choose **Check for Updates…** from the paw menu or the DogBar app menu. DogBar checks the website's release feeds, offers a newer compatible installer, verifies its SHA-256, and opens the DMG. Quit DogBar, drag the new copy into Applications, and reopen it. This first version does not replace the running app automatically. **About DogBar** shows the installed version, build revision and running path.
+
+The same release feeds support future OTA distribution. Preview installers remain self-signed and unnotarized; no notarization or code-signature check is claimed by the updater itself. Public production builds still go through the release pipeline's signing and notarization checks. The existing public preview is older than this development build, so it will not be offered as an update.
+
 ## Build and run
 
 ### Requirements

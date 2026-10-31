@@ -4,6 +4,7 @@ import DogBarCore
 import Combine
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate {
+    let updater = UpdateController()
     let permissions = PermissionsService()
     let tracker = WindowTracker()
     let thumbnails = ThumbnailService()
@@ -34,8 +35,9 @@ import Combine
         let mainMenu = NSMenu()
         let appMenuItem = NSMenuItem()
         let appMenu = NSMenu(title: "DogBar")
-        appMenu.addItem(withTitle: "About DogBar", action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)), keyEquivalent: "")
+        appMenu.addItem(withTitle: "About DogBar", action: #selector(showAbout), keyEquivalent: "").target = self
         appMenu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
+        appMenu.addItem(withTitle: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "").target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit DogBar", action: #selector(quit), keyEquivalent: "q").target = self
         appMenuItem.submenu = appMenu; mainMenu.addItem(appMenuItem); NSApp.mainMenu = mainMenu
@@ -53,7 +55,9 @@ import Combine
         permissionStatus.isEnabled = false
         menu.addItem(permissionStatus)
         menu.addItem(.separator())
+        menu.addItem(withTitle: "About DogBar", action: #selector(showAbout), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Pause DogBar", action: #selector(togglePause), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Restore Native Dock", action: #selector(restoreNativeDock), keyEquivalent: "").target = self
         menu.addItem(.separator())
@@ -211,6 +215,15 @@ import Combine
         }
         return .terminateLater
     }
+    @objc func showAbout() {
+        let version = Bundle.main.object(forInfoDictionaryKey: "DogBarPreviewVersion") as? String ?? "Development"
+        let build = Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "?"
+        let revision = Bundle.main.object(forInfoDictionaryKey: "DogBarBuildRevision") as? String ?? "unbundled"
+        let alert = NSAlert(); alert.messageText = "DogBar \(version)"
+        alert.informativeText = "Build \(build) · \(revision)\n\nRunning from:\n\(Bundle.main.bundleURL.path)"
+        alert.runModal()
+    }
+    @objc func checkForUpdates() { updater.check() }
     @objc func togglePause() { settings.isPaused.toggle() }
     func applicationWillTerminate(_ notification: Notification) { permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); previews.dismiss(); nativeReader.stop(); dock.stop(); tracker.stop() }
     @objc func quit() { NSApp.terminate(nil) }
