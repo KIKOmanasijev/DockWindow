@@ -121,6 +121,7 @@ test("page structure and accessibility basics", { skip }, async () => {
   assert.equal($$("h1").length, 1);
   assert.equal($$("[data-demo-start]").length, 2, "Watch the demo in hero and banner");
   assert.equal($$("#demo .controls, [data-tab], [data-desk-btn], [data-reset], [data-release]").length, 0, "no control row under the demo");
+  assert.ok($("#demo-desc"), "the demo is described for screen readers");
   assert.ok($$("[data-demo-start]").every((a) => a.getAttribute("href") === "#demo"));
   assert.equal($(".nav-cta").getAttribute("href"), "#get");
   assert.ok($("#get [data-download]") && $(".hero [data-download]"), "CTA in hero and in the banner");
@@ -196,150 +197,6 @@ test("CTA hierarchy: download is the primary button, the demo a secondary link",
   }
 });
 
-test("demo opens on an everyday trip example: two Safari windows, picked independently", { skip }, async () => {
-  const { w, $, $$ } = await page(json(null));
-  const cap = () => $("[data-caption]").textContent;
-  const dockApps = () => $$(".dock-btn").map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
-
-  // Desktop 1: Safari (day plan + hotel booking), Slack with friends and a Notes packing list, all fictional.
-  assert.equal($$(".win").length, 4);
-  assert.equal(dockApps(), "finder:0,dockwindow:0,safari:2,slack:1,notes:1");
-  assert.equal($(".win.is-front").dataset.win, "s1");
-  assert.equal($("[data-front-app]").textContent, "Safari");
-  assert.match($('[data-win="s1"]').textContent, /wanderly\.travel[\s\S]*A weekend in Lisbon/);
-  assert.match($('[data-win="s2"]').textContent, /casaluz-stays\.travel[\s\S]*Confirm your stay[\s\S]*Book 2 nights/);
-  assert.match($('[data-win="k1"]').textContent, /# lisbon-trip[\s\S]*Found a hotel near Alfama/);
-  assert.match($('[data-win="n1"]').textContent, /Packing list[\s\S]*Passport/);
-  assert.doesNotMatch($("[data-desk]").textContent, /\bPR\b|staging|deploy|review|diff/i, "no developer jargon in the hero");
-
-  // Real app icons, served locally.
-  for (const img of $$(".dock-btn img")) assert.match(img.getAttribute("src"), /^assets\/(apps\/[a-z]+|dog-96)\.png$/);
-
-  // The benefit is visible before any interaction: Safari's previews are open.
-  const pv = $("[data-preview]");
-  assert.equal(pv.hidden, false);
-  assert.equal(pv.getAttribute("aria-label"), "Safari window previews");
-  assert.ok(pv.classList.contains("is-intro"));
-  assert.deepEqual($$(".pv-name").map((n) => n.textContent), ["Lisbon day plan", "Hotel booking"]);
-  assert.match($(".pv-hint").textContent, /2 Safari windows/);
-  assert.ok($('.pv.is-pick [data-focus="s2"]'), "the hotel booking is the suggested pick");
-  assert.equal($('.dock-btn[data-app="safari"]').getAttribute("aria-expanded"), "true");
-  assert.match(cap(), /two windows/);
-  assert.equal(w.document.activeElement, w.document.body, "the example does not steal focus");
-
-  // The example survives clicks elsewhere on the page.
-  w.document.body.dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true }));
-  assert.equal(pv.hidden, false);
-
-  // Each preview maps to its own window.
-  $('[data-focus="s2"]').dispatchEvent(new w.FocusEvent("focusin", { bubbles: true }));
-  assert.deepEqual($$(".win.peek").map((el) => el.dataset.win), ["s2"]);
-
-  // Picking the booking brings forward only that window; the day plan stays open behind.
-  $('[data-focus="s2"]').click();
-  assert.ok(pv.hidden);
-  assert.equal($(".win.is-front").dataset.win, "s2");
-  assert.ok($('[data-win="s1"]') && !$('[data-win="s1"]').classList.contains("is-front"));
-  assert.equal($$(".win.peek").length, 0);
-  assert.match(cap(), /“Hotel booking” is now in front\. Your other Safari window stays where it was\./);
-  assert.equal(w.document.activeElement, $('.dock-btn[data-app="safari"]'));
-});
-
-test("demo: Option+Tab keys, previews and desktops", { skip }, async () => {
-  const { w, $, $$ } = await page(json(null));
-  const cap = () => $("[data-caption]").textContent;
-  const dockApps = () => $$(".dock-btn").map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
-  const key = (k, extra = {}) => $("#demo").dispatchEvent(new w.KeyboardEvent("keydown", { key: k, bubbles: true, ...extra }));
-  const optionTab = (shiftKey = false) => key("Tab", { altKey: true, shiftKey });
-  const letGo = () => $("#demo").dispatchEvent(new w.KeyboardEvent("keyup", { key: "Alt", bubbles: true }));
-  const sel = () => $('.tile[aria-current="true"]').dataset.tile;
-  for (const b of $$(".dock-btn")) {
-    assert.equal(b.getAttribute("aria-controls"), "demo-preview");
-    assert.equal(b.hasAttribute("aria-haspopup"), false);
-  }
-  assert.equal($("#demo").getAttribute("aria-describedby"), "demo-keys", "keyboard use is described");
-
-  // Option+Tab inside the demo: one tile per window, both Safari windows included.
-  optionTab();
-  assert.ok($("[data-preview]").hidden);
-  assert.ok(!$("[data-switcher]").hidden && $$(".tile").length === 4);
-  assert.equal(sel(), "s2", cap());
-  assert.match(cap(), /Every window gets its own tile\. “Hotel booking” \(Safari\) is selected\./);
-  optionTab();
-  assert.equal(sel(), "k1");
-  optionTab(true);
-  assert.equal(sel(), "s2", "Shift goes back");
-  key("ArrowRight");
-  key("ArrowRight");
-  key("ArrowRight");
-  assert.equal(sel(), "s1", "arrows wrap");
-  letGo();
-  assert.ok($("[data-switcher]").hidden && $(".win.is-front").dataset.win === "s1", cap());
-  assert.equal($$(".win.is-front").length, 1, "one window on screen");
-  optionTab();
-  key("Escape");
-  assert.ok($("[data-switcher]").hidden && $(".win.is-front").dataset.win === "s1", "escape cancels");
-
-  // Keyboard activation moves focus into the previews; Escape returns it to the Dock.
-  const safari = $('.dock-btn[data-app="safari"]');
-  safari.focus();
-  safari.dispatchEvent(new w.MouseEvent("click", { bubbles: true, detail: 0 }));
-  assert.ok(!$("[data-preview]").hidden && $$(".pv").length === 2 && !$(".pv-hint"));
-  assert.ok($("[data-preview]").contains(w.document.activeElement), "focus moved into previews");
-  key("Escape");
-  assert.ok($("[data-preview]").hidden);
-  assert.equal(w.document.activeElement, $('.dock-btn[data-app="safari"]'));
-
-  // A regular preview closes on an outside click, unlike the opening example.
-  $('.dock-btn[data-app="slack"]').click();
-  assert.equal($$(".pv").length, 1);
-  w.document.body.dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true }));
-  assert.ok($("[data-preview]").hidden);
-
-  $('.dock-btn[data-app="safari"]').click();
-  $('[data-close="s1"]').click();
-  assert.ok(dockApps().includes("safari:1") && $$(".pv").length === 1, cap());
-  assert.match(cap(), /Safari now shows 1 dot/);
-  $('[data-close="s2"]').click();
-  assert.ok(!dockApps().includes("safari") && $("[data-preview]").hidden, dockApps());
-  $('.dock-btn[data-app="finder"]').click();
-  assert.match($(".pv-empty").textContent, /No open windows/);
-
-  // The third tour step swipes to Desktop 2, which has its own Dock and wallpaper.
-  $('[data-tour-step="2"]').click();
-  await pause(w, 1200);
-  assert.equal(dockApps(), "finder:0,dockwindow:0,safari:1,music:1");
-  assert.equal($("[data-desk]").dataset.wall, "2", "Desktop 2 has its own wallpaper");
-  assert.equal($("[data-swipe]").hidden, false, "the swipe HUD names the desktop");
-  assert.match($("[data-swipe-label]").textContent, /Desktop 2/);
-  assert.match(cap(), /Desktop 2 has its own Dock: just Safari and Music/);
-  assert.match($('[data-win="s3"]').textContent, /Sunday hike/);
-  assert.equal($$('[data-win="m1"] .album-art').length, 3, "album covers use their own class");
-  assert.equal($$("[data-desk] .art").length, 0, "no clash with the feature figures' .art");
-  $("[data-tour-toggle]").click();
-  assert.equal($("#demo").dataset.tour, "stopped");
-
-  // The first tour step restores the whole scenario without moving focus.
-  const focused = w.document.activeElement;
-  $('[data-tour-step="0"]').click();
-  assert.equal(dockApps(), "finder:0,dockwindow:0,safari:2,slack:1,notes:1");
-  assert.equal($("[data-desk]").dataset.wall, "1");
-  assert.equal(w.document.activeElement, focused);
-  $("[data-tour-toggle]").click();
-  assert.equal($$(".reveal.in").length, $$(".reveal").length, "reveals fall back without IntersectionObserver");
-});
-
-test("demo listens for keys only inside itself", { skip }, async () => {
-  const { w, $ } = await page(json(null));
-  $("#demo").dispatchEvent(new w.KeyboardEvent("keydown", { key: "Tab", altKey: true, bubbles: true }));
-  w.document.body.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
-  assert.equal($("[data-switcher]").hidden, false, "Escape outside the demo is ignored");
-  const selected = () => $('.tile[aria-current="true"]').dataset.tile;
-  const before = selected();
-  w.document.body.dispatchEvent(new w.KeyboardEvent("keydown", { key: "Tab", altKey: true, bubbles: true }));
-  assert.equal(selected(), before, "Option+Tab outside the demo does nothing");
-});
-
 test("explicit preview enables both downloads with honest status and installation help", { skip }, async () => {
   const preview = { ...MANIFEST, version: "0.1.0-preview.1", url: "/downloads/DogBar-0.1.0-preview.1-arm64.dmg", notarized: false, channel: "preview", signing: "self-signed", build: "2" };
   const p = await page(async (input) => ({ ok: true, json: async () => input === "/preview.json" ? preview : null }));
@@ -359,62 +216,98 @@ test("explicit preview enables both downloads with honest status and installatio
   assert.equal(production.$("[data-preview-help]").hidden, true);
 });
 
-test("hovering a windowless Dock app does not open an empty preview", { skip }, async () => {
-  const p = await page(json(null));
-  const e = new p.w.Event("pointerover", { bubbles: true });
-  Object.defineProperty(e, "pointerType", { value: "mouse" });
-  p.$('.dock-btn[data-app="finder"]').dispatchEvent(e);
-  await new Promise((resolve) => p.w.setTimeout(resolve, 160));
-  assert.equal(p.$("[data-preview]").hidden, true);
-  assert.equal(p.$(".pv-empty"), null);
+test("demo opens on a still frame: one window on screen, Safari's previews showing both", { skip }, async () => {
+  const { w, $, $$ } = await page(json(null));
+  const dockApps = () => $$(".dock-btn").map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
+
+  // Desktop 1: Safari (day plan + hotel booking), Slack with friends and a Notes packing list, all fictional.
+  assert.equal($$(".win").length, 4);
+  assert.equal($$(".win.is-front").length, 1, "one window on screen");
+  assert.equal($(".win.is-front").dataset.win, "s1");
+  assert.equal(dockApps(), "finder:0,dockwindow:0,safari:2,slack:1,notes:1");
+  assert.equal($("[data-front-app]").textContent, "Safari");
+  assert.match($('[data-win="s2"]').textContent, /casaluz-stays\.travel[\s\S]*Confirm your stay/);
+  assert.doesNotMatch($("[data-desk]").textContent, /\bPR\b|staging|deploy|review|diff/i, "no developer jargon");
+  for (const img of $$(".dock-btn img")) assert.match(img.getAttribute("src"), /^assets\/(apps\/[a-z]+|dog-96)\.png$/);
+
+  // Safari's previews are open with both windows; nothing is picked yet.
+  assert.equal($("[data-preview]").hidden, false);
+  assert.deepEqual($$(".pv-name").map((n) => n.textContent), ["Lisbon day plan", "Hotel booking"]);
+  assert.match($(".pv-hint").textContent, /2 Safari windows/);
+  assert.equal($$(".pv.is-hover").length, 0);
+  assert.ok($('.dock-btn[data-app="safari"]').classList.contains("is-open"));
+  assert.equal($("#demo").dataset.tour, "idle");
 });
 
+test("the demo is a picture, not a control: nothing inside the screen reacts or takes focus", { skip }, async () => {
+  const { w, $, $$ } = await page(json(null));
+  const mac = $("[data-demo]");
+  assert.equal(mac.getAttribute("aria-hidden"), "true");
+  assert.ok(mac.hasAttribute("inert"));
+  assert.equal(mac.querySelectorAll("button, a, input, [tabindex]").length, 0, "no controls inside the screen");
+  assert.ok($("#demo-desc").textContent.length > 80, "screen readers get a plain description");
+  assert.equal($("#demo").getAttribute("aria-describedby"), "demo-desc");
+  assert.equal($("[data-caption]").hasAttribute("aria-live"), false, "the narration is not announced on every step");
 
-test("guided tour autoplays on screen, stays quiet for screen readers and never takes focus", { skip }, async () => {
-  const p = await page(json(null), undefined, { inView: true });
-  const { w, $, $$ } = p;
-  assert.equal($("#demo").dataset.tour, "stopped", "waits a moment before starting");
+  const front = $(".win.is-front").dataset.win;
+  $('[data-focus="s2"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  $('.dock-btn[data-app="slack"]').dispatchEvent(new w.MouseEvent("click", { bubbles: true }));
+  $("#demo").dispatchEvent(new w.KeyboardEvent("keydown", { key: "Tab", altKey: true, bubbles: true }));
+  assert.equal($(".win.is-front").dataset.win, front, "clicks and keys do nothing");
+  assert.ok($("[data-switcher]").hidden);
+  assert.deepEqual($$(".tour-step").length, 3);
+});
+
+test("autoplay: plays on screen, highlights the preview before the click, never moves focus", { skip }, async () => {
+  const { w, $, $$ } = await page(json(null), undefined, { inView: true });
+  assert.equal($("#demo").dataset.tour, "idle", "waits a moment before starting");
   await pause(w, 760);
   assert.equal($("#demo").dataset.tour, "playing");
-  assert.equal($("[data-caption]").getAttribute("aria-live"), "off", "no running commentary");
   assert.equal($("[data-tour-toggle]").getAttribute("aria-label"), "Pause the demo");
-  assert.ok($("[data-cursor]").classList.contains("is-on"), "the pointer is visible");
   assert.ok($('[data-tour-step="0"]').classList.contains("is-active"));
   assert.equal($('[data-tour-step="0"]').getAttribute("aria-current"), "step");
-  assert.equal(w.document.activeElement, w.document.body, "the tour does not move focus");
-  assert.equal($$(".reveal.in").length, $$(".reveal").length, "reveals still run");
+  assert.ok($("[data-cursor]").classList.contains("is-on"), "the pointer is visible");
+  assert.ok($("[data-preview]").hidden, "scene 1 starts from just the day plan");
 
-  // Using the demo hands it over for good: pointer and announcements reset.
-  $('.dock-btn[data-app="slack"]').dispatchEvent(new w.MouseEvent("pointerdown", { bubbles: true }));
-  assert.equal($("#demo").dataset.tour, "stopped");
-  assert.equal($("[data-cam]").style.transform, "", "the screen is never zoomed");
-  assert.ok(!$("[data-cursor]").classList.contains("is-on"));
-  assert.ok($("[data-keys]").hidden);
-  assert.equal($("[data-caption]").getAttribute("aria-live"), "polite");
-  assert.equal($("[data-tour-toggle]").getAttribute("aria-label"), "Play the demo");
-  await pause(w, 1200);
-  assert.equal($("#demo").dataset.tour, "stopped", "pending tour steps do not resume");
+  // 1.2 s pointer to Safari, 0.9 s previews open, 1.4 s pointer to "Hotel booking", 0.8 s highlight.
+  await pause(w, 3500);
+  assert.equal($("[data-preview]").hidden, false);
+  await pause(w, 900);
+  assert.ok($('.pv.is-hover [data-focus="s2"]'), "the hotel booking preview is highlighted");
+  assert.equal($(".win.is-front").dataset.win, "s1", "the window only changes on the click");
+  await pause(w, 1100);
+  assert.equal($(".win.is-front").dataset.win, "s2", "after the click, the hotel booking is in front");
+  assert.match($("[data-caption]").textContent, /“Hotel booking” is now in front/);
+  assert.equal(w.document.activeElement, w.document.body, "focus never moves");
+  assert.equal($$(".reveal.in").length, $$(".reveal").length, "reveals still run");
 });
 
-test("tour steps can be chosen and the tour paused; reduced motion never autoplays", { skip }, async () => {
+test("pause freezes the walkthrough and play resumes it; chapters jump; reduced motion stays still", { skip }, async () => {
   const still = await page(json(null), undefined, { inView: true, reduceMotion: true });
-  await pause(still.w, 760);
-  assert.equal(still.$("#demo").dataset.tour, "stopped");
-  assert.equal(still.$("[data-preview]").hidden, false, "the static opening example remains");
-
   const { w, $ } = still;
+  await pause(w, 760);
+  assert.equal($("#demo").dataset.tour, "idle", "no autoplay under reduced motion");
+  assert.equal($("[data-preview]").hidden, false, "the opening frame stays as a still");
+
   $('[data-tour-step="2"]').click();
   assert.equal($("#demo").dataset.tour, "playing", "a person can still start it");
   assert.ok($('[data-tour-step="2"]').classList.contains("is-active"));
   assert.ok($('[data-tour-step="0"]').classList.contains("is-done"));
-  await pause(w, 2000);
+  await pause(w, 1300);
   assert.equal($("[data-desk]").dataset.wall, "2", "the swipe switched desktops");
-  assert.equal($("[data-cam]").style.transform, "", "no zoom, so nothing is cropped");
-  assert.ok(!$("[data-demo]").classList.contains("is-focus"), "nothing dims; the Dock change speaks for itself");
   assert.equal($$dockApps(w), "finder:0,dockwindow:0,safari:1,music:1", "the Dock changed with the desktop");
+  assert.equal($("[data-cam]").style.transform, "", "never zoomed");
+
+  // Paused mid-scene: nothing moves on; Play continues from the same moment.
   $("[data-tour-toggle]").click();
-  assert.equal($("#demo").dataset.tour, "stopped");
-  assert.equal($("[data-cam]").style.transform, "");
+  assert.equal($("#demo").dataset.tour, "paused");
+  assert.equal($("[data-tour-toggle]").getAttribute("aria-label"), "Play the demo");
+  await pause(w, 3500);
+  assert.equal($("[data-desk]").dataset.wall, "2", "still on Desktop 2 while paused");
+  $("[data-tour-toggle]").click();
+  assert.equal($("#demo").dataset.tour, "playing");
+  await pause(w, 3200);
+  assert.equal($("[data-desk]").dataset.wall, "1", "resumed and swiped back");
 });
 
 function $$dockApps(w) {

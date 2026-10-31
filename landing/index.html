@@ -77,12 +77,13 @@
         <p class="dl-note" id="hero-dl-note" data-download-note>Public release is being prepared. macOS 14+.</p>
       </div>
 
-      <section class="stage" id="demo" aria-labelledby="demo-title" aria-describedby="demo-keys" tabindex="-1">
-        <h2 id="demo-title" class="sr-only">Interactive DogBar demo</h2>
-        <div class="mac" data-demo>
+      <section class="stage" id="demo" aria-labelledby="demo-title" aria-describedby="demo-desc" tabindex="-1">
+        <h2 id="demo-title" class="sr-only">DogBar demo</h2>
+        <!-- A walkthrough that plays like a video: the screen is a picture, not a control. -->
+        <div class="mac" data-demo aria-hidden="true" inert>
           <!-- Everything on the screen; the pointer is positioned in these coordinates. -->
           <div class="cam" data-cam>
-            <div class="menubar" aria-hidden="true">
+            <div class="menubar">
               <span class="menubar-left">
                 <svg class="mb-apple"><use href="#i-apple"/></svg>
                 <b class="menubar-app" data-front-app>Safari</b>
@@ -97,26 +98,25 @@
                 <span class="menubar-clock">Thu Oct 31&nbsp;&nbsp;2:41 PM</span>
               </span>
             </div>
-            <div class="desk" data-desk aria-hidden="true"></div>
+            <div class="desk" data-desk></div>
             <div class="switcher" data-switcher hidden>
-              <p class="sr-only" id="switcher-label">Window switcher</p>
-              <ul class="tiles" data-tiles aria-labelledby="switcher-label"></ul>
+              <ul class="tiles" data-tiles></ul>
             </div>
             <div class="dock-wrap">
-              <ul class="dock" data-dock aria-label="Demo Dock"></ul>
+              <ul class="dock" data-dock></ul>
             </div>
-            <div class="preview" id="demo-preview" data-preview hidden></div>
-            <svg class="cursor" data-cursor aria-hidden="true" focusable="false"><use href="#i-cursor"/></svg>
+            <div class="preview" data-preview hidden></div>
+            <svg class="cursor" data-cursor focusable="false"><use href="#i-cursor"/></svg>
           </div>
-          <p class="keys" data-keys aria-hidden="true" hidden><kbd>⌥ Option</kbd> + <kbd>⇥ Tab</kbd></p>
-          <div class="swipe" data-swipe aria-hidden="true" hidden>
+          <p class="keys" data-keys hidden><kbd>⌥ Option</kbd> + <kbd>⇥ Tab</kbd></p>
+          <div class="swipe" data-swipe hidden>
             <svg class="swipe-arrow" focusable="false"><use href="#i-swipe"/></svg>
             <span class="swipe-label" data-swipe-label>Desktop 2</span>
             <span class="swipe-dots"><i data-swipe-dot="1"></i><i data-swipe-dot="2"></i></span>
           </div>
         </div>
 
-        <div class="tour" role="group" aria-label="Demo">
+        <div class="tour" role="group" aria-label="Demo chapters">
           <ol class="tour-steps">
             <li><button type="button" class="tour-step" data-tour-step="0">Preview from the Dock<i class="tour-bar" aria-hidden="true"></i></button></li>
             <li><button type="button" class="tour-step" data-tour-step="1">Alt-tab to any window<i class="tour-bar" aria-hidden="true"></i></button></li>
@@ -127,9 +127,9 @@
             <svg class="tour-ic-pause" aria-hidden="true" focusable="false"><use href="#i-pause"/></svg>
           </button>
         </div>
-        <p class="caption" data-caption aria-live="polite">Safari has two windows open. Click “Hotel booking” to bring up just that one.</p>
-        <noscript><p class="caption">The live demo needs JavaScript. The pictures below show the same ideas.</p></noscript>
-        <p class="sr-only" id="demo-keys">Inside the demo, hover or click an app in the Dock to see its windows. Hold Option and press Tab to switch between windows, then let go of Option.</p>
+        <p class="caption" data-caption>Safari has two windows open, but you can only see one. DogBar’s Dock preview shows both.</p>
+        <noscript><p class="caption">The demo needs JavaScript. The pictures below show the same ideas.</p></noscript>
+        <p class="sr-only" id="demo-desc">A short looping animation of DogBar on a Mac. First, hovering Safari in the Dock shows previews of its two windows, and clicking “Hotel booking” brings just that window forward. Next, Option+Tab shows one tile per window and switches to a Slack chat. Last, swiping to Desktop 2 shows a Dock with only that desktop’s apps.</p>
       </section>
     </div>
   </header>

@@ -193,7 +193,9 @@ html:not(.js) .tour { display: none; }
 .tour-bar::after { content: ""; position: absolute; inset: 0; transform-origin: left; transform: scaleX(0); background: #fff; }
 .tour-step.is-done .tour-bar::after { transform: none; }
 .tour-step.is-active .tour-bar::after { animation: fill var(--dur, 6s) linear forwards; }
-[data-tour="stopped"] .tour-step.is-active .tour-bar::after { animation-play-state: paused; }
+[data-tour="paused"] .tour-step.is-active .tour-bar::after { animation-play-state: paused; }
+/* Pausing freezes everything on the screen too, like pausing a video. */
+[data-tour="paused"] .mac *, [data-tour="paused"] .mac *::before, [data-tour="paused"] .mac *::after { animation-play-state: paused !important; }
 /* A small icon-only play/pause button; the steps carry the labels. */
 .tour-toggle {
   flex: none; display: grid; place-items: center; width: 34px; height: 34px; padding: 0;
@@ -244,12 +246,12 @@ html:not(.js) .tour { display: none; }
 .mb-battery { width: 22px; height: 11px; }
 .mb-search { width: 12px; }
 .menubar-clock { font-weight: 500; }
-.mac { container-type: inline-size; }
+.mac { container-type: inline-size; pointer-events: none; user-select: none; -webkit-user-select: none; }
 @container (max-width: 760px) { .menubar-menus span:nth-child(n+5) { display: none; } }
 @container (max-width: 600px) { .menubar-menus span:nth-child(n+4), .mb-search { display: none; } }
 @container (max-width: 470px) { .menubar-menus span:nth-child(n+3), .mb-battery { display: none; } }
 /* Everything on the screen. While previews are open the desktop dims so the previews
-   stand out. A peeked window sits above the dim. */
+   stand out. */
 .cam { position: absolute; inset: 0; }
 .cam::before {
   content: ""; position: absolute; inset: 0; z-index: 4; pointer-events: none;
@@ -315,14 +317,11 @@ html:not(.js) .tour { display: none; }
   border-radius: 10px;
   box-shadow: 0 0 0 .5px rgba(0, 0, 0, .28), 0 22px 44px -12px rgba(0, 0, 0, .38), 0 4px 12px rgba(0, 0, 0, .08);
   overflow: hidden;
-  cursor: pointer;
-  outline: 3px solid transparent; outline-offset: 2px;
-  transition: opacity .3s ease, visibility .3s, outline-color .15s ease;
+  transition: opacity .3s ease, visibility .3s;
 }
 [data-app="notes"].win, [data-app="music"].win { left: 24%; width: 52%; }
-/* Only the front window shows. Hovering a preview shows its window on top, like a peek. */
-.win:not(.is-front):not(.peek) { opacity: 0; visibility: hidden; }
-.win.peek { z-index: 40 !important; outline-color: var(--purple); }
+/* Only the front window shows; the screen changes only when another window is picked. */
+.win:not(.is-front) { opacity: 0; visibility: hidden; }
 .win.flash { animation: win-flash .42s var(--ease); }
 
 /* Window UI scales with the window: 1em follows its width through container units,
@@ -423,14 +422,14 @@ html:not(.js) .tour { display: none; }
 .dock-btn {
   position: relative;
   display: grid; justify-items: center; gap: 3px;
-  padding: 2px 2px 0; border: 0; background: none; cursor: pointer; font: inherit;
+  padding: 2px 2px 0;
   border-radius: 10px;
   transition: background-color .16s ease;
 }
 .dock-btn .ic { width: clamp(32px, 3.6vw, 46px); height: clamp(32px, 3.6vw, 46px); border-radius: 22%; transition: transform .16s var(--ease); }
 .dock-btn:hover .ic { transform: translateY(-2px); }
 .dock-btn:active .ic { transform: translateY(1px); }
-.dock-btn[aria-expanded="true"] { background: rgba(110, 36, 230, .16); }
+.dock-btn.is-open { background: rgba(110, 36, 230, .16); }
 .dots { display: flex; gap: 3px; height: 4px; }
 .dots i { width: 4px; height: 4px; border-radius: 50%; background: rgba(26, 16, 51, .78); }
 .dock-btn.enter { animation: pop-in .3s var(--ease); }
@@ -457,9 +456,8 @@ html:not(.js) .tour { display: none; }
   padding: 8px 6px;
   font: inherit; font-size: .75rem; font-weight: 600; color: #f3f0fa;
   background: transparent; border: 2px solid transparent; border-radius: 12px;
-  cursor: pointer;
 }
-.tile[aria-current="true"] { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .6); }
+.tile.is-sel { background: rgba(255, 255, 255, .14); border-color: rgba(255, 255, 255, .6); }
 /* Minis are the real window markup at thumbnail scale; only the chrome keeps a floor. */
 .mini { width: 100%; aspect-ratio: 4 / 3; display: flex; flex-direction: column; overflow: hidden; color: var(--ink); text-align: left; background: #fff; border-radius: 6px; }
 .mini .win-bar { height: max(2.2em, 11px); }
@@ -492,26 +490,20 @@ html:not(.js) .tour { display: none; }
 .pv { position: relative; display: grid; gap: 5px; width: clamp(112px, 14vw, 168px); }
 .pv-shot {
   position: relative; display: block; width: 100%; padding: 0;
-  font: inherit; background: none; border: 2px solid rgba(26, 16, 51, .08); border-radius: 10px; cursor: pointer;
-  transition: border-color .15s ease;
+  border: 2px solid rgba(26, 16, 51, .08); border-radius: 10px;
+  transition: border-color .15s ease, transform .2s var(--ease);
 }
-.pv-shot:hover, .pv.is-pick .pv-shot { border-color: var(--purple); }
-.pv.is-pick .pv-shot { animation: pulse 1.6s 1s ease-out 2; }
-.pv.is-pick .pv-name { color: var(--purple-600); }
+/* The pointer resting on a preview: outlined and lifted, before the click. */
+.pv.is-hover .pv-shot { border-color: var(--purple); transform: translateY(-2px); }
+.pv.is-hover .pv-name { color: var(--purple-600); }
 .pv-shot .mini { border-radius: 8px; }
 .pv-shot .mini .win-bar { height: 20px; }
 .pv-shot .mini .lights { visibility: hidden; }
 .pv-lights { position: absolute; top: 8px; left: 10px; display: flex; gap: 4px; z-index: 1; }
-.pv-lights button, .pv-lights i {
-  width: 11px; height: 11px; padding: 0; border: 0; border-radius: 50%;
-  background: #ff5f57; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .2); cursor: pointer;
-}
-.pv-lights button { position: relative; }
-.pv-lights button::before { content: ""; position: absolute; inset: -8px; } /* larger hit area */
-.pv-lights i:nth-of-type(1) { background: #febc2e; cursor: default; }
-.pv-lights i:nth-of-type(2) { background: #28c840; cursor: default; }
+.pv-lights i { width: 11px; height: 11px; border-radius: 50%; background: #ff5f57; box-shadow: inset 0 0 0 .5px rgba(0, 0, 0, .2); }
+.pv-lights i:nth-child(2) { background: #febc2e; }
+.pv-lights i:nth-child(3) { background: #28c840; }
 .pv-name { text-align: center; font-size: .75rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pv-empty { padding: .4rem .6rem; font-size: .8rem; font-weight: 600; white-space: nowrap; }
 /* Opening example: a small label names what the previews are for. */
 .pv-hint {
   position: absolute; left: 50%; top: -2.1rem; z-index: 2;
@@ -802,7 +794,6 @@ html:not(.js) .tour { display: none; }
 @keyframes swipe-arrow { from { opacity: 0; transform: translateX(calc(var(--dir, 1) * 18px)) scaleX(var(--dir, 1)); } }
 @keyframes hud { from { opacity: 0; transform: translate(-50%, -50%) scale(.94); } }
 @keyframes win-flash { from { transform: scale(.985); } }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(110, 36, 230, .45); } 100% { box-shadow: 0 0 0 9px rgba(110, 36, 230, 0); } }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }

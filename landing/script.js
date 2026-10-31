@@ -1,4 +1,5 @@
-// DogBar landing: interactive hero demo and scroll reveals. No dependencies.
+// DogBar landing: the hero demo (a looping, video-like walkthrough) and scroll reveals.
+// No dependencies.
 (() => {
   "use strict";
   document.documentElement.classList.add("js");
@@ -19,13 +20,15 @@
   }
 
   // ---------- Demo ----------
-  // A fictional weekend trip: Safari holds a Lisbon day plan and a hotel booking, next
-  // to a Slack chat with friends and a Notes packing list. Desktop 2 is a quiet Sunday.
-  // All content is made up.
+  // A short walkthrough that plays like a video: no clicks or keys inside the screen,
+  // just chapters and play/pause underneath. The scenario is a fictional weekend trip:
+  // Safari holds a Lisbon day plan and a hotel booking, next to a Slack chat with
+  // friends and a Notes packing list. Desktop 2 is a quiet Sunday. All content is made up.
   const mac = document.querySelector("[data-demo]");
   if (!mac) return;
 
   const $ = (sel) => document.querySelector(sel);
+  const cam = $("[data-cam]");
   const desk = $("[data-desk]");
   const dock = $("[data-dock]");
   const dockWrap = dock.parentElement;
@@ -36,7 +39,11 @@
   const frontApp = $("[data-front-app]");
   const menus = $("[data-menus]");
   const swipeHud = $("[data-swipe]");
+  const pointer = $("[data-cursor]");
+  const keys = $("[data-keys]");
   const stage = $("#demo");
+  const playBtn = $("[data-tour-toggle]");
+  const chapters = [...document.querySelectorAll("[data-tour-step]")];
 
   const APPS = {
     finder: { name: "Finder", img: "assets/apps/finder.png" },
@@ -47,12 +54,9 @@
     music: { name: "Music", img: "assets/apps/music.png" },
   };
   const PINS = ["finder", "dockwindow"];
-  const INTRO_APP = "safari";
-  const INTRO_PICK = "s2";
-  const INTRO_TEXT = "Safari has two windows open. Click “Hotel booking” to bring up just that one.";
+  const INTRO_TEXT = "Safari has two windows open, but you can only see one. DogBar’s Dock preview shows both.";
 
-  // Only the front window is shown on the desk, so every change reads at a glance;
-  // the others wait behind it. `view` picks the window's content.
+  // Only the front window is shown on the desk, so every change reads at a glance.
   const initialWindows = () => ({
     1: [
       { id: "s1", app: "safari", view: "trip", title: "Lisbon day plan", url: "wanderly.travel" },
@@ -65,6 +69,8 @@
       { id: "m1", app: "music", view: "music", title: "Up Next" },
     ],
   });
+  // Front-to-back window order per desktop.
+  const initialOrder = () => ({ 1: ["s1", "s2", "k1", "n1"], 2: ["m1", "s3"] });
   // The front app's menus, as macOS shows them.
   const MENUS = {
     finder: ["File", "Edit", "View", "Go", "Window", "Help"],
@@ -73,29 +79,17 @@
     notes: ["File", "Edit", "Format", "View", "Window", "Help"],
     music: ["File", "Edit", "Song", "View", "Controls", "Window", "Help"],
   };
-  // Front-to-back window order per desktop.
-  const initialOrder = () => ({ 1: ["s1", "s2", "k1", "n1"], 2: ["m1", "s3"] });
 
-  const state = {
-    desk: 1,
-    windows: initialWindows(),
-    order: initialOrder(),
-    mode: "idle", // idle | switcher | preview
-    sel: 0,
-    previewApp: null,
-    intro: false, // the opening Safari preview, shown until the first interaction
-  };
+  const state = { desk: 1, windows: initialWindows(), order: initialOrder(), mode: "idle", sel: 0, previewApp: null };
 
   const windowsHere = () => state.windows[state.desk];
   const byId = (id) => windowsHere().find((w) => w.id === id);
   const mru = () => state.order[state.desk].map(byId).filter(Boolean);
   const say = (text) => { caption.textContent = text; };
-  const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
-
   const iconMarkup = (appKey, cls = "ic") =>
     `<img class="${cls}" src="${APPS[appKey].img}" width="96" height="96" alt="" draggable="false">`;
 
-  // Window content, all spans so it is also valid inside preview and tile buttons.
+  // Window content. The same markup renders on the desk, in previews and in tiles.
   const VIEWS = {
     trip: `<span class="trip">
       <span class="trip-img"></span>
@@ -138,7 +132,7 @@
     </span>`,
   };
 
-  // Title bar: Safari shows its address field, other apps their window title.
+  // Title bar: Safari shows its toolbar and address field, other apps their window title.
   const barMarkup = (w) => w.url
     ? `<span class="win-bar is-safari"><span class="lights"><i></i><i></i><i></i></span>
         <span class="tb tb-side"></span><span class="tb-nav">‹ ›</span>
@@ -152,7 +146,7 @@
     // Desktop switches slide like macOS Spaces: a copy of the old desktop slides out
     // while the new one, with its own wallpaper, slides in. The Dock stays put.
     if (swap && !reduceMotion.matches) {
-      desk.parentElement.querySelectorAll(".desk-ghost").forEach((g) => g.remove());
+      cam.querySelectorAll(".desk-ghost").forEach((g) => g.remove());
       const ghost = desk.cloneNode(true);
       ghost.removeAttribute("data-desk");
       ghost.classList.remove("slide-in");
@@ -164,13 +158,10 @@
     }
     const order = state.order[state.desk];
     desk.dataset.wall = String(state.desk);
-    desk.innerHTML = windowsHere().map((w) => {
-      const z = order.length - order.indexOf(w.id);
-      return `<div class="win${order[0] === w.id ? " is-front" : ""}" data-win="${w.id}" data-app="${w.app}"
-        style="z-index:${z}">${windowInner(w)}</div>`;
-    }).join("");
-    const front = mru()[0];
-    const app = front ? front.app : "finder";
+    desk.innerHTML = windowsHere().map((w) =>
+      `<div class="win${order[0] === w.id ? " is-front" : ""}" data-win="${w.id}" data-app="${w.app}"
+        style="z-index:${order.length - order.indexOf(w.id)}">${windowInner(w)}</div>`).join("");
+    const app = mru()[0]?.app || "finder";
     frontApp.textContent = APPS[app].name;
     menus.innerHTML = MENUS[app].map((m) => `<span>${m}</span>`).join("");
     if (swap && !reduceMotion.matches) {
@@ -181,8 +172,7 @@
     }
   }
 
-  // A macOS-style HUD for desktop changes: a three-finger trackpad swipe, then which
-  // desktop you are on.
+  // A macOS-style HUD for desktop changes: which way you swiped, and where you are.
   let swipeTimer = 0;
   function showSwipe(n, dir) {
     clearTimeout(swipeTimer);
@@ -196,28 +186,24 @@
     swipeTimer = setTimeout(() => { swipeHud.hidden = true; }, 1700);
   }
 
-  // ----- Dock -----
+  // ----- Dock: pinned apps, a divider, then apps with windows here; one dot each -----
   function dockApps() {
     const running = [];
-    for (const w of windowsHere()) if (!running.includes(w.app)) running.push(w.app);
-    return { pins: PINS, running: running.filter((a) => !PINS.includes(a)) };
+    for (const w of windowsHere()) if (!running.includes(w.app) && !PINS.includes(w.app)) running.push(w.app);
+    return running;
   }
-
   function renderDock({ animate = false } = {}) {
-    const { pins, running } = dockApps();
-    const button = (key) => {
+    const running = dockApps();
+    const item = (key) => {
       const count = windowsHere().filter((w) => w.app === key).length;
-      const label = `${APPS[key].name}, ${count ? plural(count, "window") : "no windows"} on this desktop`;
-      return `<li><button type="button" class="dock-btn${animate && !pins.includes(key) ? " enter" : ""}" data-app="${key}"
-        aria-label="${label}" aria-expanded="false" aria-controls="demo-preview">
-        ${iconMarkup(key)}<span class="dots" aria-hidden="true">${"<i></i>".repeat(count)}</span></button></li>`;
+      return `<li><span class="dock-btn${animate && !PINS.includes(key) ? " enter" : ""}" data-app="${key}">
+        ${iconMarkup(key)}<span class="dots">${"<i></i>".repeat(count)}</span></span></li>`;
     };
-    dock.innerHTML = pins.map(button).join("") +
-      (running.length ? `<li class="dock-sep" aria-hidden="true"></li>` : "") +
-      running.map(button).join("");
+    dock.innerHTML = PINS.map(item).join("") +
+      (running.length ? `<li class="dock-sep"></li>` : "") + running.map(item).join("");
   }
 
-  // ----- Focus a window -----
+  // ----- Bring one window to the front -----
   function focusWindow(id) {
     const w = byId(id);
     if (!w) return;
@@ -226,43 +212,36 @@
     order.unshift(id);
     closeAll();
     renderDesk();
-    const el = desk.querySelector(`[data-win="${id}"]`);
-    if (el && !reduceMotion.matches) el.classList.add("flash");
-    const name = APPS[w.app].name;
+    if (!reduceMotion.matches) desk.querySelector(`[data-win="${id}"]`)?.classList.add("flash");
     const others = windowsHere().filter((x) => x.app === w.app && x.id !== id).length;
-    const rest = others === 0 ? "" : others === 1
-      ? ` Your other ${name} window stays where it was.`
-      : ` Your other ${others} ${name} windows stay where they were.`;
-    say(`“${w.title}” is now in front.${rest}`);
+    say(`“${w.title}” is now in front.${others ? ` Your other ${APPS[w.app].name} window stays where it was.` : ""}`);
   }
 
-  // ----- Switcher -----
-  function openSwitcher(direction = 1) {
+  // ----- Switcher: one tile per window -----
+  function openSwitcher() {
     closePreview();
-    const list = mru();
-    if (!list.length) { say("No windows on this desktop to switch to."); return; }
     state.mode = "switcher";
-    state.sel = list.length > 1 ? (direction < 0 ? list.length - 1 : 1) : 0;
+    state.sel = mru().length > 1 ? 1 : 0;
     switcher.hidden = false;
     renderTiles();
   }
-
   function renderTiles() {
     const list = mru();
     tilesEl.innerHTML = list.map((w, i) =>
-      `<li><button type="button" class="tile" data-tile="${w.id}" aria-current="${i === state.sel}"
-        aria-label="${APPS[w.app].name}: ${w.title}">${miniMarkup(w)}${iconMarkup(w.app)}<span class="name">${w.title}</span></button></li>`
+      `<li><span class="tile${i === state.sel ? " is-sel" : ""}" data-tile="${w.id}">${miniMarkup(w)}${iconMarkup(w.app)}<span class="name">${w.title}</span></span></li>`
     ).join("");
     const w = list[state.sel];
     say(`Every window gets its own tile. “${w.title}” (${APPS[w.app].name}) is selected.`);
   }
-
   function stepSwitcher(delta) {
     const n = mru().length;
     state.sel = (state.sel + delta + n) % n;
     renderTiles();
   }
-
+  function releaseSwitcher() {
+    const w = mru()[state.sel];
+    if (w) focusWindow(w.id);
+  }
   function closeSwitcher() {
     if (state.mode !== "switcher") return;
     state.mode = "idle";
@@ -270,125 +249,69 @@
     tilesEl.innerHTML = "";
   }
 
-  // ----- Previews -----
-  let hoverTimer = 0;
-  let leaveTimer = 0;
-
-  function openPreview(appKey, { announce = true, intro = false } = {}) {
+  // ----- Dock previews -----
+  function openPreview(appKey, { hint = false } = {}) {
     closeSwitcher();
-    const btn = dock.querySelector(`[data-app="${appKey}"]`);
-    if (!btn) return;
+    const icon = dock.querySelector(`[data-app="${appKey}"]`);
+    if (!icon) return;
     state.mode = "preview";
     state.previewApp = appKey;
-    state.intro = intro;
-    dock.querySelectorAll(".dock-btn").forEach((b) => b.setAttribute("aria-expanded", String(b === btn)));
+    dock.querySelectorAll(".dock-btn").forEach((b) => b.classList.toggle("is-open", b === icon));
     const wins = windowsHere().filter((w) => w.app === appKey);
     const name = APPS[appKey].name;
-    preview.setAttribute("role", "group");
-    preview.setAttribute("aria-label", `${name} window previews`);
-    preview.classList.toggle("is-intro", intro);
-    preview.innerHTML = (intro ? `<p class="pv-hint" aria-hidden="true">${plural(wins.length, `${name} window`)}. Pick one.</p>` : "") +
-      (wins.length
-        ? wins.map((w) => `<div class="pv${intro && w.id === INTRO_PICK ? " is-pick" : ""}">
-          <span class="pv-lights"><button type="button" data-close="${w.id}" aria-label="Close ${name} window “${w.title}”"></button><i></i><i></i></span>
-          <button type="button" class="pv-shot" data-focus="${w.id}" aria-label="Focus ${name} window “${w.title}”">${miniMarkup(w)}</button>
-          <span class="pv-name">${w.title}</span></div>`).join("")
-        : `<p class="pv-empty">No open windows on this desktop</p>`);
+    preview.innerHTML = (hint ? `<p class="pv-hint">${wins.length} ${name} windows</p>` : "") +
+      wins.map((w) => `<div class="pv">
+        <span class="pv-lights"><i></i><i></i><i></i></span>
+        <span class="pv-shot" data-focus="${w.id}">${miniMarkup(w)}</span>
+        <span class="pv-name">${w.title}</span></div>`).join("");
     preview.hidden = false;
     mac.classList.add("is-focus");
-    placePreview(btn);
-    if (intro) say(INTRO_TEXT);
-    else if (announce) {
-      say(wins.length
-        ? `${name} has ${plural(wins.length, "window")} here. Click one to bring up just that window.`
-        : `No ${name} windows on this desktop.`);
-    }
+    placePreview(icon);
+    say(`${name} has ${wins.length} windows here. Pick the one you want.`);
   }
-
-  // Centre over the icon, keep inside the screen, sit just above the Dock. Uses
-  // layout offsets, so the hero's entrance transform cannot skew the position.
-  function placePreview(btn) {
+  // The pointer resting on a preview: highlight it, but nothing changes on screen yet.
+  function hoverPreview(id) {
+    preview.querySelectorAll(".pv").forEach((pv) => pv.classList.toggle("is-hover", pv.querySelector(`[data-focus="${id}"]`) !== null));
+  }
+  // Centre over the icon, keep inside the screen, sit just above the Dock. Uses layout
+  // offsets, so entrance transforms cannot skew the position.
+  function placePreview(icon) {
     const width = preview.offsetWidth;
     const half = width / 2;
     const room = mac.clientWidth;
-    const center = dockWrap.offsetLeft + btn.offsetLeft + btn.offsetWidth / 2;
+    const center = dockWrap.offsetLeft + icon.offsetLeft + icon.offsetWidth / 2;
     const left = Math.min(Math.max(center, half + 8), Math.max(half + 8, room - half - 8));
     const tail = Math.min(Math.max(center - left + half, 22), Math.max(22, width - 22));
     preview.style.left = `${left}px`;
     preview.style.bottom = `${Math.max(mac.clientHeight - dockWrap.offsetTop - dock.offsetTop + 14, 0)}px`;
     preview.style.setProperty("--tail", `${tail}px`);
   }
-
-  function replacePreview() {
-    if (state.mode !== "preview") return;
-    const b = dock.querySelector(`[data-app="${state.previewApp}"]`);
-    if (b) placePreview(b);
-  }
-
   function closePreview() {
-    clearTimeout(hoverTimer);
-    clearTimeout(leaveTimer);
-    peek(null);
     if (state.mode !== "preview") return;
     state.mode = "idle";
     state.previewApp = null;
-    state.intro = false;
     preview.hidden = true;
-    mac.classList.remove("is-focus");
     preview.innerHTML = "";
-    preview.classList.remove("is-intro");
-    dock.querySelectorAll(".dock-btn").forEach((b) => b.setAttribute("aria-expanded", "false"));
+    mac.classList.remove("is-focus");
+    dock.querySelectorAll(".dock-btn").forEach((b) => b.classList.remove("is-open"));
   }
-
-  // Outlines the desk window a preview stands for, so the mapping is visible.
-  function peek(id) {
-    desk.querySelectorAll(".peek").forEach((el) => el.classList.remove("peek"));
-    if (id) desk.querySelector(`[data-win="${id}"]`)?.classList.add("peek");
-  }
-
-  function closeWindow(id) {
-    const w = byId(id);
-    if (!w) return;
-    const app = w.app;
-    state.windows[state.desk] = windowsHere().filter((x) => x.id !== id);
-    state.order[state.desk] = state.order[state.desk].filter((x) => x !== id);
-    renderDesk();
-    renderDock();
-    const left = windowsHere().filter((x) => x.app === app).length;
-    if (left) {
-      openPreview(app, { announce: false });
-      preview.querySelector("[data-focus]")?.focus();
-    } else {
-      closePreview();
-      dock.querySelector(".dock-btn")?.focus();
-    }
-    say(left
-      ? `Closed “${w.title}”. ${APPS[app].name} now shows ${plural(left, "dot")}, one per window.`
-      : `Closed “${w.title}”. ${APPS[app].name} has no windows left here, so it leaves this Dock.`);
-  }
-
   function closeAll() { closeSwitcher(); closePreview(); }
 
   // ----- Desktops -----
-  function setDesk(n, { hud = true } = {}) {
+  function setDesk(n) {
     if (n === state.desk) return;
     closeAll();
     const dir = n > state.desk ? 1 : -1;
-    if (hud) showSwipe(n, dir);
     state.desk = n;
     renderDesk({ swap: dir });
     renderDock({ animate: true });
-    const { running } = dockApps();
-    const names = running.map((a) => APPS[a].name);
+    const names = dockApps().map((a) => APPS[a].name);
     const list = names.length > 1 ? `${names.slice(0, -1).join(", ")} and ${names.at(-1)}` : names[0];
     say(`Desktop ${n} has its own Dock: ${list ? `just ${list}` : "only your pinned apps"}. Finder and DogBar stay on every Dock.`);
   }
 
-  function showIntro() {
-    if (state.desk === 1 && byId(INTRO_PICK)) openPreview(INTRO_APP, { intro: true });
-  }
-
-  // Restores the opening scenario. Never moves focus.
+  // The opening frame, also the still image under reduced motion: one window, and
+  // Safari's previews showing the second one.
   function reset() {
     closeAll();
     state.windows = initialWindows();
@@ -396,148 +319,27 @@
     state.desk = 1;
     renderDesk();
     renderDock();
-    showIntro();
+  }
+  function openingFrame() {
+    reset();
+    openPreview("safari", { hint: true });
+    say(INTRO_TEXT);
   }
 
-  // Letting go of Option brings the selected window forward.
-  function releaseSwitcher({ focus = true } = {}) {
-    const w = mru()[state.sel];
-    if (w) focusWindow(w.id);
-    if (focus) stage.focus({ preventScroll: true });
-  }
-
-  // ----- Events -----
-  tilesEl.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-tile]");
-    if (t) { focusWindow(t.dataset.tile); stage.focus({ preventScroll: true }); }
+  window.addEventListener("resize", () => {
+    if (state.mode === "preview") placePreview(dock.querySelector(`[data-app="${state.previewApp}"]`));
   });
 
-  desk.addEventListener("click", (e) => {
-    const w = e.target.closest("[data-win]");
-    if (w) focusWindow(w.dataset.win);
-  });
-
-  dock.addEventListener("click", (e) => {
-    const b = e.target.closest(".dock-btn");
-    if (!b) return;
-    const key = b.dataset.app;
-    if (state.mode === "preview" && state.previewApp === key && !state.intro) { closePreview(); return; }
-    openPreview(key);
-    if (e.detail === 0) preview.querySelector("button")?.focus();
-  });
-
-  // Hover previews for mouse pointers only; touch and keyboard use click.
-  dock.addEventListener("pointerover", (e) => {
-    if (e.pointerType !== "mouse" || tour.playing) return;
-    const b = e.target.closest(".dock-btn");
-    if (!b) return;
-    clearTimeout(leaveTimer);
-    clearTimeout(hoverTimer);
-    if (!windowsHere().some((w) => w.app === b.dataset.app)) { closePreview(); return; }
-    if (state.mode === "switcher") return;
-    hoverTimer = setTimeout(() => {
-      if (state.previewApp !== b.dataset.app) openPreview(b.dataset.app);
-    }, 140);
-  });
-  const scheduleLeave = (e) => {
-    if (e.pointerType !== "mouse") return;
-    clearTimeout(hoverTimer);
-    if (state.mode !== "preview" || state.intro || tour.playing) return;
-    const to = e.relatedTarget;
-    if (to && (dock.contains(to) || preview.contains(to))) return;
-    leaveTimer = setTimeout(() => {
-      if (!preview.contains(document.activeElement)) closePreview();
-    }, 320);
-  };
-  dock.addEventListener("pointerout", scheduleLeave);
-  preview.addEventListener("pointerout", scheduleLeave);
-  preview.addEventListener("pointerover", () => clearTimeout(leaveTimer));
-
-  const peekFrom = (e) => peek(e.target.closest("[data-focus]")?.dataset.focus || null);
-  preview.addEventListener("pointerover", peekFrom);
-  preview.addEventListener("focusin", peekFrom);
-  preview.addEventListener("pointerleave", () => peek(null));
-  preview.addEventListener("focusout", () => peek(null));
-
-  preview.addEventListener("click", (e) => {
-    const close = e.target.closest("[data-close]");
-    if (close) { closeWindow(close.dataset.close); return; }
-    const focus = e.target.closest("[data-focus]");
-    if (focus) {
-      const appKey = state.previewApp;
-      focusWindow(focus.dataset.focus);
-      dock.querySelector(`[data-app="${appKey}"]`)?.focus();
-    }
-  });
-
-  // Keys are handled only while focus is inside the demo, never globally. Like the
-  // real thing: hold Option and tap Tab (Shift goes back), let go of Option to switch.
-  stage.addEventListener("keydown", (e) => {
-    if (e.key === "Tab" && e.altKey) {
-      if (state.mode === "switcher") stepSwitcher(e.shiftKey ? -1 : 1);
-      else openSwitcher(e.shiftKey ? -1 : 1);
-      e.preventDefault();
-    } else if (e.key === "Escape" && state.mode !== "idle") {
-      const appKey = state.previewApp;
-      const wasSwitcher = state.mode === "switcher";
-      closeAll();
-      say(wasSwitcher ? "Closed the switcher. Nothing changed." : "Closed the preview.");
-      if (wasSwitcher) stage.focus({ preventScroll: true });
-      else dock.querySelector(`[data-app="${appKey}"]`)?.focus();
-      e.preventDefault();
-    } else if (state.mode === "switcher" && (e.key === "ArrowRight" || e.key === "ArrowLeft")) {
-      stepSwitcher(e.key === "ArrowRight" ? 1 : -1);
-      e.preventDefault();
-    } else if (state.mode === "switcher" && e.key === "Enter") {
-      releaseSwitcher();
-      e.preventDefault();
-    }
-  });
-  stage.addEventListener("keyup", (e) => {
-    if (e.key === "Alt" && state.mode === "switcher") releaseSwitcher();
-  });
-
-  // Click outside the demo dismisses overlays, except the opening example.
-  document.addEventListener("pointerdown", (e) => {
-    if (state.mode !== "idle" && !state.intro && !stage.contains(e.target)) closeAll();
-  });
-
-  window.addEventListener("resize", replacePreview);
-  if ("ResizeObserver" in window) {
-    const ro = new ResizeObserver(replacePreview);
-    ro.observe(mac);
-    ro.observe(dock);
-  }
-
-  renderDesk();
-  renderDock();
-  showIntro();
-
-  // ---------- Guided tour ----------
-  // Plays the three ideas with a pointer, a swipe HUD and a light dim. It uses
-  // the same functions as the hands-on demo, never moves focus, and stops for good as
-  // soon as someone uses the demo. It starts only while the demo is on screen and never
-  // on its own under reduced motion.
-  const cam = $("[data-cam]");
-  const pointer = $("[data-cursor]");
-  const keys = $("[data-keys]");
-  const tourBtn = $("[data-tour-toggle]");
-  const tourSteps = [...document.querySelectorAll("[data-tour-step]")];
-  const tour = { run: 0, scene: 0, playing: false, userTook: false };
-  const STOP = Symbol("tour stopped");
-
-  // Centre of an element in screen coordinates. Layout offsets ignore transforms, so
-  // the preview's translateX(-50%) is corrected by hand.
-  function spot(el) {
+  // ---------- Playback ----------
+  // Scenes are scripts of steps separated by `wait`s on a play clock, so Pause freezes
+  // the walkthrough mid-scene and Play resumes from the same moment.
+  const point = (el) => {
+    if (!el) return;
     let x = el.offsetWidth / 2;
     let y = el.offsetHeight / 2;
     for (let n = el; n && n !== cam; n = n.offsetParent) { x += n.offsetLeft; y += n.offsetTop; }
-    if (preview.contains(el)) x -= preview.offsetWidth / 2;
-    return { x, y };
-  }
-  const point = (el) => {
-    const p = spot(el);
-    pointer.style.transform = `translate(${p.x}px, ${p.y}px)`;
+    if (preview.contains(el)) x -= preview.offsetWidth / 2; // offsets ignore its translateX(-50%)
+    pointer.style.transform = `translate(${x}px, ${y}px)`;
   };
   function press() {
     pointer.classList.remove("press");
@@ -546,31 +348,31 @@
   }
 
   const SCENES = [
-    // One window on screen: the Lisbon day plan. Its sibling, the hotel booking, is
-    // one hover away in Safari's Dock previews.
-    { ms: 7600, run: async (wait) => {
+    // Only the day plan is on screen. Hover Safari, the previews show both windows,
+    // the pointer settles on "Hotel booking", and only the click brings it forward.
+    { ms: 7800, run: async (wait) => {
       reset();
-      closeAll();
-      say("Safari has two windows open, but you can only see one. Hover Safari in the Dock to see both.");
+      say("Safari has two windows open, but you can only see one.");
       point(desk);
       pointer.classList.add("is-on");
-      await wait(1100);
+      await wait(1200);
       point(dock.querySelector('[data-app="safari"]'));
-      await wait(1000);
+      await wait(900);
       openPreview("safari");
-      await wait(1500);
-      const shot = preview.querySelector('[data-focus="s2"]');
-      if (shot) { point(shot); peek("s2"); }
-      await wait(1300);
+      await wait(1400);
+      point(preview.querySelector('[data-focus="s2"]'));
+      await wait(800);
+      hoverPreview("s2");
+      await wait(900);
       press();
+      await wait(200);
       focusWindow("s2");
-      await wait(2700);
+      await wait(2400);
     } },
-    // Option+Tab over a single window: step to the Slack chat, let go, and it replaces
-    // the hotel booking on screen.
+    // Option+Tab over the hotel booking: step to the Slack chat, let go, Slack is in front.
     { ms: 5600, run: async (wait) => {
       closeAll();
-      if (state.desk !== 1) setDesk(1, { hud: false });
+      if (state.desk !== 1) setDesk(1);
       pointer.classList.remove("is-on");
       keys.hidden = false;
       openSwitcher();
@@ -578,29 +380,49 @@
       stepSwitcher(1);
       await wait(2400);
       keys.hidden = true;
-      releaseSwitcher({ focus: false });
+      releaseSwitcher();
       await wait(1700);
     } },
     // A swipe to Desktop 2 and back. The Dock visibly changes with the desktop.
     { ms: 7000, run: async (wait) => {
       closeAll();
-      if (state.desk !== 1) setDesk(1, { hud: false });
+      if (state.desk !== 1) setDesk(1);
       pointer.classList.remove("is-on");
       say("Swipe to another desktop and the Dock changes to match.");
       await wait(400);
       showSwipe(2, 1);
       await wait(700);
-      setDesk(2, { hud: false });
+      setDesk(2);
       await wait(2900);
       showSwipe(1, -1);
       await wait(700);
-      setDesk(1, { hud: false });
+      setDesk(1);
       await wait(2300);
     } },
   ];
 
-  function markStep(i) {
-    tourSteps.forEach((b, n) => {
+  const STOP = Symbol("stopped");
+  const player = { run: 0, scene: 0, playing: false, pausedByUser: false, timer: null };
+
+  // Waits `ms` of playing time. Pausing banks the time left; playing spends the rest.
+  function clockWait(id, ms) {
+    return new Promise((resolve, reject) => {
+      if (id !== player.run) { reject(STOP); return; } // a newer run has taken over
+      let left = ms;
+      let since = 0;
+      let handle = 0;
+      const start = () => { since = performance.now(); handle = setTimeout(() => { player.timer = null; resolve(); }, left); };
+      player.timer = {
+        pause() { clearTimeout(handle); left = Math.max(0, left - (performance.now() - since)); },
+        resume: start,
+        cancel() { clearTimeout(handle); reject(STOP); },
+      };
+      if (player.playing) start();
+    });
+  }
+
+  function markChapter(i) {
+    chapters.forEach((b, n) => {
       b.classList.remove("is-active");
       void b.offsetWidth; // restart the progress fill
       b.classList.toggle("is-active", n === i);
@@ -611,75 +433,66 @@
     });
   }
 
-  function setTouring(on) {
-    tour.playing = on;
-    stage.dataset.tour = on ? "playing" : "stopped";
-    caption.setAttribute("aria-live", on ? "off" : "polite"); // no running commentary for screen readers
-    tourBtn.setAttribute("aria-label", on ? "Pause the demo" : "Play the demo");
-    if (!on) {
-      mac.classList.toggle("is-focus", state.mode === "preview");
-      pointer.classList.remove("is-on", "press");
-      keys.hidden = true;
-      swipeHud.hidden = true;
-      peek(null);
-    }
+  function setPlaying(on) {
+    player.playing = on;
+    stage.dataset.tour = on ? "playing" : "paused";
+    playBtn.setAttribute("aria-label", on ? "Pause the demo" : "Play the demo");
   }
 
-  async function playTour(from = tour.scene) {
-    const id = ++tour.run;
-    const wait = (ms) => new Promise((resolve, reject) =>
-      setTimeout(() => (id === tour.run ? resolve() : reject(STOP)), ms));
-    setTouring(true);
+  // Starts the loop at a chapter, cancelling whatever was running.
+  async function playFrom(i) {
+    player.timer?.cancel();
+    const id = ++player.run;
+    setPlaying(true);
     try {
-      for (let i = from; ; i = (i + 1) % SCENES.length) {
-        tour.scene = i;
-        markStep(i);
-        await SCENES[i].run(wait);
+      for (let n = i; ; n = (n + 1) % SCENES.length) {
+        player.scene = n;
+        markChapter(n);
+        await SCENES[n].run((ms) => clockWait(id, ms));
       }
     } catch (err) {
       if (err !== STOP) throw err;
     }
   }
-
-  function stopTour({ byUser = false } = {}) {
-    if (byUser) tour.userTook = true;
-    if (!tour.playing) return;
-    tour.run++;
-    setTouring(false);
+  function pause() {
+    if (!player.playing) return;
+    setPlaying(false);
+    player.timer?.pause();
+  }
+  function resume() {
+    if (player.playing) return;
+    if (!player.timer && !player.run) { playFrom(0); return; }
+    setPlaying(true);
+    player.timer?.resume();
   }
 
-  tourBtn.addEventListener("click", () => {
-    if (tour.playing) stopTour({ byUser: true });
-    else { tour.userTook = false; playTour(); }
+  playBtn.addEventListener("click", () => {
+    if (player.playing) { player.pausedByUser = true; pause(); }
+    else { player.pausedByUser = false; resume(); }
   });
-  tourSteps.forEach((b) => b.addEventListener("click", () => {
-    tour.userTook = false;
-    playTour(Number(b.dataset.tourStep));
+  chapters.forEach((b) => b.addEventListener("click", () => {
+    player.pausedByUser = false;
+    playFrom(Number(b.dataset.tourStep));
   }));
-  // "Watch the demo" links scroll to the demo and play it from the start.
+  // "Watch the demo" links scroll here and start from the beginning.
   document.querySelectorAll("[data-demo-start]").forEach((a) => a.addEventListener("click", () => {
-    tour.userTook = false;
-    playTour(0);
+    player.pausedByUser = false;
+    playFrom(0);
   }));
 
-  // Any hands-on use of the demo ends the tour; the tour's own buttons do not.
-  const takeOver = (e) => {
-    if (!e.target.closest(".tour")) stopTour({ byUser: true });
-  };
-  stage.addEventListener("pointerdown", takeOver, true);
-  stage.addEventListener("keydown", takeOver, true);
-  stage.addEventListener("focusin", takeOver);
-
-  // Autoplay waits a moment after the demo comes into view, and pauses when it leaves.
+  // Plays while the demo is on screen and pauses when it scrolls away. Under reduced
+  // motion it never starts by itself; the opening frame stays as a still.
+  openingFrame();
+  stage.dataset.tour = "idle"; // not "paused": the opening frame's own animations still run
+  playBtn.setAttribute("aria-label", "Play the demo");
   if ("IntersectionObserver" in window) {
     let inView = false;
     new IntersectionObserver(([entry]) => {
       inView = entry.isIntersecting;
-      if (!inView) { if (tour.playing) stopTour(); return; }
+      if (!inView) { pause(); return; }
       setTimeout(() => {
-        if (inView && !tour.playing && !tour.userTook && !reduceMotion.matches) playTour();
+        if (inView && !player.pausedByUser && !reduceMotion.matches) resume();
       }, 700);
     }, { threshold: 0.5 }).observe(stage);
   }
-  setTouring(false);
 })();

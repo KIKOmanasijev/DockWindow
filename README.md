@@ -1,44 +1,73 @@
-# DogBar
+<p align="center">
+  <img src="landing/assets/dog-640.jpg" alt="DogBar app icon: a cartoon dog holding two windows" width="128" height="128">
+</p>
 
-A native macOS Dock and window switcher for people with a lot of windows open. Switch to an individual window, preview it from the Dock, and give each desktop its own workspace.
+<h1 align="center">DogBar</h1>
 
-[Website](https://dogbar.hristijan.dev/) · [Features](#features) · [Build and run](#build-and-run) · [Testing](#testing) · [Distribution](#distribution)
+<p align="center">
+  <strong>Window management your Mac should have shipped with.</strong><br>
+  A better alt-tab and Dock for macOS 14 and later.
+</p>
 
-**Status:** active development. An [unnotarized preview for Apple Silicon](https://dogbar.hristijan.dev/#get) is available for macOS 14+. It is self-signed, so macOS may block first launch. DogBar needs Accessibility and Screen Recording permissions to run its window-management features.
+<p align="center">
+  <a href="https://dogbar.hristijan.dev/">Website</a> ·
+  <a href="https://dogbar.hristijan.dev/#get">Download</a> ·
+  <a href="#what-you-get">What you get</a> ·
+  <a href="#install">Install</a> ·
+  <a href="#build-and-run">Build from source</a> ·
+  <a href="#license">License</a>
+</p>
 
-## Features
+On a Mac, Cmd+Tab shows one icon per app, so two Safari windows look like one, and the Dock can’t tell you which window you’re about to get. DogBar fixes that. It shows you every window, lets you preview them from the Dock, and gives each desktop its own Dock.
 
-- **Switch windows with Option+Tab.** Each window gets its own thumbnail, including multiple windows from the same app. Hold Option, tap Tab, then release to focus the selection. Shift reverses direction, arrows navigate, and Escape cancels.
-- **Keep desktops separate.** Show apps with windows on the current desktop, while keeping your pinned apps available everywhere. The Dock, switcher and previews each have their own scope setting.
-- **Preview before switching.** Hover an app to see its windows, then choose the exact one you want. Empty-app previews are off by default and can be enabled in Settings. Traffic-light controls close, minimize or toggle fullscreen for that window. Previews also work with Apple's native Dock.
-- **Count open windows.** Window-count dots show how many windows an app has in the selected scope, with configurable styles and limits.
-- **Resize the Dock directly.** Hover the inward border or divider grip for a small pill cue, then drag inward to enlarge it or outward to shrink it. Sizes snap into small steps with resistance to cursor jitter. Icons keep a fixed size on hover. Bottom, left and right placement, autohide, pinning and app rules are configurable.
-- **Change settings live.** Open Settings from the monochrome paw in the menu bar or the app icon. Pause and Restore Native Dock bring back the original Dock preferences.
+> **Status: in active development.** An [unnotarized preview](https://dogbar.hristijan.dev/#get) is available for Apple Silicon Macs on macOS 14 or later. It is self-signed, not notarized by Apple, so macOS asks you to confirm the first launch.
 
-### Feature illustrations
+## What you get
 
-These illustrations come from the DogBar website.
+- **See every window when you alt-tab, not just apps.** Hold Option and tap Tab. Every window gets its own tile with a preview and its name, including several windows from the same app.
+- **Hover an app in the Dock to preview its windows.** Click the one you want and only that window comes up. You can close, minimize or make it full screen right from the preview.
+- **Get a separate Dock on every desktop.** Each desktop’s Dock shows only the apps open there. Your pinned apps show up everywhere.
+- **See how many windows each app has.** One dot per open window, right under the icon.
+- **Resize the Dock by dragging its edge.** Icons stay still, with no magnifying. Sizes snap into small steps so the Dock doesn’t jitter.
+- **Keep Apple’s Dock if you prefer.** Native Dock mode leaves Apple’s Dock in place and still gives you window previews and the better alt-tab.
 
-**One tile per window**
+| | macOS | DogBar |
+| --- | :---: | :---: |
+| See a preview of every window when you alt-tab | ✗ | ✓ |
+| Preview windows by hovering the Dock | ✗ | ✓ |
+| A separate Dock for each desktop | ✗ | ✓ |
+| See how many windows each app has | ✗ | ✓ |
+| Close or minimize a window from its Dock preview | ✗ | ✓ |
 
-<img src="landing/assets/feature-switcher.svg" alt="Illustration of the window switcher with separate tiles for two Safari windows." width="720">
+A Dock per desktop and window dots need DogBar’s own Dock. Previews and the switcher work with either Dock.
 
-<details>
-<summary>See desktop, preview and Dock illustrations</summary>
+## Install
 
-**A Dock for each desktop**
+1. Download the DMG from [dogbar.hristijan.dev](https://dogbar.hristijan.dev/#get). Check the SHA-256 shown next to the download if you like.
+2. Open the DMG and drag DogBar into Applications.
+3. Open DogBar. Because this preview is not notarized, macOS may block it the first time. Review the app, then go to **System Settings → Privacy & Security → Open Anyway**. Apple explains this in [Open a Mac app from an unknown developer](https://support.apple.com/102445).
+4. Allow the two permissions DogBar asks for:
+   - **Accessibility** lets it switch to, close and minimize single windows, and listen for its shortcut.
+   - **Screen Recording** lets it show what’s inside each window in previews and the switcher.
 
-<img src="landing/assets/feature-desktops.svg" alt="Illustration of two desktops with different apps in their Docks and shared pinned apps." width="720">
+   If a permission still looks inactive after you allow it, choose **Relaunch DogBar** in Settings.
 
-**Choose a window from its preview**
+## Using DogBar
 
-<img src="landing/assets/feature-previews.svg" alt="Illustration of Dock hover previews with controls for individual windows." width="720">
+| To do this | Do this |
+| --- | --- |
+| Switch to any window | Hold **Option**, tap **Tab**, let go of Option |
+| Go back in the switcher | Add **Shift**, or use the arrow keys |
+| Cancel the switcher | **Escape** |
+| Preview an app’s windows | Hover its Dock icon |
+| Bring up one window | Click its preview |
+| Resize the Dock | Hover its inner edge or the divider grip, then drag |
+| Open Settings | Click the paw in the menu bar, or the DogBar icon |
+| Get your normal Dock back | Paw menu → **Pause DogBar** or **Restore Native Dock** |
 
-**Window counts and resizing**
+In Settings you can choose whether the Dock, the switcher and previews each show windows from the current desktop or from all desktops. You can also move the Dock to the bottom, left or right, turn on autohide, pin apps and set app rules.
 
-<img src="landing/assets/feature-dock.svg" alt="Illustration of window-count dots and the Dock resize grip." width="720">
-
-</details>
+DogBar saves your original Dock settings before hiding Apple’s Dock and puts them back when you pause, restore or quit. If DogBar crashes, it restores them the next time it launches.
 
 ## Build and run
 
@@ -119,7 +148,7 @@ python3 -m unittest discover -s Tests/ReleaseTests -v
 
 These test release validation and publishing gates using fixtures and mocked Apple tools. Passing them does not mean an artifact has been signed or notarized.
 
-The landing page is static HTML, CSS and JavaScript, with no package installation or build step. With Node.js available, check its runtime scripts:
+The website in `landing/` is static HTML, CSS and JavaScript, with no package installation or build step. With Node.js available, check its scripts:
 
 ```sh
 node --check landing/script.js
@@ -127,7 +156,7 @@ node --check landing/release.js
 node --test 'landing/tests/*.test.cjs'
 ```
 
-The website tests cover release validation and demo interactions. DOM tests skip when `jsdom` is unavailable. To run those too, set `JSDOM_PATH` to an existing local `jsdom` package directory before running the test command.
+The website tests cover download and release validation, page structure and the demo walkthrough. DOM tests skip when `jsdom` is unavailable. To run those too, set `JSDOM_PATH` to an existing local `jsdom` package directory before running the test command.
 
 Window focus, Spaces, permissions, native Dock restoration and performance also need testing on a real Mac. See the [verification status](Docs/Verification.md) and [manual test checklist](Docs/Milestones.md).
 
@@ -149,7 +178,7 @@ The [distribution guide](Docs/Distribution.md) explains owner setup, Keychain cr
 | `Tests/ReleaseTests/` | Release-tool tests |
 | `Scripts/` | Development builds and public-release tooling |
 | `Resources/` | Bundle metadata, icon and entitlements |
-| `landing/` | Website, feature illustrations and interactive demo |
+| `landing/` | Website ([dogbar.hristijan.dev](https://dogbar.hristijan.dev/)) with its animated demo |
 | `Docs/` | Architecture research, verification and distribution instructions |
 
 ## Current limitations
@@ -162,3 +191,9 @@ The [distribution guide](Docs/Distribution.md) explains owner setup, Keychain cr
 DogBar saves the original native Dock preferences before hiding it and restores them on disable, Pause and Quit. After a crash, recovery runs on the next launch. Preserve application defaults while recovery is pending.
 
 Implementation research and source references are in [PrivateAPIReference.md](Docs/PrivateAPIReference.md). The app was independently implemented from behavior and API facts without copying GPL implementation bodies.
+
+## License
+
+DogBar is released under the [MIT License](LICENSE). Copyright © 2026 Hristijan Manasijev.
+
+The license covers this repository’s code. The Finder, Safari, Slack, Notes and Music icons in `landing/assets/apps/` are trademarks of their owners and appear only to depict those apps on the website.
