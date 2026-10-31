@@ -152,6 +152,13 @@ import ApplicationServices
         // Do not extend it on didLaunch after willLaunch, or poll while waiting for AX.
         pendingLaunchTasks[pid] = Task { @MainActor [weak self] in
             do { try await Task.sleep(for: .seconds(8)) } catch { return }
+            // Slow launches must not vanish just because their initial grace elapsed.
+            // Finished apps without windows still expire; hung launches remain bounded.
+            for _ in 0..<60 {
+                guard let running = NSRunningApplication(processIdentifier: pid),
+                      !running.isTerminated, !running.isFinishedLaunching else { break }
+                do { try await Task.sleep(for: .seconds(1)) } catch { return }
+            }
             guard let self, self.started else { return }
             self.clearPendingLaunch(pid: pid)
             self.reload()
@@ -165,10 +172,6 @@ import ApplicationServices
         // @Published delivers before the property changes. Render its supplied value synchronously.
         let snapshot = incoming ?? tracker.snapshot
         guard started else { return }
-        // Hand off to the normal composition/scope rules as soon as AX has a window.
-        for pid in Array(pendingLaunches.keys) where snapshot.windows.contains(where: { $0.pid == pid }) {
-            clearPendingLaunch(pid: pid)
-        }
         guard settings.useDogBarDock, !settings.isPaused else {
             hideTask?.cancel(); hideTask = nil
             for task in openingTasks.values { task.cancel() }; openingTasks.removeAll()
@@ -184,6 +187,12 @@ import ApplicationServices
         if !settings.autohide { hidden = false; hideTask?.cancel(); hideTask = nil }
         panel.setFrame(hidden ? DockLayout.hiddenFrame(shownFrame, position: settings.dockPosition) : shownFrame, display: true)
         let spaces = currentSpaces(snapshot: snapshot)
+        // AX window discovery precedes desktop membership discovery. Keep the same
+        // item/layer through both phases instead of dropping and re-inserting it.
+        for pid in Array(pendingLaunches.keys) where DockLaunchHandoffPolicy.isReady(
+            pid: pid, snapshot: snapshot, requiresMembership: settings.dockScope == .currentDesktop && !spaces.isEmpty) {
+            clearPendingLaunch(pid: pid)
+        }
         let options = DockCompositionOptions(scope: settings.dockScope, currentSpaceIDs: spaces, otherDesktopApps: settings.otherDesktopApps,
                                               includeMinimized: settings.includeMinimizedInDock,
                                               showWindowlessAppsOnLastActiveDesktop: settings.showWindowlessAppsOnLastActiveDesktop, showTrash: settings.showTrash)

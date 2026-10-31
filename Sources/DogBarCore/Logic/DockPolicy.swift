@@ -84,3 +84,15 @@ public enum MagnificationPolicy {
         return 1 + (maximumSize / baseSize - 1) * cos(d / range * .pi / 2)
     }
 }
+
+/// Retire a launch placeholder only when ordinary Dock composition can scope its windows.
+internal enum DockLaunchHandoffPolicy {
+    static func isReady(pid: pid_t, snapshot: WindowSnapshot, requiresMembership: Bool) -> Bool {
+        guard snapshot.apps.contains(where: { $0.pid == pid }) else { return false }
+        let windows = snapshot.windows.filter { $0.pid == pid }
+        guard !windows.isEmpty else { return false }
+        return !requiresMembership || windows.allSatisfy {
+            $0.isMinimized || !SpacePolicy.membership(of: $0).isEmpty
+        }
+    }
+}
