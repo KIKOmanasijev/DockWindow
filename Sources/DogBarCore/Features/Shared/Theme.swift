@@ -157,12 +157,46 @@ import Combine
     }
 }
 
+/// Shared edge treatment for every clear-glass surface.
+@MainActor final class GlassRim {
+    private let reflection = CAGradientLayer()
+    private let mask = CAShapeLayer()
+    private let outer = CAShapeLayer()
+    init() {
+        reflection.colors = [NSColor.white.withAlphaComponent(0.58).cgColor,
+                             NSColor.white.withAlphaComponent(0.08).cgColor,
+                             NSColor.black.withAlphaComponent(0.16).cgColor,
+                             NSColor.white.withAlphaComponent(0.42).cgColor]
+        reflection.locations = [0, 0.3, 0.7, 1]
+        reflection.startPoint = CGPoint(x: 0.5, y: 1)
+        reflection.endPoint = CGPoint(x: 0.5, y: 0)
+        mask.fillColor = nil; mask.strokeColor = NSColor.white.cgColor; mask.lineWidth = 1
+        reflection.mask = mask
+        outer.fillColor = nil; outer.strokeColor = NSColor.black.withAlphaComponent(0.22).cgColor
+        outer.lineWidth = 0.5; outer.zPosition = 9; reflection.zPosition = 10
+    }
+    func attach(to layer: CALayer?) {
+        layer?.addSublayer(outer); layer?.addSublayer(reflection)
+    }
+    func update(frame: CGRect, cornerRadius: CGFloat) {
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        reflection.frame = frame; outer.frame = frame; mask.frame = reflection.bounds
+        let outerRadius = max(0, cornerRadius - 0.25), innerRadius = max(0, cornerRadius - 1)
+        outer.path = CGPath(roundedRect: outer.bounds.insetBy(dx: 0.25, dy: 0.25),
+                            cornerWidth: outerRadius, cornerHeight: outerRadius, transform: nil)
+        mask.path = CGPath(roundedRect: reflection.bounds.insetBy(dx: 1, dy: 1),
+                           cornerWidth: innerRadius, cornerHeight: innerRadius, transform: nil)
+        CATransaction.commit()
+    }
+}
+
 /// Glass owns the hosting view so its backdrop never samples the panel's own
 /// thumbnails. Both floating panels use the same content/layout lifecycle.
 @MainActor final class GlassPanelHost<Content: View>: NSView {
     private let provider = DockBackgroundProviders.preferred()
     private let glass: NSView
     private let hosting: NSHostingView<Content>
+    private let rim = GlassRim()
     private let settings: AppSettings
     private var subscription: AnyCancellable?
     init(rootView: Content, settings: AppSettings) {
@@ -170,7 +204,9 @@ import Combine
         glass = provider.makeBackgroundView()
         hosting = NSHostingView(rootView: rootView)
         super.init(frame: .zero)
+        wantsLayer = true
         addSubview(glass)
+        rim.attach(to: layer)
         hosting.autoresizingMask = [.width, .height]
         if glass.responds(to: NSSelectorFromString("setContentView:")) {
             glass.setValue(hosting, forKey: "contentView")
@@ -182,15 +218,14 @@ import Combine
     private func updateAppearance() {
         provider.updateBackgroundView(glass, material: settings.panelMaterial,
                                       cornerRadius: settings.panelCornerRadius, theme: settings.theme)
-        // Regular glass keeps labels legible over busy windows; Dock stays clear.
-        if glass.responds(to: NSSelectorFromString("setStyle:")) { glass.setValue(0, forKey: "style") }
-        if glass.responds(to: NSSelectorFromString("setTintColor:")) { glass.setValue(nil, forKey: "tintColor") }
+        rim.update(frame: bounds, cornerRadius: settings.panelCornerRadius)
     }
     override func layout() {
         super.layout()
         CATransaction.begin(); CATransaction.setDisableActions(true)
         glass.frame = bounds
         hosting.frame = glass.bounds
+        rim.update(frame: bounds, cornerRadius: settings.panelCornerRadius)
         CATransaction.commit()
     }
 }

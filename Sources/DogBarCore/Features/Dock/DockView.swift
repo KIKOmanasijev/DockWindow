@@ -22,9 +22,7 @@ import QuartzCore
     private let provider: any DockBackgroundProvider
     private let background: NSView
     private let iconSurface = DockIconSurface()
-    private let glassRim = CAGradientLayer()
-    private let glassRimMask = CAShapeLayer()
-    private let glassOuterEdge = CAShapeLayer()
+    private let glassRim = GlassRim()
     private var layers: [String: DockIconLayer] = [:]
     private var separators: [String: CALayer] = [:]
     private let label = NSTextField(labelWithString: "")
@@ -74,22 +72,7 @@ import QuartzCore
         } else {
             addSubview(iconSurface)
         }
-        // Edge-only reflections; the system glass still supplies all backdrop sampling.
-        glassRim.colors = [NSColor.white.withAlphaComponent(0.58).cgColor,
-                           NSColor.white.withAlphaComponent(0.08).cgColor,
-                           NSColor.black.withAlphaComponent(0.16).cgColor,
-                           NSColor.white.withAlphaComponent(0.42).cgColor]
-        glassRim.locations = [0, 0.3, 0.7, 1]
-        glassRim.startPoint = CGPoint(x: 0.5, y: 1)
-        glassRim.endPoint = CGPoint(x: 0.5, y: 0)
-        glassRimMask.fillColor = nil; glassRimMask.strokeColor = NSColor.white.cgColor
-        glassRimMask.lineWidth = 1; glassRim.mask = glassRimMask
-        glassOuterEdge.fillColor = nil
-        glassOuterEdge.strokeColor = NSColor.black.withAlphaComponent(0.22).cgColor
-        glassOuterEdge.lineWidth = 0.5
-        glassOuterEdge.zPosition = 9; glassRim.zPosition = 10
-        layer?.addSublayer(glassOuterEdge)
-        layer?.addSublayer(glassRim)
+        glassRim.attach(to: layer)
         label.lineBreakMode = .byTruncatingMiddle
         label.font = .systemFont(ofSize: 13, weight: .medium); label.alignment = .center
         label.wantsLayer = true; label.layer?.cornerRadius = 7; label.layer?.masksToBounds = true
@@ -138,15 +121,7 @@ import QuartzCore
         // proxy can defer the material resize to a later run-loop pass.
         CATransaction.begin(); CATransaction.setDisableActions(true)
         background.frame = geometry.background
-        glassRim.frame = geometry.background
-        glassRimMask.frame = glassRim.bounds
-        glassOuterEdge.frame = geometry.background
-        let outerRadius = max(0, min(30, displayedIconSize * 0.3) - 0.25)
-        glassOuterEdge.path = CGPath(roundedRect: glassOuterEdge.bounds.insetBy(dx: 0.25, dy: 0.25),
-                                    cornerWidth: outerRadius, cornerHeight: outerRadius, transform: nil)
-        let rimRadius = max(0, min(30, displayedIconSize * 0.3) - 1)
-        glassRimMask.path = CGPath(roundedRect: glassRim.bounds.insetBy(dx: 1, dy: 1),
-                                   cornerWidth: rimRadius, cornerHeight: rimRadius, transform: nil)
+        glassRim.update(frame: geometry.background, cornerRadius: min(30, displayedIconSize * 0.3))
         background.layoutSubtreeIfNeeded()
         if iconSurface.superview === self {
             iconSurface.frame = bounds
