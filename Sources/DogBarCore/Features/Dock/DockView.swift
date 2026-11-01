@@ -26,6 +26,7 @@ import QuartzCore
     private var layers: [String: DockIconLayer] = [:]
     private var separators: [String: CALayer] = [:]
     private let label = NSTextField(labelWithString: "")
+    private let labelBubble = NSView()
     private var pointer: CGPoint?
     private var hoverID: String?
     private var backingStyle: String?
@@ -75,9 +76,10 @@ import QuartzCore
         glassRim.attach(to: layer)
         label.lineBreakMode = .byTruncatingMiddle
         label.font = .systemFont(ofSize: 13, weight: .medium); label.alignment = .center
-        label.wantsLayer = true; label.layer?.cornerRadius = 7; label.layer?.masksToBounds = true
-        label.backgroundColor = .windowBackgroundColor; label.drawsBackground = true; label.isHidden = true
-        addSubview(label)
+        label.drawsBackground = false
+        labelBubble.wantsLayer = true; labelBubble.layer?.cornerRadius = 7
+        labelBubble.layer?.masksToBounds = true; labelBubble.isHidden = true
+        addSubview(labelBubble); labelBubble.addSubview(label)
         registerForDraggedTypes([Self.itemType, .fileURL])
     }
     required init?(coder: NSCoder) { nil }
@@ -228,8 +230,9 @@ import QuartzCore
             hoverID = item?.id
             onHover?(item, hovered.map { geometry.iconFrames[$0] } ?? .zero)
         } else if let item, let hovered { onHover?(item, geometry.iconFrames[hovered]) }
-        label.isHidden = resizeArmed || item == nil || previewVisible || !settings.showAppNameLabels || dragged != nil
+        labelBubble.isHidden = resizeArmed || item == nil || previewVisible || !settings.showAppNameLabels || dragged != nil
         label.textColor = .labelColor
+        labelBubble.layer?.backgroundColor = NSColor.windowBackgroundColor.cgColor
         if !resizeArmed, let item, let hovered {
             label.stringValue = item.app?.name ?? item.pinnedApp?.url.deletingPathExtension().lastPathComponent ?? "Trash"
             positionLabel(relativeTo: geometry.iconFrames[hovered])
@@ -237,15 +240,23 @@ import QuartzCore
     }
     private func positionLabel(relativeTo frame: CGRect) {
         label.sizeToFit()
-        let size = CGSize(width: min(bounds.width - 10, label.frame.width + 20), height: 25)
+        let textHeight = label.frame.height
+        let size = CGSize(width: min(bounds.width - 10, label.frame.width + 20), height: max(25, textHeight + 8))
         var origin: CGPoint
         switch settings.dockPosition {
-        case .bottom: origin = CGPoint(x: frame.midX - size.width / 2, y: frame.maxY + 10)
-        case .left: origin = CGPoint(x: frame.maxX + 10, y: frame.midY - size.height / 2)
-        case .right: origin = CGPoint(x: frame.minX - size.width - 10, y: frame.midY - size.height / 2)
+        case .bottom: origin = CGPoint(x: frame.midX - size.width / 2, y: geometry.background.maxY + 8)
+        case .left: origin = CGPoint(x: geometry.background.maxX + 8, y: frame.midY - size.height / 2)
+        case .right: origin = CGPoint(x: geometry.background.minX - size.width - 8, y: frame.midY - size.height / 2)
         }
         origin.x = max(0, min(bounds.width - size.width, origin.x)); origin.y = max(0, min(bounds.height - size.height, origin.y))
-        label.frame = CGRect(origin: origin, size: size)
+        let scale = window?.backingScaleFactor ?? 2
+        origin.x = (origin.x * scale).rounded() / scale
+        origin.y = (origin.y * scale).rounded() / scale
+        labelBubble.frame = CGRect(origin: origin, size: size)
+        // NSTextField draws at the top of a tall frame. Keep its natural height
+        // and centre that frame inside the padded bubble instead.
+        label.frame = CGRect(x: 10, y: ((size.height - textHeight) * scale / 2).rounded() / scale,
+                             width: max(0, size.width - 20), height: textHeight)
     }
     private func item(at point: CGPoint) -> DockItem? { geometry.hitTest(point, kinds: items.map(\.kind)).map { items[$0] } }
     override func mouseDown(with event: NSEvent) {
