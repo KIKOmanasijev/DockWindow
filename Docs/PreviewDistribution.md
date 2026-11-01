@@ -33,6 +33,8 @@ The app uses identifier `dev.hristijan.dogbar` and executable `DogBar`, like the
 
 The helper builds for Apple Silicon and macOS 26.0, checks exact entitlements, signs the app with hardened runtime and the existing self-signed certificate, and verifies the code signature against that certificate and bundle ID. It packages only the app, Applications shortcut and installation note. It signs the DMG, checks UDZO image integrity, mounts it read-only, verifies the contained app again, checks the installation note and Applications shortcut, then detaches it. SHA-256 is calculated after signing and must remain unchanged through verification. A success manifest is created only after those checks pass. There is no notarization submission, stapled ticket, Gatekeeper-success claim or website publication.
 
+Previews embed the pinned Sparkle.framework for [in-app updates](Updates.md). The helper thins it to arm64, removes its unused XPC services, and signs `Autoupdate`, `Updater.app` and the framework with the same certificate before signing the app, never with `--deep`. Because self-signed code has no Team ID, previews use `Resources/DogBar-SelfSigned.entitlements`, which disables library validation. The app checks Sparkle's signature against its own certificate before loading it. The build refuses uncommitted source, resource or script changes, and records the revision in `DogBarBuildRevision` and `provenance.json`.
+
 ## Verify before staging
 
 Use the SHA-256 printed after the successful build:
@@ -65,7 +67,7 @@ The manifest explicitly contains:
 
 ## Host and download
 
-After verification, copy only the DMG into the ignored `landing/downloads/` directory and copy the generated release.json to landing/preview.json and publish it with the static site. The notarized landing/release.json stays unchanged. The target public URL is `https://dogbar.hristijan.dev/downloads/DogBar-0.1.0-preview.1-arm64.dmg`. The build helper intentionally performs neither staging nor deployment. Keep versioned filenames immutable and include older advertised images in later deployments. Never upload the isolated Swift build, app staging directory, provenance, logs, Keychain items or credentials.
+After verification, generate the signed appcast and stage with `Scripts/ota.py` ([Updates.md](Updates.md)). That copies only the DMG into the ignored `landing/downloads/` directory, copies the generated release.json to landing/preview.json, then writes landing/appcast.xml. Publish all three with the static site. The notarized landing/release.json stays unchanged. The target public URL is `https://dogbar.hristijan.dev/downloads/DogBar-0.1.0-preview.1-arm64.dmg`. The build helper intentionally performs neither staging nor deployment. Keep versioned filenames immutable and include older advertised images in later deployments. Never upload the isolated Swift build, app staging directory, provenance, logs, Keychain items or credentials.
 
 Serve downloads with `Content-Type: application/x-apple-diskimage`, attachment disposition and immutable caching. Serve both `preview.json` and `release.json` with `Cache-Control: no-store`. The website prefers a verified notarized release and otherwise accepts only an explicitly self-signed preview manifest. Before enabling a CTA, fetch the deployed artifact through HTTPS, compare its full SHA-256 with the build record, and verify that both hero and footer disclose its unnotarized preview status. The repository is public, so the same DMG is also attached to a GitHub release as a mirror (see [Releasing.md](Releasing.md)). The website still serves its own same-origin copy; it never links to GitHub.
 
@@ -80,7 +82,7 @@ After launch, grant Accessibility and Screen Recording in System Settings. Repla
 ## Tests
 
 ```sh
-python3 -m unittest discover -s Tests/ReleaseTests -p test_preview.py -v
+python3 -m unittest discover -s Tests/ReleaseTests -p 'test_*.py' -v
 ```
 
 These standard-library fixture tests cover version and path validation, fixed identity selection, immutable outputs, signature requirements, exact entitlements, failure gating, read-only image inspection and cleanup. They do not sign a real artifact, establish Apple trust, or test installation on a fresh Mac. They have no database integration.

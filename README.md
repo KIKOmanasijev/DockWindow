@@ -95,9 +95,9 @@ Dock previews can include a **+ New Window** tile (enabled by default). Optional
 
 ## Updates
 
-Choose **Check for Updates…** from the paw menu or the DogBar app menu. DogBar checks the website's release feeds, offers a newer compatible installer, verifies its SHA-256, and opens the DMG. Quit DogBar, drag the new copy into Applications, and reopen it. This first version does not replace the running app automatically. **About DogBar** shows the installed version, build revision and running path.
+Choose **Check for Updates…** from the paw menu or the DogBar app menu, or use **Settings → General → Updates**. DogBar uses [Sparkle 2](https://sparkle-project.org): the update feed and each update are signed with DogBar's own Ed25519 key and verified before anything is unpacked. Updates install only after you choose **Install and Relaunch**, which quits DogBar normally so the native Dock is restored first. DogBar asks once, on its second launch, whether to check automatically each day. **About DogBar** shows the installed version, build revision and running path.
 
-The same release feeds support future OTA distribution. Preview installers remain self-signed and unnotarized; no notarization or code-signature check is claimed by the updater itself. Public production builds still go through the release pipeline's signing and notarization checks. The existing public preview is older than this development build, so it will not be offered as an update.
+Previews are still self-signed and unnotarized. Your first preview install goes through macOS's Open Anyway flow; later updates are trusted through DogBar's update signature. Previews up to 0.1.0-preview.5 predate in-app updates, so moving from them takes one manual install. Details: [Docs/Updates.md](Docs/Updates.md).
 
 ## Build and run
 

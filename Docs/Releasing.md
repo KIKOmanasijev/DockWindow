@@ -60,9 +60,9 @@ Building and verifying are covered in detail by [PreviewDistribution.md](Preview
    - Preview notes must start with: *Unnotarized, self-signed preview for Apple Silicon Macs on macOS 26 or later.* Then list what changed, the install steps from the README (including System Settings → Privacy & Security → Open Anyway) and the SHA-256.
 
 7. **Update the website.**
-   - Copy the same DMG into `landing/downloads/` (ignored by git, but uploaded with the site). Keep older DMGs there too.
-   - Preview: copy the build's `release.json` to `landing/preview.json`. Notarized: run `release.py stage`, which updates `landing/release.json`.
-   - Deploy the `landing/` folder.
+   - Generate and verify the signed appcast (`Scripts/ota.py appcast` and `verify`, see [Updates.md](Updates.md)).
+   - Preview: `Scripts/ota.py stage` copies the DMG into `landing/downloads/` (ignored by git, but uploaded with the site), updates `landing/preview.json`, then `landing/appcast.xml` last. Notarized: run `release.py stage` for `landing/release.json`, then `ota.py stage` for the feed. Keep older DMGs in `landing/downloads/`.
+   - Commit `landing/appcast.xml` and the manifest, then deploy the `landing/` folder.
 
 8. **Check the live download.** Download the DMG from the website and from GitHub and confirm both have the SHA-256 from the build record:
 
@@ -77,7 +77,7 @@ Building and verifying are covered in detail by [PreviewDistribution.md](Preview
 
 - **Bundle ID change.** `0.1.0-preview.1` was built as DockWindow (`com.dockwindow.app`). Later builds are `dev.hristijan.dogbar`, so the first update from it asks for Accessibility and Screen Recording again and starts with default settings. Say so in that release's notes.
 - **Signing keys stay on your Mac.** Previews are signed with the local `DockWindow Dev` certificate. Don't export its private key to CI.
-- **Later, once notarizing:** steps 2–6 can move into a GitHub Actions workflow that runs on a macOS runner when a `v*` tag is pushed. It needs the Developer ID certificate and an App Store Connect API key as repository secrets. In-app updates (for example Sparkle) and a Homebrew cask are worth adding after notarized releases exist.
+- **Later, once notarizing:** steps 2–6 can move into a GitHub Actions workflow that runs on a macOS runner when a `v*` tag is pushed. It needs the Developer ID certificate and an App Store Connect API key as repository secrets. A Homebrew cask is worth adding after notarized releases exist.
 
 ## Proposed signed release and OTA rollout
 
@@ -97,10 +97,4 @@ Recommended sequence:
 6. Upload those exact bytes to the website's versioned download path. Download them back and verify the hash.
 7. Publish the GitHub release, then publish the website manifest and OTA feed last. Users should never see an update until its artifact is reachable and verified.
 
-The current Check for Updates menu only checks HTTPS JSON feeds, verifies SHA-256 and opens the DMG for manual installation. It is not an automatic replacement updater, and a hash from the same server does not independently authenticate the publisher.
-
-For automatic in-app installation, use [Sparkle 2](https://sparkle-project.org/documentation/): embed the update public Ed25519 key, sign each update archive with the private key, and publish an HTTPS appcast with increasing CFBundleVersion values. Keep the update-signing key outside the hosting server. Maintain separate preview and stable feeds. Evaluate signed-feed support in the selected Sparkle version. The current one-executable packaging helper must be extended to assemble, sign and verify Sparkle's nested framework and helpers before this is enabled.
-
-Ship the first Developer ID release with Sparkle included, so users make one manual transition from current previews. Validate actual N-to-N+1 installation, cancelled updates, interrupted downloads, wrong hashes/signatures, downgrade rejection, native Dock restoration before quit, relaunch, and permission/settings preservation on a clean Mac. Revoke or supersede a bad release by publishing a higher build; never replace a published artifact in place.
-
-This is a proposed workflow, not configured CI or installed Sparkle integration. Do not publish a feed declaring a release ready until its actual signing/notarization and installation checks pass.
+In-app updates use Sparkle 2 with a signed appcast at `https://dogbar.hristijan.dev/appcast.xml`. [Updates.md](Updates.md) covers the trust model, channels, key custody, the publish sequence (`Scripts/ota.py appcast`, `verify`, `stage`), the one manual bridge from pre-OTA previews and the Developer ID transition. The CI pipeline above is still a proposal. Update signing stays on the release Mac until it moves to a protected environment secret.
