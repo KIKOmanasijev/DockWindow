@@ -59,17 +59,4 @@ final class PreviewGeometryTests: XCTestCase {
                            PreviewGeometry.bridgeContains(CGPoint(x: point.x + offset.dx, y: point.y + offset.dy), anchor: anchor.offsetBy(dx: offset.dx, dy: offset.dy), panel: panel.offsetBy(dx: offset.dx, dy: offset.dy), edge: .bottom))
         }
     }
-    func testNewWindowHoverFollowsLiveCursorNotLastEnterEvent() {
-        let panel = CGRect(x: 100, y: 100, width: 640, height: 300)
-        let realCard = CGRect(x: 120, y: 120, width: 290, height: 200)
-        let tile = CGRect(x: 420, y: 120, width: 290, height: 200)
-        XCTAssertTrue(PreviewGeometry.newWindowHovered(cursor: CGPoint(x: tile.midX, y: tile.midY), region: tile, panel: panel))
-        // A fast jump onto the neighbouring card must clear the tile with no exit event.
-        XCTAssertFalse(PreviewGeometry.newWindowHovered(cursor: CGPoint(x: realCard.midX, y: realCard.midY), region: tile, panel: panel))
-        XCTAssertFalse(PreviewGeometry.newWindowHovered(cursor: CGPoint(x: 900, y: 900), region: tile, panel: panel))
-        // Unregistered (dismantled or lazily unloaded) tiles and clipped overflow never hover.
-        XCTAssertFalse(PreviewGeometry.newWindowHovered(cursor: CGPoint(x: tile.midX, y: tile.midY), region: nil, panel: panel))
-        let overflowing = CGRect(x: 600, y: 120, width: 200, height: 200)
-        XCTAssertFalse(PreviewGeometry.newWindowHovered(cursor: CGPoint(x: 770, y: 200), region: overflowing, panel: panel))
-    }
 }

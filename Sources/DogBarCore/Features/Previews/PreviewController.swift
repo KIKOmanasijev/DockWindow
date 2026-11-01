@@ -30,7 +30,6 @@ import SwiftUI
     private var captureUpdateTask: Task<Void, Never>?
     private var localMonitor: Any?
     private var globalMonitor: Any?
-    private var hoverTimer: Timer?
     private var item: DockItem?
     private var anchor: CGRect = .zero
     private var screen: NSScreen?
@@ -94,7 +93,6 @@ import SwiftUI
     }
     public func dismiss() {
         generation &+= 1
-        hoverTimer?.invalidate(); hoverTimer = nil
         presentation.newWindowHovered = false
         appearanceTask?.cancel(); appearanceTask = nil
         closeTask?.cancel(); closeTask = nil
@@ -196,32 +194,15 @@ import SwiftUI
         appearanceTask?.cancel(); appearanceTask = nil
         let visible = panel.isVisible
         panel.orderFrontRegardless()
-        startHoverReconciliation()
         if !visible { onVisibilityChanged?(true) }
         updateResourceMonitor()
         scheduleCaptures()
     }
-    /// Nonactivating panels can miss/coalesce mouse transitions. Reconcile only
-    /// while visible, and publish only a Boolean change (no thumbnail/AX work).
-    private func startHoverReconciliation() {
-        updateNewWindowHover()
-        guard hoverTimer == nil else { return }
-        let timer = Timer(timeInterval: 1.0 / 30, repeats: true) { [weak self] _ in
-            MainActor.assumeIsolated { self?.updateNewWindowHover() }
-        }
-        timer.tolerance = 0.005
-        RunLoop.main.add(timer, forMode: .common)
-        hoverTimer = timer
-    }
-    private func updateNewWindowHover() {
-        var region: CGRect?
-        if panel.isVisible, settings.previewShowNewWindowTile, !presentation.opening,
-           let view = presentation.newWindowHitRegion, view.window === panel, !view.isHiddenOrHasHiddenAncestor {
-            // Visible part only: the scroll view may clip the tile at the panel edge.
-            region = panel.convertToScreen(view.convert(view.visibleRect, to: nil))
-        }
-        let hovered = PreviewGeometry.newWindowHovered(cursor: NSEvent.mouseLocation, region: region, panel: panel.frame)
-        if presentation.newWindowHovered != hovered { presentation.newWindowHovered = hovered }
+    /// SwiftUI owns entering the tile; leaving the panel entirely is confirmed here,
+    /// since an exit can be skipped when the cursor leaves the panel quickly.
+    private func clearNewWindowHoverOutsidePanel() {
+        guard presentation.newWindowHovered, !panel.isVisible || !panel.frame.contains(NSEvent.mouseLocation) else { return }
+        presentation.newWindowHovered = false
     }
     private func updateResourceMonitor() {
         guard panel.isVisible, settings.previewShowCPUUsage || settings.previewShowMemoryUsage,
@@ -270,7 +251,7 @@ import SwiftUI
         }
     }
     private func handleEvent(_ event: NSEvent) {
-        updateNewWindowHover()
+        clearNewWindowHoverOutsidePanel()
         if event.type == .keyDown { if event.keyCode == 53 { dismiss() }; return }
         if [.leftMouseDown, .rightMouseDown, .otherMouseDown].contains(event.type) {
             if !panel.frame.contains(NSEvent.mouseLocation) { dismiss() }
@@ -317,7 +298,6 @@ import SwiftUI
         return CFUUIDCreateString(nil, uuid) as String
     }
     deinit {
-        hoverTimer?.invalidate()
         appearanceTask?.cancel(); closeTask?.cancel(); openingTask?.cancel(); captureUpdateTask?.cancel()
         if let localMonitor { NSEvent.removeMonitor(localMonitor) }
         if let globalMonitor { NSEvent.removeMonitor(globalMonitor) }

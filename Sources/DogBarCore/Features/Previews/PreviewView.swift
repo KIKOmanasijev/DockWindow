@@ -13,7 +13,6 @@ import SwiftUI
     @Published var message: String?
     @Published var opening = false
     @Published var newWindowHovered = false
-    weak var newWindowHitRegion: NSView?
     @Published var resourceUsage: AppResourceUsage?
     @Published var resourceUsageUnavailable = false
     @Published var desktopLabels: [CGWindowID: String] = [:]
@@ -66,7 +65,10 @@ import SwiftUI
                             WindowCardView(window: window, app: presentation.app, image: thumbnails.cachedImage(for: window.id),
                                            thumbnailSize: presentation.thumbnailSize, layout: .overlay,
                                            showTitle: settings.previewShowWindowTitles, showTrafficLights: settings.previewShowTrafficLights,
-                                           reduceMotion: Theme.reducesMotion(settings), showsApp: false, activate: { presentation.activate(window) },
+                                           reduceMotion: Theme.reducesMotion(settings), showsApp: false,
+                                           // Entering a window card ends New Window hover even if its exit was missed.
+                                           select: { if presentation.newWindowHovered { presentation.newWindowHovered = false } },
+                                           activate: { presentation.activate(window) },
                                            close: { presentation.close(window) }, minimize: { presentation.minimize(window) }, zoom: { presentation.zoom(window) })
                                 .overlay(alignment: .bottomLeading) {
                                     if let label = presentation.desktopLabels[window.id] {
@@ -81,7 +83,9 @@ import SwiftUI
                             NewWindowPreviewTile(size: presentation.thumbnailSize, showsTitleRow: settings.previewShowWindowTitles, appName: presentation.appName,
                                                  opening: presentation.opening, hovered: presentation.newWindowHovered,
                                                  reduceMotion: Theme.reducesMotion(settings), action: presentation.open)
-                                .background(NewWindowHitRegion(presentation: presentation))
+                                // SwiftUI hit testing, the same path the window cards use. AppKit
+                                // frames of representables inside the lazy stack did not match the tile.
+                                .onHover { inside in if presentation.newWindowHovered != inside { presentation.newWindowHovered = inside } }
                         }
                     }.padding(3).id(presentation.contentID)
                 }
@@ -129,7 +133,7 @@ import SwiftUI
     let showsTitleRow: Bool
     let appName: String
     let opening: Bool
-    /// Owned by PreviewController, which derives it from the live cursor position.
+    /// Owned by PreviewPresentation so window cards and the controller can clear it.
     let hovered: Bool
     let reduceMotion: Bool
     let action: () -> Void
@@ -162,30 +166,4 @@ private struct PreviewTilePressStyle: ButtonStyle {
             .opacity(configuration.isPressed ? 0.8 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.08), value: configuration.isPressed)
     }
-}
-
-/// Registers geometry only. Hover state belongs to the controller, not to a
-/// second enter/exit tracker that can disagree with SwiftUI after view updates.
-@MainActor private struct NewWindowHitRegion: NSViewRepresentable {
-    let presentation: PreviewPresentation
-    func makeCoordinator() -> Coordinator { Coordinator(presentation: presentation) }
-    func makeNSView(context: Context) -> NSView {
-        let view = HitRegionView()
-        presentation.newWindowHitRegion = view
-        return view
-    }
-    func updateNSView(_ view: NSView, context: Context) { presentation.newWindowHitRegion = view }
-    static func dismantleNSView(_ view: NSView, coordinator: Coordinator) {
-        // A replaced tile (new contentID, tile toggled off) must not keep driving hover;
-        // the controller's next sample then clears the published state outside this update.
-        guard let presentation = coordinator.presentation, presentation.newWindowHitRegion === view else { return }
-        presentation.newWindowHitRegion = nil
-    }
-    @MainActor final class Coordinator {
-        weak var presentation: PreviewPresentation?
-        init(presentation: PreviewPresentation) { self.presentation = presentation }
-    }
-}
-@MainActor private final class HitRegionView: NSView {
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
 }
