@@ -355,10 +355,22 @@ public final class AppSettings: ObservableObject {
         get { read("reduceAnimations", fallback: false) }
         set { write("reduceAnimations", value: newValue) }
     }
-    /// Anonymous usage counts (see TelemetryService). On by default, disclosed in onboarding and Settings.
+    /// Anonymous usage counts (see TelemetryService). Off until the user answers the first-launch
+    /// question with Share, or turns it on in Settings.
     public var telemetryEnabled: Bool {
-        get { read("telemetryEnabled", fallback: true) }
+        get { read("telemetryEnabled", fallback: false) }
         set { write("telemetryEnabled", value: newValue) }
+    }
+    /// Whether the user has answered the usage-data question, either way. Until then nothing is sent
+    /// and DogBar asks again on the next launch.
+    public var telemetryAsked: Bool {
+        get { read("telemetryAsked", fallback: false) }
+        set { write("telemetryAsked", value: newValue) }
+    }
+    /// Records the user's answer to the usage-data question.
+    public func chooseUsageData(share: Bool) {
+        telemetryEnabled = share
+        telemetryAsked = true
     }
     public var debugLogging: Bool {
         get { read("debugLogging", fallback: false) }
@@ -441,7 +453,8 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "panelCornerRadius": encoded(26 as Double),
             keyPrefix + "panelMaterial": encoded(PanelMaterial.hudWindow),
             keyPrefix + "reduceAnimations": encoded(false as Bool),
-            keyPrefix + "telemetryEnabled": encoded(true as Bool),
+            keyPrefix + "telemetryEnabled": encoded(false as Bool),
+            keyPrefix + "telemetryAsked": encoded(false as Bool),
             keyPrefix + "debugLogging": encoded(false as Bool),
             keyPrefix + "allowedWindowSubroles": encoded(["AXStandardWindow", "AXDialog"] as [String])
         ]

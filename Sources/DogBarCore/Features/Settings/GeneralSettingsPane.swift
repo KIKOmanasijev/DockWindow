@@ -46,8 +46,9 @@ import SwiftUI
                 }
             }
             SettingsSection("Privacy") {
-                Toggle("Share anonymous usage data", isOn: $settings.telemetryEnabled)
-                    .settingsDescription("Helps decide what to improve. DogBar sends a random install ID, app and macOS version, whether setup finished, and which features were used each day. Never window titles, app names, files or anything you type.")
+                Toggle("Share anonymous usage data", isOn: Binding(
+                    get: { settings.telemetryEnabled }, set: { settings.chooseUsageData(share: $0) }))
+                    .settingsDescription("Off unless you choose to share. Helps decide what to improve. DogBar sends a random install ID, app and macOS version, whether setup finished, and which features were used each day. Never window titles, app names, files or anything you type.")
             }
             SettingsSection("Session") {
                 Toggle("Pause DogBar", isOn: $settings.isPaused)
