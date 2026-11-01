@@ -54,7 +54,6 @@ import SwiftUI
             }
         }
         .frame(width: presentation.size.width, height: presentation.size.height)
-        .background(VisualEffectBackground(material: settings.panelMaterial, cornerRadius: settings.panelCornerRadius, theme: settings.theme))
         .clipShape(RoundedRectangle(cornerRadius: settings.panelCornerRadius))
         .opacity(presentation.revealed ? 1 : 0)
         .scaleEffect(presentation.revealed || Theme.reducesMotion(settings) ? 1 : 0.98)

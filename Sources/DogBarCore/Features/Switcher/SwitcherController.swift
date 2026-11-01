@@ -37,7 +37,7 @@ import SwiftUI
         self.tracker = tracker; self.actions = actions; self.thumbnails = thumbnails
         self.settings = settings; self.newWindowOpener = newWindowOpener
         refreshSession = VisibleThumbnailSession(service: thumbnails)
-        panel.contentView = NSHostingView(rootView: SwitcherView(presentation: presentation, settings: settings, thumbnails: thumbnails))
+        panel.contentView = GlassPanelHost(rootView: SwitcherView(presentation: presentation, settings: settings, thumbnails: thumbnails), settings: settings)
         presentation.select = { [weak self] id in
             guard let self, self.isActive, NSEvent.mouseLocation != self.initialMouse else { return }
             self.presentation.session.select(id)

@@ -44,7 +44,7 @@ import SwiftUI
         self.tracker = tracker; self.actions = actions; self.thumbnails = thumbnails
         self.settings = settings; self.newWindowOpener = newWindowOpener
         captures = VisibleThumbnailSession(service: thumbnails)
-        panel.contentView = NSHostingView(rootView: PreviewView(presentation: presentation, settings: settings, thumbnails: thumbnails))
+        panel.contentView = GlassPanelHost(rootView: PreviewView(presentation: presentation, settings: settings, thumbnails: thumbnails), settings: settings)
         presentation.activate = { [weak self] in self?.activate($0) }
         presentation.close = { [weak self] in self?.actions.close($0) }
         presentation.minimize = { [weak self] in self?.actions.minimize($0) }

@@ -85,7 +85,6 @@ import SwiftUI
             }
         }
         .padding(16).frame(width: presentation.size.width, height: presentation.size.height)
-        .background(VisualEffectBackground(material: settings.panelMaterial, cornerRadius: settings.panelCornerRadius, theme: settings.theme))
         .overlay(alignment: pointerAlignment) {
             if settings.previewShowPointer {
                 Image(systemName: pointerSymbol).font(.system(size: 17)).foregroundStyle(.secondary)

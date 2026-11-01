@@ -1,5 +1,6 @@
 import AppKit
 import SwiftUI
+import Combine
 
 /// Shared appearance conversions for switcher and preview surfaces.
 @MainActor public enum Theme {
@@ -153,5 +154,43 @@ import SwiftUI
         #else
         return RuntimeGlassDockBackgroundProvider()
         #endif
+    }
+}
+
+/// Glass owns the hosting view so its backdrop never samples the panel's own
+/// thumbnails. Both floating panels use the same content/layout lifecycle.
+@MainActor final class GlassPanelHost<Content: View>: NSView {
+    private let provider = DockBackgroundProviders.preferred()
+    private let glass: NSView
+    private let hosting: NSHostingView<Content>
+    private let settings: AppSettings
+    private var subscription: AnyCancellable?
+    init(rootView: Content, settings: AppSettings) {
+        self.settings = settings
+        glass = provider.makeBackgroundView()
+        hosting = NSHostingView(rootView: rootView)
+        super.init(frame: .zero)
+        addSubview(glass)
+        hosting.autoresizingMask = [.width, .height]
+        if glass.responds(to: NSSelectorFromString("setContentView:")) {
+            glass.setValue(hosting, forKey: "contentView")
+        } else { glass.addSubview(hosting) }
+        updateAppearance()
+        subscription = settings.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.updateAppearance() }
+    }
+    required init?(coder: NSCoder) { nil }
+    private func updateAppearance() {
+        provider.updateBackgroundView(glass, material: settings.panelMaterial,
+                                      cornerRadius: settings.panelCornerRadius, theme: settings.theme)
+        // Regular glass keeps labels legible over busy windows; Dock stays clear.
+        if glass.responds(to: NSSelectorFromString("setStyle:")) { glass.setValue(0, forKey: "style") }
+        if glass.responds(to: NSSelectorFromString("setTintColor:")) { glass.setValue(nil, forKey: "tintColor") }
+    }
+    override func layout() {
+        super.layout()
+        CATransaction.begin(); CATransaction.setDisableActions(true)
+        glass.frame = bounds
+        hosting.frame = glass.bounds
+        CATransaction.commit()
     }
 }
