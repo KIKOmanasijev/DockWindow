@@ -207,6 +207,10 @@ struct MiniDock: View {
     var highlighted: String? = nil
     var revealed = true
     var reduceMotion = false
+    /// Publishes each icon as a mascot target named "dock.<app>".
+    var targets = false
+    /// An icon pressed in by the mascot.
+    var pressed: String? = nil
     var body: some View {
         let u = iconSize / 48
         HStack(alignment: .top, spacing: 4 * u) {
@@ -216,6 +220,8 @@ struct MiniDock: View {
                         .frame(width: iconSize, height: iconSize)
                         .shadow(color: .black.opacity(0.22), radius: 1 * u, y: 0.75 * u)
                         .brightness(highlighted == item.app ? -0.18 : 0)
+                        .scaleEffect(pressed == item.app ? 0.9 : 1)
+                        .modifier(TargetIf(enabled: targets, id: "dock.\(item.app)"))
                     HStack(spacing: max(1.2, 2.5 * u)) {
                         ForEach(0..<min(item.windows, 5), id: \.self) { _ in
                             Circle().fill(Color.black.opacity(0.7)).frame(width: max(2, 4 * u), height: max(2, 4 * u))
@@ -232,6 +238,14 @@ struct MiniDock: View {
         }
         .padding(.top, 8.5 * u).padding(.horizontal, 8 * u).padding(.bottom, 8 * u)
         .glass(RoundedRectangle(cornerRadius: 0.3 * iconSize, style: .continuous), shadow: max(0.4, u))
+    }
+}
+
+private struct TargetIf: ViewModifier {
+    let enabled: Bool
+    let id: String
+    func body(content: Content) -> some View {
+        if enabled { content.mascotTarget(id) } else { content }
     }
 }
 
@@ -297,7 +311,11 @@ struct DesktopsScene: View {
     @State private var active = 0
     @State private var revealed = [false, false]
     @State private var replay = 0
+    @StateObject private var dog = MascotDirector(MascotState(frame: .celebrate))
     private let screen = CGSize(width: 226, height: 160)
+    private let dogSize: CGFloat = 136
+    /// Desktop centres from the card's leading edge.
+    private let deskCenters: [CGFloat] = [151, 393]
     private let desks: [(wall: String, name: String, window: WindowThumb.Kind, items: [MiniDock.Item])] = [
         ("tahoe", "Desktop 1 · Work", .slack, [.init(app: "finder", windows: 0), .init(app: "slack", windows: 2), .init(app: "figma", windows: 1),
                                                .init(app: "calendar", windows: 1), .init(app: "notes", windows: 1), .init(app: "mail", windows: 1)]),
@@ -306,6 +324,7 @@ struct DesktopsScene: View {
     ]
     var body: some View {
         VStack(spacing: 12) {
+            ZStack(alignment: .topLeading) {
             SceneCard {
                 VStack(spacing: 16) {
                     HStack(spacing: 10) {
@@ -325,14 +344,40 @@ struct DesktopsScene: View {
                 .background(backdrop)
                 .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
             }
+            // The dog peeks over the card's top edge, paws resting on it, above the active desktop.
+            MascotRigView(dog: dog, size: dogSize, peek: true)
+                .offset(x: deskCenters[0] - dogSize / 2, y: -dogSize * MascotRig.peekEdge)
+            }
+            .padding(.top, 58)
             ReplayButton(reduceMotion: reduceMotion) { replay += 1 }
         }
         .task(id: replay) {
+            dog.reduceMotion = reduceMotion
             active = 0; revealed = reduceMotion ? [true, true] : [false, false]
+            let hidden = -dogSize * 0.5, travel = deskCenters[1] - deskCenters[0]
+            dog.set(nil) { $0 = MascotState(frame: .celebrate, lift: reduceMotion ? 0 : hidden) }
             guard !reduceMotion else { return }
-            await SceneSequence.run(reduceMotion: false, steps: [
-                (0.35, { revealed[0] = true }), (1.7, { active = 1 }), (0.35, { revealed[1] = true }),
-            ])
+            await dog.perform {
+                guard await dog.beat(0.35) else { return }
+                // Slowly rises from behind the card and settles its paws on the edge.
+                dog.set(.spring(response: 0.95, dampingFraction: 0.82)) { $0.lift = 0 }
+                guard await dog.beat(0.75) else { return }
+                withAnimation { revealed[0] = true }
+                await dog.blink()
+                guard await dog.beat(0.6) else { return }
+                // Ducks, slides along the edge to Desktop 2 and pops up there as it becomes active.
+                dog.set(.easeIn(duration: 0.18)) { $0.lift = -dogSize * 0.16 }
+                guard await dog.beat(0.16) else { return }
+                dog.set(.easeInOut(duration: 0.55)) { $0.x = travel }
+                withAnimation(.spring(response: 0.55, dampingFraction: 0.85)) { active = 1 }
+                guard await dog.beat(0.5) else { return }
+                dog.set(.spring(response: 0.4, dampingFraction: 0.6)) { $0.lift = 0 }
+                withAnimation { revealed[1] = true }
+                guard await dog.beat(0.35) else { return }
+                await dog.pose(.wave)
+                await dog.wave(2)
+                await dog.blink()
+            }
         }
     }
 
@@ -351,6 +396,7 @@ struct DesktopsScene: View {
         let isActive = active == index
         return Button {
             withAnimation(reduceMotion ? nil : .spring(response: 0.5, dampingFraction: 0.85)) { active = index; revealed[index] = true }
+            dog.set(.spring(response: 0.55, dampingFraction: 0.8)) { $0.x = deskCenters[index] - deskCenters[0]; $0.lift = 0 }
         } label: {
             Stage(wallpaper: desk.wall, size: screen, radius: 9) {
                 VStack(spacing: 0) {
@@ -378,59 +424,164 @@ struct DesktopsScene: View {
 
 // MARK: - Previews and exact-window actions
 
-/// Hover Safari in the Dock, see both windows, choose one, and only that window comes forward.
+/// One take, cause before effect: the pointer hovers Safari in the Dock and its preview opens,
+/// travels to Hotel booking, clicks it, the preview closes, and only then does Hotel booking come
+/// in front of Lisbon day plan. It then holds that frame until Play Again. The dog watches from
+/// the corner and cheers after the click.
 struct PreviewsScene: View {
     let reduceMotion: Bool
-    @State private var pointerOnSafari = false
-    @State private var popoverShown = false
-    @State private var chosen = false
-    @State private var picked = false
+    private enum Pointer { case start, safari, booking }
+    @State private var pointer = Pointer.start
+    @State private var safariHovered = false
+    @State private var previewShown = false
+    @State private var bookingHovered = false
+    @State private var pressing = false
+    @State private var rippleShown = false
+    @State private var rippleDone = false
+    @State private var bookingFront = false
+    /// Target frames in the stage, kept after the preview closes so the pointer stays where it clicked.
+    @State private var frames: [String: CGRect] = [:]
     @State private var replay = 0
+    @StateObject private var dog = MascotDirector(MascotState(frame: .guide))
+    private let dogSize: CGFloat = 112
     private let size = CGSize(width: 500, height: 350)
     private let items: [MiniDock.Item] = [.init(app: "finder", windows: 0), .init(app: "safari", windows: 2),
                                           .init(app: "slack", windows: 1), .init(app: "notes", windows: 3)]
+
     var body: some View {
         VStack(spacing: 12) {
-            SceneCard {
-                Stage(wallpaper: "sequoia", size: size) {
-                    // Desktop: the trip window is in front until Hotel booking is chosen.
-                    ZStack {
-                        FloatingWindow(kind: .trip, width: 210).offset(x: -70, y: -60)
-                            .opacity(picked ? 0.9 : 1)
-                        if picked {
-                            FloatingWindow(kind: .booking, width: 230).offset(x: 60, y: -42)
-                                .transition(reduceMotion ? .opacity : .scale(scale: 0.86).combined(with: .opacity))
-                        }
-                    }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    VStack(spacing: 10) {
-                        Spacer()
-                        if popoverShown {
-                            popover.transition(reduceMotion ? .opacity : .scale(scale: 0.88, anchor: .bottom).combined(with: .opacity))
-                        }
-                        MiniDock(items: items, iconSize: 44, highlighted: pointerOnSafari ? "safari" : nil)
-                            .overlay(alignment: .topLeading) {
-                                PointerCursor()
-                                    .offset(x: pointerOnSafari ? 76 : 170, y: pointerOnSafari ? 24 : 70)
-                                    .opacity(1)
-                            }
-                            .padding(.bottom, 12)
+            ZStack(alignment: .bottomLeading) {
+                SceneCard {
+                    Stage(wallpaper: "sequoia", size: size) { screen }
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("Hovering Safari in the Dock opens a preview of its two windows, Lisbon day plan and Hotel booking. Clicking Hotel booking closes the preview and brings only that window in front of Lisbon day plan.")
+                MascotRigView(dog: dog, size: dogSize)
+                    .offset(x: -dogSize * 0.62, y: dogSize * 0.1)
+            }
+            ReplayButton(reduceMotion: reduceMotion) { replay += 1 }
+        }
+        .task(id: replay) { await play() }
+    }
+
+    private var screen: some View {
+        ZStack {
+            // Two Safari windows. Lisbon day plan starts in front; Hotel booking only comes forward after the click.
+            ZStack {
+                FloatingWindow(kind: .booking, width: 224).offset(x: 62, y: -44)
+                    .scaleEffect(bookingFront ? 1 : 0.985)
+                    .zIndex(bookingFront ? 2 : 0)
+                FloatingWindow(kind: .trip, width: 214).offset(x: -66, y: -62)
+                    .zIndex(1)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 10) {
+                Spacer()
+                if previewShown {
+                    preview.transition(reduceMotion ? .opacity : .scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
+                }
+                MiniDock(items: items, iconSize: 44, highlighted: safariHovered ? "safari" : nil, targets: true)
+                    .padding(.bottom, 12)
+            }
+            if reduceMotion {
+                VStack { StageTag(text: "Click a preview to bring just that window forward"); Spacer() }.padding(.top, 14)
+            }
+        }
+        .frame(width: size.width, height: size.height)
+        .backgroundPreferenceValue(MascotTargets.self) { targets in
+            GeometryReader { proxy in
+                ForEach(Array(targets.keys), id: \.self) { id in
+                    if let anchor = targets[id] {
+                        Color.clear.onChange(of: proxy[anchor], initial: true) { _, rect in frames[id] = rect }
                     }
                 }
             }
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("The pointer rests on Safari in the Dock. A preview shows its two windows, Lisbon day plan and Hotel booking. Choosing Hotel booking brings only that window forward.")
-            ReplayButton(reduceMotion: reduceMotion) { replay += 1 }
         }
-        .task(id: replay) {
-            pointerOnSafari = false; popoverShown = false; chosen = false; picked = false
-            await SceneSequence.run(reduceMotion: reduceMotion, steps: [
-                (0.5, { pointerOnSafari = true }), (0.4, { popoverShown = true }), (1.1, { chosen = true }),
-                (0.9, { picked = true }),
-            ])
+        .overlay { pointerLayer }
+    }
+
+    @ViewBuilder private var pointerLayer: some View {
+        if let tip = pointerTip {
+            ZStack {
+                Circle().strokeBorder(Color.white, lineWidth: 2.5)
+                    .background(Circle().fill(Color.white.opacity(0.25)))
+                    .frame(width: 34, height: 34)
+                    .scaleEffect(rippleDone ? 1.7 : 0.4)
+                    .opacity(rippleShown ? (rippleDone ? 0 : 0.95) : 0)
+                    .position(tip)
+                // The arrow's hotspot is its tip, at (5, 3.5) in its 24 pt frame.
+                PointerCursor()
+                    .scaleEffect(pressing ? 0.84 : 1, anchor: UnitPoint(x: 5 / 24, y: 3.5 / 24))
+                    .position(x: tip.x + 7, y: tip.y + 8.5)
+            }
+            .allowsHitTesting(false)
         }
     }
-    private var popover: some View {
+
+    private var pointerTip: CGPoint? {
+        switch pointer {
+        case .start: return CGPoint(x: size.width * 0.8, y: size.height * 0.56)
+        case .safari: return frames["dock.safari"].map { CGPoint(x: $0.midX + 4, y: $0.midY + 2) }
+        case .booking: return frames["tile.booking"].map { CGPoint(x: $0.midX + 6, y: $0.midY - 4) }
+        }
+    }
+
+    private func play() async {
+        dog.reduceMotion = reduceMotion
+        // Every replay starts from the same frame.
+        var reset = Transaction(); reset.disablesAnimations = true
+        withTransaction(reset) {
+            pointer = .start; safariHovered = false; previewShown = false; bookingHovered = false
+            pressing = false; rippleShown = false; rippleDone = false; bookingFront = false
+        }
+        dog.set(nil) { $0 = MascotState(frame: .guide, opacity: reduceMotion ? 1 : 0) }
+        if reduceMotion {
+            // A still that explains the choice: the preview open, Hotel booking highlighted under the pointer.
+            previewShown = true; safariHovered = true; bookingHovered = true
+            try? await Task.sleep(for: .milliseconds(50))
+            pointer = .booking
+            return
+        }
+        await dog.perform {
+            func wait(_ seconds: Double) async -> Bool { await dog.beat(seconds) }
+            guard await wait(0.35) else { return }
+            dog.set(.easeOut(duration: 0.35)) { $0.opacity = 1 }
+            // 1. The pointer travels to Safari in the Dock and rests there.
+            withAnimation(.easeInOut(duration: 0.8)) { pointer = .safari }
+            guard await wait(0.8) else { return }
+            withAnimation(.easeOut(duration: 0.12)) { safariHovered = true }
+            guard await wait(0.45) else { return }
+            // 2. Hovering opens the preview.
+            withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) { previewShown = true }
+            await dog.blink()
+            guard await wait(0.45) else { return }
+            // 3. The pointer travels to Hotel booking; only that tile highlights.
+            guard frames["tile.booking"] != nil else { return }
+            withAnimation(.easeInOut(duration: 0.65)) { pointer = .booking }
+            guard await wait(0.65) else { return }
+            withAnimation(.easeOut(duration: 0.12)) { bookingHovered = true }
+            guard await wait(0.45) else { return }
+            // 4. Click: the pointer presses and a ripple marks the spot.
+            withAnimation(.easeOut(duration: 0.08)) { pressing = true; rippleShown = true }
+            withAnimation(.easeOut(duration: 0.5)) { rippleDone = true }
+            guard await wait(0.13) else { return }
+            withAnimation(.easeOut(duration: 0.1)) { pressing = false }
+            guard await wait(0.15) else { return }
+            // 5. The preview closes, then only Hotel booking comes forward. Lisbon stays behind.
+            withAnimation(.easeIn(duration: 0.2)) { previewShown = false; safariHovered = false }
+            guard await wait(0.28) else { return }
+            withAnimation(.spring(response: 0.38, dampingFraction: 0.7)) { bookingFront = true }
+            guard await wait(0.3) else { return }
+            // The dog cheers, then the frame holds until Play Again.
+            await dog.pose(.celebrate)
+            await dog.hop(14)
+            await dog.wag(2)
+            guard await wait(0.25) else { return }
+            await dog.pose(.guide)
+        }
+    }
+
+    private var preview: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(spacing: 6) {
                 AppIconImage(name: "safari", size: 16)
@@ -438,22 +589,23 @@ struct PreviewsScene: View {
                 Text("2 windows").font(.system(size: 12.5)).foregroundStyle(.black.opacity(0.5))
             }
             HStack(spacing: 7) {
-                card(.trip, "Lisbon day plan", on: false)
-                card(.booking, "Hotel booking", on: chosen)
+                tile(.trip, "Lisbon day plan", hovered: false)
+                tile(.booking, "Hotel booking", hovered: bookingHovered).mascotTarget("tile.booking")
             }
         }
         .padding(11)
         .glass(RoundedRectangle(cornerRadius: 18, style: .continuous), style: .light)
     }
-    private func card(_ kind: WindowThumb.Kind, _ title: String, on: Bool) -> some View {
+    private func tile(_ kind: WindowThumb.Kind, _ title: String, hovered: Bool) -> some View {
         VStack(spacing: 5) {
             WindowThumb(kind: kind)
             Text(title).font(.system(size: 11.5, weight: .medium)).foregroundStyle(.black.opacity(0.85)).lineLimit(1)
         }
         .padding(6).frame(width: 128)
-        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.black.opacity(on ? 0.1 : 0.045)))
-        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.white.opacity(on ? 0.7 : 0.1), lineWidth: 1))
-        .scaleEffect(on ? 1.03 : 1)
+        .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(Color.black.opacity(hovered ? 0.11 : 0.045)))
+        .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)
+            .strokeBorder(hovered ? OnboardingPalette.purple.opacity(0.75) : Color.white.opacity(0.1), lineWidth: hovered ? 1.5 : 1))
+        .scaleEffect(hovered && pressing ? 0.97 : 1)
     }
 }
 
@@ -467,6 +619,8 @@ struct SwitcherScene: View {
     @State private var selected = 0
     @State private var keyDown = false
     @State private var replay = 0
+    @StateObject private var dog = MascotDirector(MascotState(frame: .guide, mirrored: true))
+    private let dogSize: CGFloat = 118
     private let size = CGSize(width: 500, height: 350)
     private let tiles: [(WindowThumb.Kind, String, String)] = [(.trip, "safari", "Lisbon day plan"), (.booking, "safari", "Hotel booking"),
                                                                (.slack, "slack", "#lisbon-trip"), (.notes, "notes", "Packing list")]
@@ -493,14 +647,39 @@ struct SwitcherScene: View {
             .accessibilityLabel("Holding \(keyNames) opens DogBar's switcher with one tile per window: Lisbon day plan and Hotel booking from Safari, lisbon-trip from Slack and Packing list from Notes. Each tap of Tab moves to the next window.")
             ReplayButton(reduceMotion: reduceMotion) { replay += 1 }
         }
+        // The dog, facing left, presses Tab for each step through the windows.
+        .overlayPreferenceValue(MascotTargets.self) { targets in
+            GeometryReader { proxy in
+                if let anchor = targets["key.tab"] {
+                    let key = proxy[anchor]
+                    MascotRigView(dog: dog, size: dogSize)
+                        .position(MascotRigView.center(touching: CGPoint(x: key.maxX - key.width * 0.12, y: key.midY - key.height * 0.1),
+                                                       size: dogSize, mirrored: true))
+                }
+            }
+        }
         .task(id: replay) {
+            dog.reduceMotion = reduceMotion
             panelShown = false; selected = 0; keyDown = false
+            dog.set(nil) { $0 = MascotState(frame: .guide, x: reduceMotion ? 0 : 60, mirrored: true, opacity: reduceMotion ? 1 : 0) }
             if reduceMotion { panelShown = true; selected = 2; return }
-            await SceneSequence.run(reduceMotion: false, steps: [
-                (0.5, { keyDown = true; panelShown = true }), (0.14, { keyDown = false }),
-                (0.75, { keyDown = true; selected = 1 }), (0.14, { keyDown = false }),
-                (0.75, { keyDown = true; selected = 2 }), (0.14, { keyDown = false }),
-            ])
+            await dog.perform {
+                guard await dog.beat(0.25) else { return }
+                dog.set(.easeOut(duration: 0.25)) { $0.opacity = 1 }
+                dog.set(.spring(response: 0.5, dampingFraction: 0.8)) { $0.x = 0 }
+                await dog.hop(10)
+                await dog.blink()
+                for index in 0..<3 {
+                    // Each press: the dog leans onto Tab, the key goes down, the selection moves.
+                    withAnimation(.easeOut(duration: 0.08)) { keyDown = true }
+                    withAnimation(.spring(response: 0.45, dampingFraction: 0.86)) { panelShown = true; selected = index }
+                    await dog.tap(-6)
+                    withAnimation(.easeOut(duration: 0.08)) { keyDown = false }
+                    guard await dog.beat(index == 2 ? 0.2 : 0.45) else { return }
+                }
+                await dog.wag(3)
+                await dog.blink()
+            }
         }
     }
     private var panel: some View {
@@ -551,6 +730,7 @@ struct SwitcherScene: View {
                     .shadow(color: .black.opacity(0.15), radius: 6, y: 3))
                 .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.white, lineWidth: 0.5))
                 .offset(y: pressed ? 2 : 0)
+                .modifier(TargetIf(enabled: cap.isKey, id: "key.tab"))
             }
         }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.08), value: keyDown)

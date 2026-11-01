@@ -10,7 +10,8 @@ struct OnboardingView: View {
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
     @Environment(\.colorScheme) private var colorScheme
     @AccessibilityFocusState private var titleFocused: Bool
-    @State private var hopToken = 0
+    @StateObject private var heroDog = MascotDirector(MascotState(frame: .celebrate))
+    @StateObject private var setupDog = MascotDirector(MascotState(frame: .think))
     @State private var installedCopy: URL?
     @State private var actionError: String?
 
@@ -50,9 +51,22 @@ struct OnboardingView: View {
 
     private func reactToGrant(_ old: Bool, _ new: Bool, name: String) {
         guard !old, new, step == .setup else { return }
-        hopToken += 1
         AccessibilityNotification.Announcement("\(name) is on for DogBar").post()
+        Task { @MainActor in await cheer() }
     }
+
+    /// A permission turned on: the dog cheers, then goes back to wondering if one is still missing.
+    private func cheer() async {
+        await setupDog.perform {
+            await setupDog.pose(.celebrate)
+            await setupDog.hop(18)
+            await setupDog.wag(3)
+            await setupDog.blink()
+            guard await setupDog.beat(0.9), !setupComplete else { return }
+            await setupDog.pose(.think)
+        }
+    }
+    private var setupComplete: Bool { permissions.isGranted && permissions.installLocation.isInstalled }
 
     // MARK: Frame
 
@@ -157,13 +171,7 @@ struct OnboardingView: View {
 
     private var welcome: some View {
         VStack(spacing: 0) {
-            ZStack {
-                Circle().fill(RadialGradient(colors: [Color.white.opacity(0.3), Color.white.opacity(0)], center: .center, startRadius: 10, endRadius: 150))
-                    .frame(width: 300, height: 300)
-                MascotView(pose: .welcome, size: 220, reactionToken: 1, reaction: .greet, reduceMotion: reduceMotion)
-            }
-            .frame(height: 230)
-            .padding(.bottom, 10)
+            heroPeek.padding(.bottom, 26)
             Text(model.mode == .tour ? "Here's DogBar." : "Meet DogBar.")
                 .font(.system(size: 46, weight: .bold)).tracking(-1.2)
                 .foregroundStyle(.white)
@@ -183,12 +191,70 @@ struct OnboardingView: View {
                 Button { model.skipToSetup() } label: { Text("Skip to setup").underline() }
                     .buttonStyle(OnboardingQuietButtonStyle(tint: .white))
             }
-            .padding(.top, 30)
+            .padding(.top, 28)
             Text("Three quick looks, then two permissions.")
                 .font(.system(size: 12.5, weight: .medium)).foregroundStyle(.white.opacity(0.55))
-                .padding(.top, 18)
+                .padding(.top, 16)
         }
-        .padding(.bottom, 40)
+        .padding(.bottom, 30)
+        .task {
+            heroDog.reduceMotion = reduceMotion
+            heroDog.set(nil) { $0 = MascotState(frame: reduceMotion ? .wave : .celebrate, lift: reduceMotion ? 0 : -heroDogSize * 0.5) }
+            guard !reduceMotion else { return }
+            await heroDog.perform {
+                guard await heroDog.beat(0.45) else { return }
+                // Slowly rises from behind the Dock and grips it with both paws.
+                heroDog.set(.spring(response: 1.1, dampingFraction: 0.82)) { $0.lift = 0 }
+                guard await heroDog.beat(1.0) else { return }
+                await heroDog.blink()
+                guard await heroDog.beat(0.25) else { return }
+                // Lets go with one paw to say hi.
+                await heroDog.pose(.wave)
+                await heroDog.wave(2)
+                guard await heroDog.beat(0.4) else { return }
+                await heroDog.blink()
+            }
+        }
+    }
+
+    private let heroDogSize: CGFloat = 230
+
+    /// The dog peeking over a glass DogBar Dock: icons on both sides, the dog's paws on its edge.
+    private var heroPeek: some View {
+        let edge = heroDogSize * MascotRig.peekEdge
+        let left = ["finder", "safari", "slack"], right = ["music", "photos"]
+        return ZStack(alignment: .top) {
+            Circle().fill(RadialGradient(colors: [Color.white.opacity(0.28), .clear], center: .center, startRadius: 6, endRadius: 140))
+                .frame(width: 280, height: 280).offset(y: -40)
+            HStack(spacing: 0) {
+                HStack(spacing: 8) {
+                    ForEach(left, id: \.self) { AppIconImage(name: $0, size: 44).shadow(color: .black.opacity(0.25), radius: 2, y: 1) }
+                }
+                .frame(width: 166, alignment: .trailing)
+                // The dog's place in the middle of the Dock.
+                Spacer().frame(width: heroDogSize * 0.7)
+                HStack(spacing: 8) {
+                    ForEach(right, id: \.self) { AppIconImage(name: $0, size: 44).shadow(color: .black.opacity(0.25), radius: 2, y: 1) }
+                    Rectangle().fill(Color.white.opacity(0.45)).frame(width: 1, height: 34)
+                    AppIconImage(name: "trash", size: 46)
+                }
+                .frame(width: 166, alignment: .leading)
+            }
+            .padding(.horizontal, 14).padding(.top, 11).padding(.bottom, 13)
+            .background {
+                let shape = RoundedRectangle(cornerRadius: 20, style: .continuous)
+                shape.fill(LinearGradient(colors: [.white.opacity(0.24), .white.opacity(0.1), .white.opacity(0.18)], startPoint: .top, endPoint: .bottom))
+                    .overlay(shape.inset(by: 1.5).stroke(LinearGradient(colors: [.white.opacity(0.45), .clear], startPoint: .top, endPoint: .center), lineWidth: 2).blur(radius: 1.2))
+                    .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(0.85), .white.opacity(0.18), .white.opacity(0.5)], startPoint: .leading, endPoint: .trailing), lineWidth: 1))
+                    .shadow(color: Color(hex: 0x1A0550).opacity(0.35), radius: 22, y: 12)
+            }
+            .padding(.top, edge)
+            MascotRigView(dog: heroDog, size: heroDogSize, peek: true)
+                .frame(height: edge + 70, alignment: .top)
+        }
+        .frame(height: edge + 70, alignment: .top)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("The DogBar dog peeks over a Dock and waves.")
     }
 
     private func feature<Scene: View>(number: Int, kicker: String, title: String, text: String, aside: String?, @ViewBuilder scene: () -> Scene) -> some View {
@@ -205,8 +271,6 @@ struct OnboardingView: View {
                     Text(aside).font(.system(size: 12, weight: .medium)).foregroundStyle(OnboardingPalette.accent).lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
                 }
-                // The guide pose presents toward the scene on its right.
-                MascotView(pose: .guide, size: 112, reduceMotion: reduceMotion).offset(x: -10).padding(.top, 14)
             }
             .frame(width: 232, alignment: .leading)
             scene()
@@ -218,8 +282,23 @@ struct OnboardingView: View {
 
     private var setup: some View {
         HStack(alignment: .center, spacing: 22) {
-            MascotView(pose: permissions.isGranted && permissions.installLocation.isInstalled ? .celebrate : .permissions,
-                       size: 190, reactionToken: hopToken, reaction: .hop, reduceMotion: reduceMotion)
+            MascotRigView(dog: setupDog, size: 196)
+                .task {
+                    setupDog.reduceMotion = reduceMotion
+                    setupDog.set(nil) { $0 = MascotState(frame: setupComplete ? .celebrate : .think, lift: reduceMotion ? 0 : -24, opacity: reduceMotion ? 1 : 0) }
+                    guard !reduceMotion else { return }
+                    await setupDog.perform {
+                        setupDog.set(.spring(response: 0.6, dampingFraction: 0.75)) { $0.lift = 0; $0.opacity = 1 }
+                        guard await setupDog.beat(0.6) else { return }
+                        await setupDog.blink()
+                        if setupComplete { await setupDog.hop(14); await setupDog.wag(3); return }
+                        // Asking for something: a puzzled scratch behind the ear.
+                        await setupDog.scratch(4)
+                        await setupDog.wag(2)
+                        guard await setupDog.beat(0.8) else { return }
+                        await setupDog.blink()
+                    }
+                }
             VStack(alignment: .leading, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
                     Text(setupTitle).font(.system(size: 28, weight: .bold)).tracking(-0.5).foregroundStyle(OnboardingPalette.text)

@@ -47,13 +47,25 @@ Presenting orders the window front, makes it key and activates once, then retrie
 
 ## Mascot
 
-Four static poses with alpha (`welcome`, `guide`, `permissions`, `celebrate`). See `Resources/Onboarding/Mascot/README.md`. Native choreography only:
+`Scripts/mascot_rig.py` cuts the four poses in `Resources/Onboarding/Mascot` into layers on their shared 1254 px canvas, written to `Resources/Onboarding/Rig` at 768 px. Rerun it after the art changes. `MascotRig.swift` draws and directs them.
 
-- Pose follows state: welcome on Welcome, guide presenting the scene on feature steps, patient on Setup until DogBar is installed and both permissions are on, then celebrate.
-- Pose changes cross-fade with a small settle from the paws.
-- Two one-shot reactions: a greeting tilt when the wizard opens and a short hop when a permission turns on. Nothing loops.
+- Layers: each frame's body, its tail (behind the body, wagged around the hip), welcome's raised forearm (rotated around the elbow), and celebrate's two raised paws (drawn in front of an edge). Eyelids are drawn natively in the fur colour above each eye.
+- Frames: `wave` (welcome), `think` (welcome body and raised paw with the curious permissions head), `guide` and `celebrate`. Welcome and celebrate share the same head pixels (mean difference 8.5/255), so switching between them reads as the arms moving.
+- Moves (`MascotDirector`): blink, wag, wave, scratch, hop with squash, tap (a lean onto a target), and pose changes with a settle. Each move is short and cancellable. Nothing loops. With Reduce Motion only the final pose is shown. Hovering or clicking the dog plays one small reaction when no scene choreography is running.
+- Peeking: the body is clipped at a fixed edge under the chin, and the paws are drawn in front of the edge. They fade in only once the dog has nearly reached it.
 
-This is pose swapping with small transforms, not character animation. A future option is a layered Rive rig (separate head, ears, tail and paws with a state machine), using Rive's AppKit/SwiftUI runtime. That adds a runtime dependency and an authoring and export pipeline, so it is not used now.
+Per screen:
+- Welcome: rises slowly from behind a glass DogBar Dock, grips it with both paws, blinks, then lets go with one paw and waves.
+- Dock per desktop: peeks over the top of the card above Desktop 1, then ducks, slides along the edge to Desktop 2 as it becomes active, pops up and waves.
+- Previews: watches from the card's corner and cheers after the click. The pointer does the clicking (see below).
+- Switcher: facing left, leans onto the Tab key for each press, so the key and the moving selection have a visible cause.
+- Setup: scratches behind its ear while asking, then cheers (celebrate, hop, wag) each time a permission turns on, and goes back to thinking if one is still missing.
+
+This is a cut-out puppet with native transforms, not frame-by-frame character animation. A Rive state machine or generated animation frames would allow full-body acting later.
+
+### Previews timeline
+
+One take, cause before effect. Lisbon day plan is in front and the preview is closed. The pointer travels to Safari in the Dock and rests there, and the preview opens. The pointer travels to Hotel booking and only that tile highlights. The pointer presses, with a ripple. The preview closes, and only then does Hotel booking come in front of Lisbon day plan. The final frame holds (preview closed, pointer where it clicked) until Play Again, which resets every value before replaying. Target frames are measured in the stage and kept, so the pointer never jumps. The whole chapter is one `.task` that SwiftUI cancels when the step or window goes away. Reduce Motion shows a still of the preview open with Hotel booking under the pointer and a caption.
 
 ## Checking it
 

@@ -15,7 +15,10 @@ MASCOT = [f'Mascot/{name}.png' for name in ('welcome', 'guide', 'permissions', '
 APPS = [f'Product/apps/{name}.png' for name in ('finder', 'safari', 'slack', 'figma', 'calendar', 'notes', 'mail',
                                                   'chrome', 'tv', 'music', 'photos', 'messages', 'trash')]
 WALLPAPERS = [f'Product/wallpapers/{name}.jpg' for name in ('tahoe', 'sequoia-blue', 'sequoia', 'sonoma')]
-REQUIRED = MASCOT + APPS + WALLPAPERS
+# Animation layers cut from the poses by Scripts/mascot_rig.py; MascotRig.layers lists the same names.
+RIG = [f'Rig/{name}.png' for name in ('wave-body', 'think-body', 'arm', 'welcome-tail', 'guide-body', 'guide-tail',
+                                      'celebrate-body', 'celebrate-tail', 'celebrate-paws')]
+REQUIRED = MASCOT + RIG + APPS + WALLPAPERS
 SIGNATURES = {'.png': b'\x89PNG\r\n\x1a\n', '.jpg': b'\xff\xd8\xff'}
 
 

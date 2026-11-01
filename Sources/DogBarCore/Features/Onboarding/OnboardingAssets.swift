@@ -14,7 +14,8 @@ public enum MascotPose: String, CaseIterable, Sendable {
     static let wallpaperNames = ["tahoe", "sequoia-blue", "sequoia", "sonoma"]
     /// Every file the wizard expects. Packaging verifies the same list.
     static var requiredFiles: [String] {
-        mascotFiles + appNames.map { "Product/apps/\($0).png" } + wallpaperNames.map { "Product/wallpapers/\($0).jpg" }
+        mascotFiles + MascotRig.layers.map { "Rig/\($0).png" }
+            + appNames.map { "Product/apps/\($0).png" } + wallpaperNames.map { "Product/wallpapers/\($0).jpg" }
     }
 
     private static var cache: [String: NSImage] = [:]
