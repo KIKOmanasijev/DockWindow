@@ -28,5 +28,21 @@
 	<string>DogBar opens windows on this desktop and empties Trash when requested.</string>
 	<key>CFBundleDisplayName</key>
 	<string>DogBar</string>
+	<key>SUFeedURL</key>
+	<string>https://dogbar.hristijan.dev/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>PNudz/8nyHP1fR6ADTVhfXAciGkEoyOpTEgHkJ8Hb/0=</string>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
+	<key>SURequireSignedFeed</key>
+	<true/>
+	<key>SUSignedFeedFailureExpirationInterval</key>
+	<integer>0</integer>
+	<key>SUAutomaticallyUpdate</key>
+	<false/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<false/>
+	<key>SUEnableSystemProfiling</key>
+	<false/>
 </dict>
 </plist>

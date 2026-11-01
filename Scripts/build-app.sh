@@ -1,6 +1,7 @@
 #!/bin/zsh
 set -euo pipefail
 cd "${0:A:h:h}"
+swift package resolve
 swift build -c release
 bin=$(swift build -c release --show-bin-path)
 app="$HOME/Applications/DogBar.app"
@@ -14,13 +15,24 @@ cp Resources/Info.plist "$staging/DogBar.app/Contents/"
 /usr/libexec/PlistBuddy -c "Add :DogBarBuildRevision string $(git rev-parse --short HEAD)" "$staging/DogBar.app/Contents/Info.plist"
 # Telemetry tags events with this, so local installs can be filtered out of real usage.
 /usr/libexec/PlistBuddy -c "Add :DogBarBuildChannel string development" "$staging/DogBar.app/Contents/Info.plist"
+# Local builds follow the preview update channel. The signed bundle, not user defaults, sets it.
+/usr/libexec/PlistBuddy -c "Add :DogBarUpdateChannel string preview" "$staging/DogBar.app/Contents/Info.plist"
 # Self-signed development identities can sign stable designated requirements even
 # when system trust policy excludes them from find-identity's valid-only results.
 if security find-identity -p codesigning | /usr/bin/grep -q '"DockWindow Dev"'; then
- codesign --force --deep --entitlements Resources/DogBar.entitlements --options runtime --timestamp=none --sign 'DockWindow Dev' "$staging/DogBar.app"
+ identity='DockWindow Dev'
 else
- print -u2 'WARNING: DockWindow Dev signing identity unavailable. Ad-hoc signing can reset permissions on rebuild.'
- codesign --force --deep --entitlements Resources/DogBar.entitlements --sign - "$staging/DogBar.app"
+ print -u2 'WARNING: DockWindow Dev signing identity unavailable. Ad-hoc signing can reset permissions on rebuild, and updates stay disabled.'
+ identity=-
+fi
+# Embeds the pinned Sparkle.framework and signs its helpers inside out. No --deep signing.
+/usr/bin/python3 Scripts/sparkle_packaging.py embed --app "$staging/DogBar.app" --scratch .build --identity "$identity"
+if [[ $identity == - ]]; then
+ codesign --force --entitlements Resources/DogBar-SelfSigned.entitlements --sign - "$staging/DogBar.app"
+else
+ codesign --force --entitlements Resources/DogBar-SelfSigned.entitlements --options runtime --timestamp=none --sign "$identity" "$staging/DogBar.app"
+ leaf=$(codesign --display --extract-certificates="$staging/cert" "$staging/DogBar.app" 2>/dev/null; /usr/bin/openssl x509 -inform DER -in "$staging/cert0" -noout -fingerprint -sha1 | /usr/bin/sed 's/.*=//; s/://g')
+ /usr/bin/python3 Scripts/sparkle_packaging.py verify --app "$staging/DogBar.app" --requirement "certificate leaf = H\"$leaf\""
 fi
 codesign --verify --deep --strict "$staging/DogBar.app"
 # One-time migration: builds before the rename installed DockWindow.app (bundle ID

@@ -19,7 +19,7 @@ import Combine
     lazy var telemetry = TelemetryService(settings: settings)
     lazy var dock = DockController(tracker: tracker, actions: actions, settings: settings, pinnedApps: pinnedApps, newWindowOpener: newWindowOpener)
     lazy var previews = PreviewController(tracker: tracker, actions: actions, thumbnails: thumbnails, settings: settings, newWindowOpener: newWindowOpener)
-    lazy var settingsWindow = SettingsWindowController(settings: settings, permissions: permissions, pinnedApps: pinnedApps,
+    lazy var settingsWindow = SettingsWindowController(settings: settings, permissions: permissions, pinnedApps: pinnedApps, updates: updater.preferences,
         onRestoreNativeDock: { [weak self] in self?.restoreNativeDock() }, onShowPermissions: { [weak self] in self?.showOnboarding() })
     var desktopNumbers: [UInt64: Int] = [:]
     var nativeSessionStarted = false
@@ -131,6 +131,7 @@ import Combine
         NotificationCenter.default.publisher(for: SettingsShortcutRecording.recordingDidChange).receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updatePermissions() }.store(in: &subscriptions)
         updatePermissions()
+        updater.start()
         Log.system.info("DogBar launched")
     }
     private func startPermissionTimer() {

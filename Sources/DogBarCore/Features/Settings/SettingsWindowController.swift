@@ -13,7 +13,7 @@ import SwiftUI
     private let content: SettingsContentController
 
     public init(settings: AppSettings, permissions: PermissionsService, pinnedApps: PinnedAppsStore,
-                onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
+                updates: UpdatePreferences, onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
         self.settings = settings
         let navigation = SettingsNavigation()
         let visibility = SettingsVisibility()
@@ -21,7 +21,7 @@ import SwiftUI
         content = SettingsContentController(navigation: navigation) { pane in
             switch pane {
             case .general:
-                AnyView(GeneralSettingsPane(settings: settings, permissions: permissions, visibility: visibility,
+                AnyView(GeneralSettingsPane(settings: settings, permissions: permissions, updates: updates, visibility: visibility,
                                             onRestoreNativeDock: onRestoreNativeDock, onShowPermissions: onShowPermissions))
             case .dock: AnyView(DockSettingsPane(settings: settings))
             case .switcher: AnyView(SwitcherSettingsPane(settings: settings))

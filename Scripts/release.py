@@ -15,9 +15,13 @@ import tempfile
 import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'Scripts'))
+import sparkle_packaging as sparkle  # noqa: E402
+
 MINIMUM_MACOS = '26.0'
 EMPTY = dict(available=False, version=None, url=None, sha256=None,
              architecture='arm64', minimumMacOS=MINIMUM_MACOS, notarized=False)
+# Developer ID code has a Team ID, so library validation stays enabled for the embedded Sparkle.framework.
 ENTITLEMENTS = {'com.apple.security.automation.apple-events': True}
 TOOLS = ('security', 'codesign', 'spctl', 'hdiutil', 'ditto', 'xcrun', 'swift')
 
@@ -168,10 +172,11 @@ def verify_app(app, team, v, build):
     p = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
     expected = dict(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                     CFBundleName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=build,
-                    LSMinimumSystemVersion=MINIMUM_MACOS)
+                    LSMinimumSystemVersion=MINIMUM_MACOS, DogBarUpdateChannel='stable', **sparkle.UPDATER_INFO)
     require(all(p.get(k) == val for k, val in expected.items()), 'App metadata does not match requested release')
     binary = app / 'Contents/MacOS/DogBar'
     require(run('xcrun', 'lipo', '-archs', binary).strip() == 'arm64', 'Release must be arm64 only')
+    sparkle.verify(app, requirement(team))
     verify_signature(app, team, app=True)
     ticket_and_gatekeeper(app, app=True)
 
@@ -218,7 +223,9 @@ def build_release(args):
     logs.mkdir()
     entitlements = ROOT / 'Resources/DogBar.entitlements'
     require(plistlib.loads(entitlements.read_bytes()) == ENTITLEMENTS, 'Review changed entitlements before releasing')
+    sparkle.pinned()
     scratch = out / 'build'
+    run('swift', 'package', '--scratch-path', scratch, 'resolve')
     swift = ['swift', 'build', '--scratch-path', scratch, '-c', 'release', '--triple', f'arm64-apple-macosx{MINIMUM_MACOS}', '--product', 'DogBar']
     run(*swift)
     bin_dir = Path(run(*swift, '--show-bin-path').strip())
@@ -230,9 +237,10 @@ def build_release(args):
     shutil.copy2(bin_dir / 'DogBar', app / 'Contents/MacOS/DogBar')
     shutil.copy2(ROOT / 'Resources/AppIcon.icns', app / 'Contents/Resources/AppIcon.icns')
     info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())
-    info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar', CFBundleName='DogBar', CFBundleDisplayName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=b, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='release')
+    info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar', CFBundleName='DogBar', CFBundleDisplayName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=b, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='release', DogBarUpdateChannel='stable')
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps(info))
-    # Never sign --deep. The current product has one executable, no nested code.
+    # Never sign --deep. Sparkle's helpers and framework are signed inside out first, with a secure timestamp.
+    sparkle.embed(app, sparkle.artifact(scratch), selected, timestamp=True)
     run('codesign', '--force', '--sign', selected, '--options', 'runtime', '--timestamp', '--entitlements', entitlements, app)
     verify_signature(app, args.team_id, app=True)
     archive = out / 'DogBar-notary.zip'
@@ -326,7 +334,7 @@ def main():
             build_release(args)
         else:
             verify_or_stage(args, stage=args.command == 'stage')
-    except (ReleaseError, OSError, ValueError, KeyError, TypeError) as error:
+    except (ReleaseError, sparkle.SparkleError, OSError, ValueError, KeyError, TypeError) as error:
         print(f'Release blocked: {error}', file=sys.stderr)
         return 1
     return 0

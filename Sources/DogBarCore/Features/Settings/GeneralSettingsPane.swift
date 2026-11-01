@@ -5,6 +5,7 @@ import SwiftUI
 @MainActor struct GeneralSettingsPane: View {
     @ObservedObject var settings: AppSettings
     @ObservedObject var permissions: PermissionsService
+    @ObservedObject var updates: UpdatePreferences
     @ObservedObject var visibility: SettingsVisibility
     let onRestoreNativeDock: () -> Void
     let onShowPermissions: () -> Void
@@ -43,6 +44,14 @@ import SwiftUI
                 if permissions.usesAdHocSigning {
                     Text("This build is ad-hoc signed. Rebuilds can lose permission grants. Create a DockWindow Dev code-signing certificate in Keychain Access, then rebuild.")
                         .font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            SettingsSection("Updates") {
+                Toggle("Check for updates automatically", isOn: $updates.automaticChecks)
+                    .settingsDescription("Checks DogBar's signed update feed about once a day. Updates install only after you choose Install and Relaunch.")
+                    .disabled(!updates.isAvailable)
+                SettingsRow("Software update", description: updates.statusText) {
+                    Button("Check Now") { updates.onCheckNow?() }.disabled(!updates.isAvailable)
                 }
             }
             SettingsSection("Privacy") {

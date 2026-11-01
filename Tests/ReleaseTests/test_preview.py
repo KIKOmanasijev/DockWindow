@@ -103,7 +103,7 @@ class PreviewTests(unittest.TestCase):
                 resources = root / 'Resources'
                 resources.mkdir()
                 (resources / 'Info.plist').write_bytes(plistlib.dumps({}))
-                (resources / 'DogBar.entitlements').write_bytes(plistlib.dumps(p.ENTITLEMENTS))
+                (resources / 'DogBar-SelfSigned.entitlements').write_bytes(plistlib.dumps(p.ENTITLEMENTS))
                 (resources / 'AppIcon.icns').write_bytes(b'fixture icon')
                 out = root / 'dist' / f'DogBar-{VERSION}-arm64'
                 events = []
@@ -116,11 +116,17 @@ class PreviewTests(unittest.TestCase):
                         binary.mkdir(parents=True, exist_ok=True)
                         (binary / 'DogBar').write_bytes(b'fixture binary')
                         return str(binary) if '--show-bin-path' in args else ''
+                    if args[:2] == ('git', 'rev-parse'):
+                        return 'abcdef012345\n'
                     if args[:2] == ('hdiutil', 'create'):
                         Path(args[-1]).write_bytes(b'fixture dmg')
                     return ''
+                def embed(app, source, identity, timestamp=False):
+                    events.append(('embed-sparkle', str(app), identity, timestamp))
                 args = argparse.Namespace(version=VERSION, build='2', identity=SHA)
-                with patch.object(p, 'ROOT', root), patch.object(p, 'prerequisites'), patch.object(p, 'run', side_effect=run), patch.object(p, 'verify_app'), patch.object(p, 'verify_dmg', side_effect=p.PreviewError('corrupt image') if failed else None, return_value='a' * 64):
+                with patch.object(p, 'ROOT', root), patch.object(p, 'prerequisites'), patch.object(p, 'run', side_effect=run), patch.object(p, 'verify_app'), \
+                        patch.object(p.sparkle, 'artifact', return_value=root / 'Sparkle.framework'), patch.object(p.sparkle, 'embed', side_effect=embed), \
+                        patch.object(p, 'verify_dmg', side_effect=p.PreviewError('corrupt image') if failed else None, return_value='a' * 64):
                     if failed:
                         with self.assertRaises(p.PreviewError):
                             p.build_preview(args)
@@ -133,6 +139,14 @@ class PreviewTests(unittest.TestCase):
                         info = plistlib.loads((out / 'image/DogBar.app/Contents/Info.plist').read_bytes())
                         self.assertEqual(info['CFBundleShortVersionString'], '0.1.0')
                         self.assertEqual(info['DogBarPreviewVersion'], VERSION)
+                        self.assertEqual(info['DogBarUpdateChannel'], 'preview')
+                        self.assertEqual(info['DogBarBuildRevision'], 'abcdef012345')
+                        self.assertEqual(json.loads((out / 'provenance.json').read_text())['revision'], 'abcdef012345')
+                        # Nested Sparkle code is signed before the outer app, never with --deep.
+                        embedded = events.index(next(e for e in events if e[0] == 'embed-sparkle'))
+                        app_sign = next(i for i, e in enumerate(events) if e[0] == 'codesign' and e[-1].endswith('DogBar.app'))
+                        self.assertLess(embedded, app_sign)
+                        self.assertIn('Resources/DogBar-SelfSigned.entitlements', ' '.join(events[app_sign]))
                     self.assertTrue(any(event[:2] == ('security', 'find-identity') and '-v' not in event for event in events))
                     self.assertTrue(any('--scratch-path' in event for event in events))
                     self.assertFalse(any('--deep' in event for event in events if event[0] == 'codesign'))

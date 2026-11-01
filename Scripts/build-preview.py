@@ -14,8 +14,15 @@ import sys
 import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / 'Scripts'))
+import sparkle_packaging as sparkle  # noqa: E402
+
 DEVELOPMENT_IDENTITY = 'F6525801B1C563EA82693EBE71D63C6CA41538C6'
-ENTITLEMENTS = {'com.apple.security.automation.apple-events': True}
+# Self-signed code has no Team ID, so library validation would reject the embedded
+# Sparkle.framework. The app verifies Sparkle's signature itself before loading it.
+ENTITLEMENTS = {'com.apple.security.automation.apple-events': True,
+                'com.apple.security.cs.disable-library-validation': True}
+ENTITLEMENTS_FILE = 'Resources/DogBar-SelfSigned.entitlements'
 OPEN_GUIDE = 'https://support.apple.com/102445'
 MINIMUM_MACOS = '26.0'
 
@@ -110,9 +117,11 @@ def verify_app(app, identity, value, build):
     expected = dict(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                     CFBundleName='DogBar', CFBundleDisplayName='DogBar',
                     CFBundleShortVersionString=value.split('-')[0], DogBarPreviewVersion=value,
-                    CFBundleVersion=build, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='preview')
+                    CFBundleVersion=build, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='preview',
+                    DogBarUpdateChannel='preview', **sparkle.UPDATER_INFO)
     require(all(info.get(key) == item for key, item in expected.items()), 'Preview app metadata mismatch')
     require(run('xcrun', 'lipo', '-archs', app / 'Contents/MacOS/DogBar').strip() == 'arm64', 'Preview executable must be arm64 only')
+    sparkle.verify(app, requirement(identity))
     verify_signature(app, identity, app=True)
 
 
@@ -176,11 +185,19 @@ def build_preview(args):
     prerequisites()
     # Valid-only identity lookup excludes this deliberately self-signed local certificate.
     select_identity(run('security', 'find-identity', '-p', 'codesigning'), identity)
-    entitlements = ROOT / 'Resources/DogBar.entitlements'
+    entitlements = ROOT / ENTITLEMENTS_FILE
     require(plistlib.loads(entitlements.read_bytes()) == ENTITLEMENTS, 'Review changed entitlements before packaging')
+    sparkle.pinned()
+    # A published preview must be reproducible from its tagged commit.
+    require(not run('git', 'status', '--porcelain', '--', 'Package.swift', 'Package.resolved', 'Sources', 'Resources', 'Scripts').strip(),
+            'Commit source, resource and script changes before building a preview')
+    revision = run('git', 'rev-parse', '--short=12', 'HEAD').strip()
+    require(re.fullmatch(r'[0-9a-f]{12}', revision), 'Cannot read the source revision')
     parent.mkdir(exist_ok=True)
     out.mkdir()
     scratch = out / 'build'
+    # Fetches the checksum-pinned Sparkle binary artifact into the isolated scratch path.
+    run('swift', 'package', '--scratch-path', scratch, 'resolve')
     command = ['swift', 'build', '--scratch-path', scratch, '-c', 'release', '--triple', f'arm64-apple-macosx{MINIMUM_MACOS}', '--product', 'DogBar']
     run(*command)
     binary_dir = Path(run(*command, '--show-bin-path').strip())
@@ -195,8 +212,11 @@ def build_preview(args):
     info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                 CFBundleName='DogBar', CFBundleDisplayName='DogBar',
                 CFBundleShortVersionString=value.split('-')[0], DogBarPreviewVersion=value,
-                CFBundleVersion=build, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='preview')
+                CFBundleVersion=build, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='preview',
+                DogBarUpdateChannel='preview', DogBarBuildRevision=revision)
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps(info))
+    # Nested Sparkle code is signed inside out first; the app is never signed with --deep.
+    sparkle.embed(app, sparkle.artifact(scratch), identity)
     run('codesign', '--force', '--sign', identity, '--options', 'runtime', '--timestamp=none', '--entitlements', entitlements, app)
     verify_app(app, identity, value, build)
     (stage / 'Applications').symlink_to('/Applications')
@@ -214,7 +234,7 @@ def build_preview(args):
     run('codesign', '--sign', identity, '--timestamp=none', dmg)
     sha = verify_dmg(dmg, identity, value, build)
     write_json(out / 'provenance.json', dict(version=value, build=build, signing='self-signed',
-               certificateSHA1=identity, sha256=sha, notarized=False))
+               certificateSHA1=identity, sha256=sha, notarized=False, revision=revision, sparkle=sparkle.VERSION))
     write_json(out / 'release.json', manifest(value, build, sha))
     print(f'Unnotarized self-signed preview: {dmg}\nSHA-256: {sha}\nManifest: {out / "release.json"}\nNo website staging or deployment performed.')
 
@@ -236,7 +256,7 @@ def main():
         else:
             require(args.sha256 is None, '--sha256 is only valid with --verify-dmg')
             build_preview(args)
-    except (PreviewError, OSError, ValueError, plistlib.InvalidFileException) as error:
+    except (PreviewError, sparkle.SparkleError, OSError, ValueError, KeyError, plistlib.InvalidFileException) as error:
         print(f'Preview failed: {error}', file=sys.stderr)
         return 1
     return 0

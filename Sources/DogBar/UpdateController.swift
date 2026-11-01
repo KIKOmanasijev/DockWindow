@@ -1,122 +1,148 @@
 import AppKit
 import CryptoKit
+import DogBarCore
+import DogBarSparkleBridge
+import Security
 
-/// An explicit, user-initiated update flow. Installation stays in Finder for now.
-@MainActor final class UpdateController {
-    private var busy = false
-    private let origin = URL(string: "https://dogbar.hristijan.dev")!
-    private struct Release: Decodable {
-        let available: Bool
-        let version: String?
-        let build: String?
-        let url: String?
-        let sha256: String?
-        let architecture: String?
-        let minimumMacOS: String?
-        let notarized: Bool
-        let channel: String?
-        let signing: String?
-    }
-    private var currentVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "DogBarPreviewVersion") as? String
-        ?? Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0"
-    }
-    private var currentBuild: Int { Int(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "0") ?? 0 }
-    private func alert(_ title: String, _ message: String, confirm: String? = nil) -> Bool {
-        NSApp.activate()
-        let a = NSAlert(); a.messageText = title; a.informativeText = message
-        a.addButton(withTitle: confirm ?? "OK")
-        if confirm != nil { a.addButton(withTitle: "Cancel") }
-        return a.runModal() == .alertFirstButtonReturn
-    }
-    func check() {
-        guard !busy else { return }
-        busy = true
-        Task {
-            defer { busy = false }
-            do {
-                var candidate: Release?
-                for feed in ["release.json", "preview.json"] {
-                    var request = URLRequest(url: origin.appendingPathComponent(feed), cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 20)
-                    request.setValue("application/json", forHTTPHeaderField: "Accept")
-                    let (data, response) = try await URLSession.shared.data(for: request)
-                    try validate(response)
-                    guard data.count < 64_000 else { throw UpdateError.invalidFeed }
-                    let release = try JSONDecoder().decode(Release.self, from: data)
-                    guard release.available else { continue }
-                    try validate(release)
-                    if isNewer(release) { candidate = release; break }
-                }
-                guard let release = candidate, let version = release.version, let path = release.url, let hash = release.sha256 else {
-                    _ = alert("DogBar is up to date", "Installed: \(currentVersion) (build \(currentBuild)). No newer compatible release is published.")
-                    return
-                }
-                let status = release.notarized ? "Signed public release." : "Self-signed, unnotarized preview. macOS may ask you to confirm opening it."
-                guard alert("DogBar \(version) is available", "\(status)\n\nDownload and verify the installer, then drag DogBar into Applications to replace this copy. Your settings are retained when the bundle identity stays the same.", confirm: "Download Update") else { return }
-                let url = URL(string: path, relativeTo: origin)!.absoluteURL
-                let (temporary, response) = try await URLSession.shared.download(for: URLRequest(url: url, timeoutInterval: 120))
-                defer { try? FileManager.default.removeItem(at: temporary) }
-                try validate(response)
-                let size = try temporary.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-                guard size > 0, size <= 200_000_000 else { throw UpdateError.invalidDownload }
-                let actual = try await Task.detached { () throws -> String in
-                    let handle = try FileHandle(forReadingFrom: temporary)
-                    defer { try? handle.close() }
-                    var digest = SHA256()
-                    while let chunk = try handle.read(upToCount: 1_048_576), !chunk.isEmpty { digest.update(data: chunk) }
-                    return digest.finalize().map { String(format: "%02x", $0) }.joined()
-                }.value
-                guard actual == hash else { throw UpdateError.checksum }
-                let folder = FileManager.default.urls(for: .downloadsDirectory, in: .userDomainMask)[0]
-                let destination = folder.appendingPathComponent("DogBar-\(version)-\(UUID().uuidString.prefix(8)).dmg")
-                try FileManager.default.moveItem(at: temporary, to: destination)
-                guard NSWorkspace.shared.open(destination) else { throw UpdateError.openInstaller }
-                _ = alert("Update downloaded and verified", "The installer is open. Quit DogBar from the paw menu so it restores the native Dock, then drag the new DogBar into Applications and open it.\n\nInstaller: \(destination.path)")
-            } catch { _ = alert("Could not check or download updates", error.localizedDescription) }
+/// Sparkle 2 updates: a signed appcast, EdDSA-signed archives verified before extraction, and
+/// installation only after the person chooses Install and Relaunch. Installing quits DogBar
+/// with a normal quit event, so applicationShouldTerminate restores the native Dock first.
+///
+/// DogBar does not link Sparkle. The embedded framework is loaded only after its signature,
+/// including nested helpers, is checked against the same leaf certificate as this app.
+@MainActor final class UpdateController: NSObject {
+    let preferences = UpdatePreferences()
+    private let configuration = UpdateConfiguration(info: Bundle.main.infoDictionary ?? [:])
+    private var controller: NSObject?
+    private var updater: NSObject? { controller?.value(forKey: "updater") as? NSObject }
+    private var unavailableReason = "This build has no update configuration. Install DogBar from dogbar.hristijan.dev to receive updates."
+    private nonisolated static let observedKey = "automaticallyChecksForUpdates"
+
+    func start() {
+        guard controller == nil else { return }
+        guard let configuration else { return disable(unavailableReason) }
+        do {
+            let framework = try Self.verifiedFramework()
+            guard let bundle = Bundle(url: framework), bundle.load(),
+                  let controller = DogBarSparkleBridge.makeStandardUpdaterController(withUpdaterDelegate: self),
+                  let updater = controller.value(forKey: "updater") as? NSObject else { throw UpdateSetupError.unavailable }
+            self.controller = controller
+            // A feed URL left in user defaults by older Sparkle APIs must never override the bundle.
+            _ = updater.perform(NSSelectorFromString("clearFeedURLFromUserDefaults"))
+            controller.perform(NSSelectorFromString("startUpdater"))
+            updater.addObserver(self, forKeyPath: Self.observedKey, options: [.initial, .new], context: nil)
+            preferences.isAvailable = true
+            preferences.statusText = configuration.channel == .preview
+                ? "Preview channel. Self-signed, unnotarized previews and stable releases, verified with DogBar's update key."
+                : "Stable channel. Signed releases verified with DogBar's update key."
+            preferences.onAutomaticChecksChanged = { [weak self] enabled in
+                self?.updater?.setValue(enabled, forKey: Self.observedKey)
+            }
+            preferences.onCheckNow = { [weak self] in self?.check() }
+        } catch {
+            Log.system.error("Updater unavailable: \(error.localizedDescription)")
+            disable("Updates are unavailable: \(error.localizedDescription)")
         }
     }
-    private func validate(_ response: URLResponse) throws {
-        guard let response = response as? HTTPURLResponse, response.statusCode == 200,
-              let url = response.url, url.scheme == "https", url.host == origin.host,
-              url.port == nil, url.user == nil, url.password == nil else { throw UpdateError.invalidDownload }
+
+    func check() {
+        guard let controller else {
+            NSApp.activate()
+            let alert = NSAlert(); alert.messageText = "Updates are unavailable"; alert.informativeText = unavailableReason
+            alert.runModal()
+            return
+        }
+        controller.perform(NSSelectorFromString("checkForUpdates:"), with: nil)
     }
-    private func validate(_ r: Release) throws {
-        guard let v = r.version, v.range(of: #"^\d+\.\d+\.\d+(?:-preview\.\d+)?$"#, options: .regularExpression) != nil,
-              r.url == "/downloads/DogBar-\(v)-arm64.dmg", r.architecture == "arm64",
-              let hash = r.sha256, hash.range(of: #"^[0-9a-f]{64}$"#, options: .regularExpression) != nil,
-              let os = r.minimumMacOS, os.range(of: #"^\d+\.\d+(?:\.\d+)?$"#, options: .regularExpression) != nil else { throw UpdateError.invalidFeed }
-        let runningOS = ProcessInfo.processInfo.operatingSystemVersion
-        let running = "\(runningOS.majorVersion).\(runningOS.minorVersion).\(runningOS.patchVersion)"
-        guard running.compare(os, options: .numeric) != .orderedAscending else { throw UpdateError.newerOS }
-        #if !arch(arm64)
-        throw UpdateError.architecture
-        #endif
-        if !r.notarized {
-            guard r.channel == "preview", r.signing == "self-signed", v.contains("-preview."),
-                  let b = r.build, let n = Int(b), n > 0 else { throw UpdateError.invalidFeed }
-        } else if v.contains("-") { throw UpdateError.invalidFeed }
+
+    private func disable(_ reason: String) {
+        unavailableReason = reason
+        preferences.isAvailable = false
+        preferences.statusText = reason
     }
-    private func isNewer(_ r: Release) -> Bool {
-        guard let version = r.version else { return false }
-        let next = version.components(separatedBy: "-preview.")
-        let current = currentVersion.components(separatedBy: "-preview.")
-        let order = next[0].compare(current[0], options: .numeric)
-        if order != .orderedSame { return order == .orderedDescending }
-        if next.count != current.count { return next.count == 1 }
-        if next.count == 2, next[1] != current[1] { return next[1].compare(current[1], options: .numeric) == .orderedDescending }
-        return (Int(r.build ?? "0") ?? 0) > currentBuild
+
+    nonisolated override func observeValue(forKeyPath keyPath: String?, of object: Any?, change: [NSKeyValueChangeKey: Any]?, context: UnsafeMutableRawPointer?) {
+        guard keyPath == Self.observedKey, let enabled = change?[.newKey] as? Bool else { return }
+        Task { @MainActor [weak self] in self?.preferences.automaticChecks = enabled }
     }
-    private enum UpdateError: LocalizedError {
-        case invalidFeed, invalidDownload, checksum, newerOS, architecture, openInstaller
+
+    // MARK: Framework verification
+
+    private enum UpdateSetupError: LocalizedError {
+        case unsigned, framework, signature(OSStatus), unavailable
         var errorDescription: String? {
             switch self {
-            case .invalidFeed: return "The update feed has invalid or unsupported release metadata. No update was installed."
-            case .invalidDownload: return "The update server returned an unexpected response. No update was installed."
-            case .checksum: return "The installer checksum did not match the release. The download was discarded."
-            case .newerOS: return "This release requires a newer version of macOS."
-            case .architecture: return "The published installer currently supports Apple Silicon only."
-            case .openInstaller: return "The verified installer was saved in Downloads, but could not be opened."
+            case .unsigned: return "this copy of DogBar is not signed with a certificate."
+            case .framework: return "the embedded Sparkle framework is missing or misplaced."
+            case .signature(let status): return "the embedded Sparkle framework failed its code signature check (\(status))."
+            case .unavailable: return "the embedded Sparkle framework could not be started."
             }
+        }
+    }
+
+    /// Requires Contents/Frameworks/Sparkle.framework, a real directory signed by this app's
+    /// leaf certificate, with every nested helper valid. Self-signed builds disable library
+    /// validation, so this check is what keeps a substituted framework from loading.
+    private static func verifiedFramework() throws -> URL {
+        let contents = Bundle.main.bundleURL.appendingPathComponent("Contents", isDirectory: true)
+        let framework = contents.appendingPathComponent("Frameworks/Sparkle.framework", isDirectory: true)
+        let values = try? framework.resourceValues(forKeys: [.isSymbolicLinkKey, .isDirectoryKey])
+        guard values?.isDirectory == true, values?.isSymbolicLink == false,
+              framework.resolvingSymlinksInPath().path == framework.standardizedFileURL.path else { throw UpdateSetupError.framework }
+        let leaf = try ownLeafCertificateSHA1()
+        var requirement: SecRequirement?
+        let text = "identifier \"org.sparkle-project.Sparkle\" and certificate leaf = H\"\(leaf)\""
+        var status = SecRequirementCreateWithString(text as CFString, [], &requirement)
+        guard status == errSecSuccess, let requirement else { throw UpdateSetupError.signature(status) }
+        var code: SecStaticCode?
+        status = SecStaticCodeCreateWithPath(framework as CFURL, [], &code)
+        guard status == errSecSuccess, let code else { throw UpdateSetupError.signature(status) }
+        let flags = SecCSFlags(rawValue: kSecCSCheckAllArchitectures | kSecCSStrictValidate | kSecCSCheckNestedCode)
+        status = SecStaticCodeCheckValidity(code, flags, requirement)
+        guard status == errSecSuccess else { throw UpdateSetupError.signature(status) }
+        return framework
+    }
+
+    private static func ownLeafCertificateSHA1() throws -> String {
+        var running: SecCode?
+        var code: SecStaticCode?
+        var information: CFDictionary?
+        guard SecCodeCopySelf([], &running) == errSecSuccess, let running,
+              SecCodeCopyStaticCode(running, [], &code) == errSecSuccess, let code,
+              SecCodeCopySigningInformation(code, SecCSFlags(rawValue: kSecCSSigningInformation), &information) == errSecSuccess,
+              let certificates = (information as? [String: Any])?[kSecCodeInfoCertificates as String] as? [SecCertificate],
+              let leaf = certificates.first else { throw UpdateSetupError.unsigned }
+        let digest = Insecure.SHA1.hash(data: SecCertificateCopyData(leaf) as Data)
+        return digest.map { String(format: "%02X", $0) }.joined()
+    }
+}
+
+// MARK: SPUUpdaterDelegate (selectors from the pinned Sparkle 2.10.1 headers)
+
+extension UpdateController {
+    @objc(feedURLStringForUpdater:) func feedURLString(for updater: NSObject) -> String? {
+        UpdateConfiguration.feedURL.absoluteString
+    }
+
+    @objc(allowedChannelsForUpdater:) func allowedChannels(for updater: NSObject) -> Set<String> {
+        configuration?.channel.allowedFeedChannels ?? []
+    }
+
+    @objc(updater:shouldProceedWithUpdate:updateCheck:error:)
+    func updater(_ updater: NSObject, shouldProceedWithUpdate item: NSObject, updateCheck: Int) throws {
+        guard let configuration else { throw UpdateRejection.wrongChannel }
+        let candidate = UpdateCandidate(
+            fileURL: item.value(forKey: "fileURL") as? URL,
+            build: item.value(forKey: "versionString") as? String ?? "",
+            channel: item.value(forKey: "channel") as? String,
+            minimumSystemVersion: item.value(forKey: "minimumSystemVersion") as? String,
+            hardwareRequirements: item.value(forKey: "hardwareRequirements") as? Set<String> ?? [])
+        do {
+            try UpdatePolicy.check(candidate, channel: configuration.channel, currentBuild: configuration.build,
+                                   runningOS: ProcessInfo.processInfo.operatingSystemVersion)
+        } catch {
+            Log.system.error("Rejected update build \(candidate.build): \(error.localizedDescription)")
+            throw NSError(domain: "dev.hristijan.dogbar.update", code: 1, userInfo: [NSLocalizedDescriptionKey: error.localizedDescription])
         }
     }
 }

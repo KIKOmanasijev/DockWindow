@@ -128,7 +128,11 @@ class ReleaseTests(unittest.TestCase):
                 events.append(('notarize', label))
                 return SUBMISSION
             args = argparse.Namespace(version='1.2.3', build='1', team_id=TEAM, keychain_profile='dogbar-notary', identity=None)
-            with patch.object(r, 'ROOT', root), patch.object(r, 'preflight', return_value=SHA), patch.object(r, 'run', side_effect=run), patch.object(r, 'notarize', side_effect=notary), patch.object(r, 'verify_signature'), patch.object(r, 'verify_app'), patch.object(r, 'verify_dmg', return_value='a' * 64) as verify:
+            def embed(app, source, identity, timestamp=False):
+                events.append(('embed-sparkle', identity, timestamp))
+            with patch.object(r, 'ROOT', root), patch.object(r, 'preflight', return_value=SHA), patch.object(r, 'run', side_effect=run), patch.object(r, 'notarize', side_effect=notary), patch.object(r, 'verify_signature'), patch.object(r, 'verify_app'), \
+                    patch.object(r.sparkle, 'artifact', return_value=root / 'Sparkle.framework'), patch.object(r.sparkle, 'embed', side_effect=embed), \
+                    patch.object(r, 'verify_dmg', return_value='a' * 64) as verify:
                 verify.side_effect = r.ReleaseError('untrusted final image')
                 with self.assertRaises(r.ReleaseError):
                     r.build_release(args)
@@ -146,6 +150,12 @@ class ReleaseTests(unittest.TestCase):
                 self.assertLess(app_notary, staple_app)
                 self.assertLess(staple_app, create)
                 self.assertLess(create, dmg_notary)
+                # Sparkle is signed with the Developer ID and a secure timestamp before the app is notarized.
+                self.assertIn(('embed-sparkle', SHA, True), events)
+                self.assertLess(events.index(('embed-sparkle', SHA, True)), app_notary)
+                info = plistlib.loads((out / 'image/DogBar.app/Contents/Info.plist').read_bytes())
+                self.assertEqual(info['DogBarUpdateChannel'], 'stable')
+                self.assertNotIn('com.apple.security.cs.disable-library-validation', r.ENTITLEMENTS)
                 self.assertTrue((out / 'release.json').exists())
                 self.assertFalse(any('--deep' in e for e in events if e[0] == 'codesign'))
                 self.assertTrue(all('Applications/DogBar.app' not in ' '.join(e) for e in events))
