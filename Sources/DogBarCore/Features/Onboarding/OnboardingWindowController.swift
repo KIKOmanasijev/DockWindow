@@ -42,9 +42,9 @@ import SwiftUI
     }
     required init?(coder: NSCoder) { nil }
 
-    /// Dock replacement and the switcher wait until the first tour or a recovery flow is finished
-    /// or closed, so nothing changes under the reader. A replayed tour leaves running features alone.
-    public var holdsFeatures: Bool { isShowing && (model.mode == .firstRun || model.mode == .recovery) }
+    /// Every wizard, including a replay, suspends replacement surfaces. Activating the wizard
+    /// can reveal Apple's Dock, so leaving our Dock running would show both at once.
+    public var holdsFeatures: Bool { isShowing }
 
     /// Shows the wizard in `mode`. A first-run tour already on screen is never replaced by a shorter flow.
     public func present(_ mode: OnboardingMode) {

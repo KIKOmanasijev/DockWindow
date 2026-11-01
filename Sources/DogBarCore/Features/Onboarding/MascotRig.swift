@@ -46,6 +46,8 @@ enum MascotFrame: String {
     static let peekEdge: CGFloat = 648 / canvas
     /// How far the paw tips overlap the edge's rim.
     static let pawOverlap: CGFloat = 14 / canvas
+    /// Clear the glossy rim instead of painting paw pixels over its highlight.
+    static let rimClearance: CGFloat = 4
     static var layers: [String] {
         ["wave-body", "think-body", "arm", "welcome-tail", "guide-body", "guide-tail", "celebrate-body", "celebrate-tail", "celebrate-paws"]
     }

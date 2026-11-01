@@ -171,6 +171,9 @@ import Combine
             previews.dismiss()
             lastDockMode = settings.useDogBarDock
         }
+        // Hide our surfaces synchronously before activation can reveal Apple's Dock.
+        // Native preference restoration then completes through reconcileDock below.
+        if onboardingHoldsFeatures { previews.dismiss(); switcher.dismiss(); dock.stop() }
         // The wizard needs a regular app so it can be key and appear in Cmd+Tab; the preference applies again once it closes.
         let onboardingShowing = launchOnboardingDecided && onboarding.isShowing
         let desiredPolicy: NSApplication.ActivationPolicy = settings.showDogBarInDock || onboardingShowing ? .regular : .accessory

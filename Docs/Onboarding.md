@@ -18,7 +18,7 @@ Welcome and each feature screen can be skipped straight to Setup. Setup is one s
 - Completion is `DogBarOnboarding.completedVersion`. These keys are outside `AppSettings`, so Reset All Settings does not bring the tour back.
 - Existing installs: on the first launch of this version, any earlier DogBar defaults (`DogBar.*`, `DogBarTelemetry.*`, `nativeDock.*`, pins) mark the tour as done. Those users see recovery or the usage-data question only if needed.
 - Closing the first tour early marks it done when both permissions are on. Otherwise the next launch resumes it.
-- While a `firstRun` or `recovery` wizard is open, the replacement Dock, previews and switcher stay off (`OnboardingWindowController.holdsFeatures`). They start after **Start DogBar** or closing the window. A replayed tour leaves running features alone.
+- While any onboarding wizard is open, the replacement Dock, previews and switcher stay off (`OnboardingWindowController.holdsFeatures`). They start after **Start DogBar** or closing the window. This includes a replayed tour: DogBar hides its surfaces before activating the wizard and restores Apple’s Dock, then resumes the configured Dock mode after the window closes.
 - Sparkle's "check automatically?" question is deferred until onboarding is complete (`updaterShouldPromptForPermissionToCheckForUpdates:`). It is separate from the usage-data choice.
 
 ### Install location

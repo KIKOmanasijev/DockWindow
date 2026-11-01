@@ -248,6 +248,7 @@ struct OnboardingView: View {
             }
             .padding(.top, edge)
             MascotRigView(dog: heroDog, size: heroDogSize, peek: true)
+                .offset(y: -MascotRig.rimClearance)
                 .frame(height: edge + 70, alignment: .top)
         }
         .frame(height: edge + 70, alignment: .top)

@@ -344,7 +344,7 @@ struct DesktopsScene: View {
             }
             // The dog peeks over the card's top edge, paws resting on it, above the active desktop.
             MascotRigView(dog: dog, size: dogSize, peek: true)
-                .offset(x: deskCenters[0] - dogSize / 2, y: -dogSize * MascotRig.peekEdge)
+                .offset(x: deskCenters[0] - dogSize / 2, y: -dogSize * MascotRig.peekEdge - MascotRig.rimClearance)
             }
             .padding(.top, 66)
             ReplayButton(reduceMotion: reduceMotion) { replay += 1 }
