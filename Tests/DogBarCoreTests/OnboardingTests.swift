@@ -2,20 +2,11 @@ import XCTest
 @testable import DogBarCore
 
 final class OnboardingTests: XCTestCase {
-    private let ready = OnboardingPlan.Inputs(installed: true, accessibility: true, screenRecording: true, privacyAsked: true)
-
-    func testFirstRunShowsFeaturesBeforePermissionsAndInstallOnlyWhenNeeded() {
-        XCTAssertEqual(OnboardingPlan.steps(for: .firstRun, ready),
-                       [.welcome, .desktops, .previews, .switcher, .accessibility, .screenRecording, .privacy, .ready])
-        var dmg = ready; dmg.installed = false
-        let steps = OnboardingPlan.steps(for: .firstRun, dmg)
-        XCTAssertEqual(steps.firstIndex(of: .install), steps.firstIndex(of: .accessibility).map { $0 - 1 })
-    }
-
-    func testRecoveryShowsOnlyWhatIsMissing() {
-        var inputs = ready; inputs.screenRecording = false
-        XCTAssertEqual(OnboardingPlan.steps(for: .recovery, inputs), [.screenRecording, .ready])
-        XCTAssertEqual(OnboardingPlan.steps(for: .privacyOnly, inputs), [.privacy])
+    func testToursEndInOneSetupStepAndRecoveryGoesStraightThere() {
+        XCTAssertEqual(OnboardingPlan.steps(for: .firstRun), [.welcome, .desktops, .previews, .switcher, .setup])
+        XCTAssertEqual(OnboardingPlan.steps(for: .tour), OnboardingPlan.steps(for: .firstRun))
+        XCTAssertEqual(OnboardingPlan.steps(for: .recovery), [.setup])
+        XCTAssertEqual(OnboardingPlan.steps(for: .privacyOnly), [.setup])
     }
 
     func testLaunchModeNeverRepeatsTheTourForFinishedSetups() {
@@ -26,11 +17,12 @@ final class OnboardingTests: XCTestCase {
         XCTAssertNil(OnboardingPlan.launchMode(tourCompleted: true, permissionsGranted: true, installed: true, privacyAsked: true))
     }
 
-    func testResumeFallsForwardWhenTheSavedStepIsGone() {
-        let steps: [OnboardingStep] = [.welcome, .desktops, .previews, .switcher, .accessibility, .screenRecording, .privacy, .ready]
-        XCTAssertEqual(OnboardingPlan.resumeIndex(for: .screenRecording, in: steps), 5)
-        XCTAssertEqual(OnboardingPlan.resumeIndex(for: .install, in: steps), 4)
+    func testResumeUsesTheSavedStepAndMapsOlderSetupScreens() {
+        let steps = OnboardingPlan.steps(for: .firstRun)
+        XCTAssertEqual(OnboardingPlan.resumeIndex(for: .previews, in: steps), 2)
         XCTAssertEqual(OnboardingPlan.resumeIndex(for: nil, in: steps), 0)
+        XCTAssertEqual(OnboardingStep(persisted: "screenRecording"), .setup)
+        XCTAssertNil(OnboardingStep(persisted: "unknown"))
     }
 
     @MainActor func testExistingInstallIsAdoptedAndFreshInstallIsNot() throws {
@@ -50,12 +42,12 @@ final class OnboardingTests: XCTestCase {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
         defer { defaults.removePersistentDomain(forName: suite) }
         let store = OnboardingStore(defaults: defaults, domainName: suite)
-        store.resumeStep = .screenRecording
+        store.resumeStep = .setup
         // A relaunch with its own state is never treated as an existing install, even with other keys present.
         defaults.set(true, forKey: "DogBar.telemetryAsked")
         let relaunched = OnboardingStore(defaults: defaults, domainName: suite)
         XCTAssertFalse(relaunched.isCompleted)
-        XCTAssertEqual(relaunched.resumeStep, .screenRecording)
+        XCTAssertEqual(relaunched.resumeStep, .setup)
         relaunched.markCompleted()
         XCTAssertTrue(relaunched.isCompleted)
         XCTAssertNil(relaunched.resumeStep)

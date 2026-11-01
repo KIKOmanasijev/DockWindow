@@ -84,17 +84,20 @@ extension Color {
 
 /// The single dominant action on each step: the landing page's yellow button.
 struct OnboardingPrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View { StyledButton(configuration: configuration) }
+    /// A smaller size for actions inside a card.
+    var compact = false
+    func makeBody(configuration: Configuration) -> some View { StyledButton(configuration: configuration, compact: compact) }
     private struct StyledButton: View {
         let configuration: ButtonStyleConfiguration
+        let compact: Bool
         @Environment(\.isEnabled) private var isEnabled
         @State private var hovering = false
         var body: some View {
             configuration.label
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: compact ? 13.5 : 15, weight: .semibold))
                 .foregroundStyle(OnboardingPalette.ink)
-                .padding(.horizontal, 22)
-                .frame(minWidth: 150, minHeight: 44)
+                .padding(.horizontal, compact ? 16 : 22)
+                .frame(minWidth: compact ? 0 : 150, minHeight: compact ? 34 : 44)
                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous).fill(fill))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous).strokeBorder(Color.black.opacity(0.08)))
                 .shadow(color: OnboardingPalette.ink.opacity(hovering && isEnabled ? 0.22 : 0.12), radius: hovering ? 10 : 6, y: 3)
@@ -137,6 +140,30 @@ struct OnboardingQuietButtonStyle: ButtonStyle {
     }
 }
 
+/// A bordered quiet button for secondary actions inside a card.
+struct OnboardingBorderedButtonStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View { StyledButton(configuration: configuration) }
+    private struct StyledButton: View {
+        let configuration: ButtonStyleConfiguration
+        @Environment(\.isEnabled) private var isEnabled
+        @State private var hovering = false
+        var body: some View {
+            configuration.label
+                .font(.system(size: 13.5, weight: .semibold))
+                .foregroundStyle(OnboardingPalette.text)
+                .padding(.horizontal, 16)
+                .frame(minHeight: 34)
+                .background(RoundedRectangle(cornerRadius: 10, style: .continuous)
+                    .fill(OnboardingPalette.accent.opacity(configuration.isPressed ? 0.16 : hovering && isEnabled ? 0.09 : 0.04)))
+                .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(OnboardingPalette.line))
+                .opacity(isEnabled ? 1 : 0.45)
+                .contentShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .onHover { hovering = $0 }
+                .animation(.easeOut(duration: 0.12), value: hovering)
+        }
+    }
+}
+
 /// Equal-weight choice buttons, used where neither answer should look preferred.
 struct OnboardingChoiceButtonStyle: ButtonStyle {
     var selected: Bool
@@ -147,9 +174,9 @@ struct OnboardingChoiceButtonStyle: ButtonStyle {
         @State private var hovering = false
         var body: some View {
             configuration.label
-                .font(.system(size: 15, weight: .semibold))
+                .font(.system(size: 13.5, weight: .semibold))
                 .foregroundStyle(OnboardingPalette.text)
-                .frame(maxWidth: .infinity, minHeight: 46)
+                .frame(maxWidth: .infinity, minHeight: 36)
                 .background(RoundedRectangle(cornerRadius: 12, style: .continuous)
                     .fill(OnboardingPalette.surface.opacity(configuration.isPressed ? 0.7 : 1)))
                 .overlay(RoundedRectangle(cornerRadius: 12, style: .continuous)

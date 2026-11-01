@@ -50,9 +50,7 @@ import SwiftUI
     public func present(_ mode: OnboardingMode) {
         if isShowing, model.mode == .firstRun, mode != .tour { bringForward(); return }
         if !(isShowing && model.mode == mode) {
-            let inputs = OnboardingPlan.Inputs(installed: permissions.installLocation.isInstalled, accessibility: permissions.accessibility,
-                                               screenRecording: permissions.screenRecording, privacyAsked: settings.telemetryAsked)
-            let steps = OnboardingPlan.steps(for: mode, inputs)
+            let steps = OnboardingPlan.steps(for: mode)
             let start = mode == .firstRun ? OnboardingPlan.resumeIndex(for: store.resumeStep, in: steps) : 0
             model.configure(mode: mode, steps: steps, start: start)
         }

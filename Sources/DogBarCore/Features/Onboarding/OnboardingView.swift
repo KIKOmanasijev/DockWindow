@@ -1,13 +1,14 @@
 import AppKit
 import SwiftUI
 
-/// The onboarding wizard: one idea per step, one dominant action, a mascot that reacts to what
-/// the user does. Steps never advance by themselves.
+/// The onboarding wizard: a welcome, three feature scenes, then one setup screen. One dominant
+/// action per screen. Steps never advance by themselves.
 struct OnboardingView: View {
     @ObservedObject var model: OnboardingModel
     @ObservedObject var permissions: PermissionsService
     @ObservedObject var settings: AppSettings
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
+    @Environment(\.colorScheme) private var colorScheme
     @AccessibilityFocusState private var titleFocused: Bool
     @State private var hopToken = 0
     @State private var installedCopy: URL?
@@ -16,7 +17,7 @@ struct OnboardingView: View {
     static let size = CGSize(width: 860, height: 600)
     private var reduceMotion: Bool { systemReduceMotion || settings.reduceAnimations }
     private var step: OnboardingStep { model.step }
-    private var onHero: Bool { step == .welcome || step == .ready }
+    private var isFeature: Bool { [.desktops, .previews, .switcher].contains(step) }
 
     var body: some View {
         ZStack {
@@ -27,28 +28,28 @@ struct OnboardingView: View {
                     content
                         .id(step)
                         .transition(reduceMotion ? .opacity : .asymmetric(
-                            insertion: .opacity.combined(with: .offset(x: model.forward ? 36 : -36)),
+                            insertion: .opacity.combined(with: .offset(x: model.forward ? 40 : -40)),
                             removal: .opacity))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .animation(reduceMotion ? .easeInOut(duration: 0.18) : .spring(response: 0.42, dampingFraction: 0.9), value: step)
-                footer.frame(height: 80)
+                .animation(reduceMotion ? .easeInOut(duration: 0.18) : .spring(response: 0.45, dampingFraction: 0.9), value: step)
+                if step != .welcome { footer.frame(height: 76) }
             }
         }
         .frame(width: Self.size.width, height: Self.size.height)
         .onChange(of: step) { _, _ in
-            // Move VoiceOver to the new step's title; keyboard focus stays on the footer buttons.
+            // VoiceOver moves to the new step's title. Keyboard focus stays where it was.
             Task { @MainActor in try? await Task.sleep(for: .milliseconds(250)); titleFocused = true }
         }
-        .onChange(of: permissions.accessibility) { old, new in reactToGrant(old, new, step: .accessibility, name: "Accessibility") }
-        .onChange(of: permissions.screenRecording) { old, new in reactToGrant(old, new, step: .screenRecording, name: "Screen Recording") }
+        .onChange(of: permissions.accessibility) { old, new in reactToGrant(old, new, name: "Accessibility") }
+        .onChange(of: permissions.screenRecording) { old, new in reactToGrant(old, new, name: "Screen Recording") }
         .alert("DogBar could not do that", isPresented: Binding(get: { actionError != nil }, set: { if !$0 { actionError = nil } })) {
             Button("OK") { actionError = nil }
         } message: { Text(actionError ?? "") }
     }
 
-    private func reactToGrant(_ old: Bool, _ new: Bool, step target: OnboardingStep, name: String) {
-        guard !old, new, step == target else { return }
+    private func reactToGrant(_ old: Bool, _ new: Bool, name: String) {
+        guard !old, new, step == .setup else { return }
         hopToken += 1
         AccessibilityNotification.Announcement("\(name) is on for DogBar").post()
     }
@@ -56,27 +57,34 @@ struct OnboardingView: View {
     // MARK: Frame
 
     @ViewBuilder private var background: some View {
-        if onHero {
+        if step == .welcome {
             ZStack {
-                OnboardingPalette.hero
-                RadialGradient(colors: [Color(hex: 0x8A4DFF, opacity: 0.45), .clear], center: .init(x: 0.22, y: 0.7), startRadius: 10, endRadius: 420)
+                LinearGradient(colors: [Color(hex: 0x7B3FF2), Color(hex: 0x5A1FD0), Color(hex: 0x3A0F99)], startPoint: .top, endPoint: .bottom)
+                RadialGradient(colors: [Color.white.opacity(0.22), .clear], center: .init(x: 0.5, y: 0.08), startRadius: 0, endRadius: 420)
+                RadialGradient(colors: [Color(hex: 0xFF8FD1, opacity: 0.16), .clear], center: .init(x: 0.95, y: 0.95), startRadius: 0, endRadius: 380)
             }
             .ignoresSafeArea()
         } else {
-            OnboardingPalette.paper.ignoresSafeArea()
+            ZStack {
+                OnboardingPalette.paper
+                RadialGradient(colors: [Color(hex: colorScheme == .dark ? 0x3A1F7A : 0xE6DAFF, opacity: colorScheme == .dark ? 0.35 : 0.8), .clear],
+                               center: .init(x: 0.85, y: 0.1), startRadius: 0, endRadius: 520)
+                RadialGradient(colors: [Color(hex: colorScheme == .dark ? 0x4A1636 : 0xFFE6EE, opacity: colorScheme == .dark ? 0.25 : 0.7), .clear],
+                               center: .init(x: 0.1, y: 1), startRadius: 0, endRadius: 420)
+            }
+            .ignoresSafeArea()
         }
     }
 
     private var header: some View {
-        HStack {
-            Spacer()
+        ZStack {
             if model.steps.count > 1 {
                 HStack(spacing: 6) {
                     ForEach(model.steps.indices, id: \.self) { index in
                         Capsule()
-                            .fill(index == model.index ? (onHero ? OnboardingPalette.yellow : OnboardingPalette.purple)
-                                  : index < model.index ? (onHero ? Color.white.opacity(0.7) : OnboardingPalette.accent.opacity(0.45))
-                                  : (onHero ? Color.white.opacity(0.25) : OnboardingPalette.line))
+                            .fill(index == model.index ? (step == .welcome ? OnboardingPalette.yellow : OnboardingPalette.purple)
+                                  : index < model.index ? OnboardingPalette.accent.opacity(0.45)
+                                  : (step == .welcome ? Color.white.opacity(0.3) : OnboardingPalette.line))
                             .frame(width: index == model.index ? 22 : 7, height: 7)
                     }
                 }
@@ -84,102 +92,41 @@ struct OnboardingView: View {
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel("Step \(model.index + 1) of \(model.steps.count)")
             }
-            Spacer()
         }
+        .frame(maxWidth: .infinity)
         .padding(.top, 8)
     }
 
     private var footer: some View {
         HStack(spacing: 10) {
-            if model.isFirst {
-                if step == .welcome, model.mode == .firstRun || model.mode == .tour, model.setupIndex != nil {
-                    Button("Skip to Setup") { model.skipToSetup() }
-                        .buttonStyle(OnboardingQuietButtonStyle(tint: onHero ? .white : OnboardingPalette.accent))
-                        .help("Skip the feature tour and go straight to setup")
-                }
-            } else {
+            if !model.isFirst {
                 Button { model.back() } label: { Label("Back", systemImage: "chevron.left") }
-                    .buttonStyle(OnboardingQuietButtonStyle(tint: onHero ? .white : OnboardingPalette.accent))
+                    .buttonStyle(OnboardingQuietButtonStyle())
                     .keyboardShortcut("[", modifiers: .command)
             }
             Spacer()
-            if let secondary {
-                Button(secondary.title, action: secondary.action)
-                    .buttonStyle(OnboardingQuietButtonStyle(tint: onHero ? .white : OnboardingPalette.accent))
-            }
-            if let primary {
-                Button(action: primary.action) {
-                    HStack(spacing: 8) {
-                        if primary.busy { ProgressView().controlSize(.small).tint(OnboardingPalette.ink) }
-                        Text(primary.title)
-                    }
+            if isFeature {
+                Button("Skip") { model.skipToSetup() }
+                    .buttonStyle(OnboardingQuietButtonStyle(tint: OnboardingPalette.muted))
+                    .help("Skip the tour and go to setup")
+                Button("Continue") { model.next() }
+                    .buttonStyle(OnboardingPrimaryButtonStyle())
+                    .keyboardShortcut(.defaultAction)
+            } else if step == .setup {
+                if permissions.isGranted || model.mode == .privacyOnly {
+                    Button(model.mode == .firstRun ? "Start DogBar" : "Done") { model.finish() }
+                        .buttonStyle(OnboardingPrimaryButtonStyle())
+                        .keyboardShortcut(.defaultAction)
+                } else {
+                    // Never a trap: setup can be finished later from the paw menu.
+                    Button("Finish Later") { model.finish() }
+                        .buttonStyle(OnboardingQuietButtonStyle())
+                        .help("DogBar starts once both permissions are on. Finish from the paw menu → Finish Setup.")
                 }
-                .buttonStyle(OnboardingPrimaryButtonStyle())
-                .keyboardShortcut(.defaultAction)
-                .disabled(primary.busy || !primary.enabled)
             }
         }
         .padding(.horizontal, 32)
-        .padding(.bottom, 12)
-    }
-
-    // MARK: Actions per step
-
-    private struct Action {
-        var title: String
-        var enabled = true
-        var busy = false
-        var action: () -> Void
-    }
-
-    private var primary: Action? {
-        switch step {
-        case .welcome: return Action(title: model.mode == .tour ? "Start the Tour" : "Show Me Around") { model.next() }
-        case .desktops, .previews, .switcher: return Action(title: "Continue") { model.next() }
-        case .install:
-            if permissions.installLocation.isInstalled { return Action(title: "Continue") { model.next() } }
-            if let installedCopy { return Action(title: "Open DogBar from Applications") { openInstalled(installedCopy) } }
-            return Action(title: "Show DogBar in Finder") { NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL]) }
-        case .accessibility: return permissionAction(permissions.accessibilityAccess, request: permissions.openAccessibility)
-        case .screenRecording: return permissionAction(permissions.screenRecordingAccess, request: permissions.openScreenRecording)
-        case .privacy:
-            return settings.telemetryAsked ? Action(title: model.isLast ? "Done" : "Continue") { model.next() } : nil
-        case .ready: return Action(title: permissions.isGranted ? "Start DogBar" : "Done") { model.finish() }
-        }
-    }
-
-    private var secondary: Action? {
-        switch step {
-        case .install:
-            if permissions.installLocation.isInstalled { return nil }
-            return installedCopy == nil
-                ? Action(title: "Open Applications Folder") { NSWorkspace.shared.open(URL(fileURLWithPath: "/Applications")) }
-                : Action(title: "Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([installedCopy!]) }
-        case .accessibility where !permissions.accessibility && permissions.installLocation.isInstalled,
-             .screenRecording where !permissions.screenRecording && permissions.installLocation.isInstalled:
-            // Never a trap: every permission can be left for later.
-            return Action(title: "Not Now") { model.next() }
-        default: return nil
-        }
-    }
-
-    private func permissionAction(_ access: PermissionAccess, request: @escaping () -> Void) -> Action {
-        if !permissions.installLocation.isInstalled {
-            // Grants made from the disk image belong to a copy that is about to disappear.
-            if model.steps.contains(.install) { return Action(title: "Move DogBar First") { model.go(to: .install) } }
-            return Action(title: "Not Now") { model.next() }
-        }
-        switch access {
-        case .granted: return Action(title: "Continue") { model.next() }
-        case .checking: return Action(title: "Checking…", busy: true) {}
-        case .requesting: return Action(title: "Asking macOS…", busy: true) {}
-        case .notRequested: return Action(title: "Allow Access…", action: request)
-        case .waitingForUser: return Action(title: "Open System Settings", action: request)
-        }
-    }
-
-    private func openInstalled(_ url: URL) {
-        do { try InstalledCopy.openAndQuit(url) } catch { actionError = error.localizedDescription }
+        .padding(.bottom, 10)
     }
 
     // MARK: Steps
@@ -188,124 +135,119 @@ struct OnboardingView: View {
         switch step {
         case .welcome: welcome
         case .desktops:
-            feature(kicker: "A Dock per desktop", title: "Each desktop gets a Dock with just its apps.",
-                    text: "Keep work on one desktop and personal stuff on another. Swipe between them and the Dock changes too.",
-                    aside: "DogBar's Dock is our own rebuild of the Mac Dock. While it's on, it stands in for Apple's Dock. Pause DogBar or Restore Native Dock in the paw menu brings Apple's Dock back.") {
+            feature(number: 1, kicker: "A Dock per desktop", title: "Each desktop gets a Dock with just its apps.",
+                    text: "Keep work on one desktop and personal stuff on another. Swipe between them and the Dock follows.",
+                    aside: "DogBar's Dock is its own rebuild of the Mac Dock and stands in for Apple's while it's on. The paw menu's Pause DogBar or Restore Native Dock brings Apple's back.") {
                 DesktopsScene(reduceMotion: reduceMotion)
             }
         case .previews:
-            feature(kicker: "Previews from the Dock", title: "Hover an app to see every window.",
-                    text: "Click the window you want and only that one comes forward. Close or minimize it right from the preview.",
-                    aside: nil) {
+            feature(number: 2, kicker: "Previews from the Dock", title: "Hover an app to see every window.",
+                    text: "Pick the window you want and only that one comes forward. Close or minimize it right from the preview.", aside: nil) {
                 PreviewsScene(reduceMotion: reduceMotion)
             }
         case .switcher:
-            feature(kicker: "Window switching", title: "Switch to any window, not just any app.",
-                    text: "Hold \(shortcutText.modifierWords) and tap \(shortcutText.key). Every window gets its own tile, so two Safari windows are two choices.",
-                    aside: "Change the shortcut, or turn the switcher off, in Settings → Switcher.") {
-                SwitcherScene(reduceMotion: reduceMotion, shortcut: RecorderButton.label(settings.switcherShortcut))
+            feature(number: 3, kicker: "Window switching", title: "Switch to any window, not just any app.",
+                    text: "Hold \(shortcutWords.modifiers) and tap \(shortcutWords.key). Every window gets its own tile, so two Safari windows are two choices.",
+                    aside: "Change the shortcut in Settings → Switcher.") {
+                SwitcherScene(reduceMotion: reduceMotion, shortcut: settings.switcherShortcut)
             }
-        case .install: install
-        case .accessibility:
-            permissionStep(kicker: model.mode == .recovery ? "Permission needed" : "Permission 1 of 2", title: "Allow Accessibility",
-                           text: "This lets DogBar work with single windows: bring one forward, close or minimize it, and notice your switcher shortcut.",
-                           access: permissions.accessibilityAccess, granted: permissions.accessibility,
-                           pane: "Accessibility",
-                           uses: ["Bring the exact window you chose forward", "Close, minimize and hide windows from previews", "Open the switcher with \(RecorderButton.label(settings.switcherShortcut))"],
-                           never: "It only reacts to its own shortcut. It never records or sends what you type.")
-        case .screenRecording:
-            permissionStep(kicker: model.mode == .recovery ? "Permission needed" : "Permission 2 of 2", title: "Allow Screen Recording",
-                           text: "This lets DogBar show what's inside each window, so previews and switcher tiles are real thumbnails, not just icons.",
-                           access: permissions.screenRecordingAccess, granted: permissions.screenRecording,
-                           pane: "Screen & System Audio Recording",
-                           uses: ["Show live window thumbnails in Dock previews", "Show a picture of each window in the switcher"],
-                           never: "No video or audio is recorded. Thumbnails stay in memory on your Mac and are never saved or sent.")
-        case .privacy: privacy
-        case .ready: ready
+        case .setup: setup
         }
     }
 
     private var welcome: some View {
-        HStack(spacing: 36) {
-            MascotView(pose: .welcome, size: 300, reactionToken: 1, reaction: .greet, reduceMotion: reduceMotion)
-            VStack(alignment: .leading, spacing: 18) {
-                HStack(spacing: 8) {
-                    Image(nsImage: NSApp.applicationIconImage ?? NSImage()).resizable().frame(width: 28, height: 28)
-                    Text("DogBar").font(.system(size: 17, weight: .bold)).foregroundStyle(.white)
-                }
-                .accessibilityElement(children: .combine)
-                Text(model.mode == .tour ? "Here's what DogBar does." : "Hi! Let's set up your new Dock.")
-                    .font(.system(size: 36, weight: .bold)).foregroundStyle(.white)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .accessibilityAddTraits(.isHeader).accessibilityFocused($titleFocused)
-                Text("A separate Dock for every desktop, previews of every window, and a switcher that picks windows, not just apps.")
-                    .font(.system(size: 16)).foregroundStyle(.white.opacity(0.82)).lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(model.mode == .tour ? "Takes about a minute. Nothing here changes your settings." : "Three quick looks, then two permissions. About a minute.")
-                    .font(.system(size: 13, weight: .medium)).foregroundStyle(.white.opacity(0.62))
+        VStack(spacing: 0) {
+            ZStack {
+                Circle().fill(RadialGradient(colors: [Color.white.opacity(0.3), Color.white.opacity(0)], center: .center, startRadius: 10, endRadius: 150))
+                    .frame(width: 300, height: 300)
+                MascotView(pose: .welcome, size: 220, reactionToken: 1, reaction: .greet, reduceMotion: reduceMotion)
             }
-            .frame(width: 380, alignment: .leading)
+            .frame(height: 230)
+            .padding(.bottom, 10)
+            Text(model.mode == .tour ? "Here's DogBar." : "Meet DogBar.")
+                .font(.system(size: 46, weight: .bold)).tracking(-1.2)
+                .foregroundStyle(.white)
+                .accessibilityAddTraits(.isHeader).accessibilityFocused($titleFocused)
+            Text("A Dock for every desktop, previews of every window, and a switcher that picks windows, not just apps.")
+                .font(.system(size: 16.5)).foregroundStyle(.white.opacity(0.82)).lineSpacing(3)
+                .multilineTextAlignment(.center).frame(width: 500)
+                .fixedSize(horizontal: false, vertical: true)
+                .padding(.top, 12)
+            HStack(spacing: 26) {
+                Button { model.next() } label: {
+                    HStack(spacing: 8) { Text(model.mode == .tour ? "Start the Tour" : "Show Me Around"); Image(systemName: "arrow.right") }
+                }
+                .buttonStyle(OnboardingPrimaryButtonStyle())
+                .shadow(color: OnboardingPalette.yellow.opacity(0.35), radius: 18, y: 8)
+                .keyboardShortcut(.defaultAction)
+                Button { model.skipToSetup() } label: { Text("Skip to setup").underline() }
+                    .buttonStyle(OnboardingQuietButtonStyle(tint: .white))
+            }
+            .padding(.top, 30)
+            Text("Three quick looks, then two permissions.")
+                .font(.system(size: 12.5, weight: .medium)).foregroundStyle(.white.opacity(0.55))
+                .padding(.top, 18)
         }
-        .padding(.horizontal, 40)
+        .padding(.bottom, 40)
     }
 
-    private func feature<Scene: View>(kicker: String, title: String, text: String, aside: String?, @ViewBuilder scene: () -> Scene) -> some View {
-        HStack(alignment: .top, spacing: 30) {
+    private func feature<Scene: View>(number: Int, kicker: String, title: String, text: String, aside: String?, @ViewBuilder scene: () -> Scene) -> some View {
+        HStack(alignment: .center, spacing: 34) {
             VStack(alignment: .leading, spacing: 0) {
-                copy(kicker: kicker, title: title, text: text)
+                Text("\(number) of 3 · \(kicker)".uppercased())
+                    .font(.system(size: 11, weight: .bold)).tracking(0.8).foregroundStyle(OnboardingPalette.accent)
+                Text(title).font(.system(size: 28, weight: .bold)).tracking(-0.5).foregroundStyle(OnboardingPalette.text)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 10)
+                    .accessibilityAddTraits(.isHeader).accessibilityFocused($titleFocused)
+                Text(text).font(.system(size: 14.5)).foregroundStyle(OnboardingPalette.muted).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
                 if let aside {
-                    Text(aside).font(.system(size: 12.5, weight: .medium)).foregroundStyle(OnboardingPalette.accent)
-                        .lineSpacing(2).fixedSize(horizontal: false, vertical: true).padding(.top, 14)
+                    Text(aside).font(.system(size: 12, weight: .medium)).foregroundStyle(OnboardingPalette.accent).lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
                 }
-                Spacer(minLength: 0)
                 // The guide pose presents toward the scene on its right.
-                MascotView(pose: .guide, size: 150, reduceMotion: reduceMotion).offset(x: -8, y: 6)
+                MascotView(pose: .guide, size: 112, reduceMotion: reduceMotion).offset(x: -10).padding(.top, 14)
             }
-            .frame(width: 262)
+            .frame(width: 232, alignment: .leading)
             scene()
         }
-        .padding(.horizontal, 36).padding(.top, 4)
+        .padding(.horizontal, 36)
     }
 
-    private func copy(kicker: String, title: String, text: String) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text(kicker.uppercased()).font(.system(size: 11.5, weight: .bold)).tracking(0.8).foregroundStyle(OnboardingPalette.accent)
-            Text(title).font(.system(size: 27, weight: .bold)).foregroundStyle(OnboardingPalette.text)
-                .fixedSize(horizontal: false, vertical: true)
-                .accessibilityAddTraits(.isHeader).accessibilityFocused($titleFocused)
-            Text(text).font(.system(size: 14.5)).foregroundStyle(OnboardingPalette.muted).lineSpacing(3)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-    }
+    // MARK: Setup
 
-    private var install: some View {
-        HStack(alignment: .top, spacing: 30) {
-            VStack(alignment: .leading, spacing: 0) {
-                copy(kicker: "Before permissions", title: permissions.installLocation.isInstalled ? "DogBar is installed." : "Move DogBar to Applications first.",
-                     text: permissions.installLocation.isInstalled
-                        ? "It's running from your Applications folder, so the permissions you give it will stick."
-                        : "DogBar is running from the downloaded disk image. Permissions belong to the copy you keep, so install it first, then grant them there.")
-                Spacer(minLength: 0)
-                MascotView(pose: .permissions, size: 150, reduceMotion: reduceMotion).offset(x: -8, y: 6)
-            }
-            .frame(width: 262)
-            VStack(alignment: .leading, spacing: 14) {
-                installRow(1, "Drag DogBar into Applications", detail: "Your Applications folder or the one in your home folder both work.", done: installedCopy != nil || permissions.installLocation.isInstalled)
-                installRow(2, "Open DogBar from Applications", detail: installedCopy == nil ? "Use the button below once it's copied. This copy quits." : "Found it. The button below opens it and quits this copy.", done: permissions.installLocation.isInstalled)
-                installRow(3, "Eject the DogBar disk", detail: "In Finder's sidebar, or drag it to the Trash. You can delete the download afterwards.", done: false)
-                if permissions.installLocation == .translocated {
-                    Text("macOS is running this copy from a temporary location because it hasn't been moved yet.")
-                        .font(.system(size: 12.5)).foregroundStyle(OnboardingPalette.muted).fixedSize(horizontal: false, vertical: true)
+    private var setup: some View {
+        HStack(alignment: .center, spacing: 22) {
+            MascotView(pose: permissions.isGranted && permissions.installLocation.isInstalled ? .celebrate : .permissions,
+                       size: 190, reactionToken: hopToken, reaction: .hop, reduceMotion: reduceMotion)
+            VStack(alignment: .leading, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(setupTitle).font(.system(size: 28, weight: .bold)).tracking(-0.5).foregroundStyle(OnboardingPalette.text)
+                        .accessibilityAddTraits(.isHeader).accessibilityFocused($titleFocused)
+                    Text(setupSubtitle).font(.system(size: 13.5)).foregroundStyle(OnboardingPalette.muted).lineSpacing(2)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.bottom, 4)
+                if !permissions.installLocation.isInstalled { installBanner }
+                permissionCard(title: "Accessibility", symbol: "accessibility", colors: [0x3B8BFF, 0x1A56DB],
+                               why: "Brings the exact window forward, closes or minimizes it, and hears your switcher shortcut. Never records what you type.",
+                               access: permissions.accessibilityAccess, granted: permissions.accessibility,
+                               isNext: !permissions.accessibility, request: permissions.openAccessibility)
+                permissionCard(title: "Screen Recording", symbol: "macwindow.on.rectangle", colors: [0xB76DFF, 0x6E24E6],
+                               why: "Shows real window thumbnails in previews and the switcher. Images stay in memory, never saved or sent.",
+                               access: permissions.screenRecordingAccess, granted: permissions.screenRecording,
+                               isNext: permissions.accessibility && !permissions.screenRecording, request: permissions.openScreenRecording)
+                privacyRow.padding(.top, 2)
+                if permissions.usesAdHocSigning && !permissions.isGranted {
+                    Text("Development build without a stable signature: rebuilding it can make macOS forget these permissions.")
+                        .font(.system(size: 11.5)).foregroundStyle(OnboardingPalette.muted)
                 }
             }
-            .padding(22)
-            .frame(width: 440, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 18, style: .continuous).fill(OnboardingPalette.surface))
-            .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(OnboardingPalette.line))
+            .frame(width: 540)
         }
-        .padding(.horizontal, 36).padding(.top, 4)
-        .task(id: step) {
-            // Notice the copy appearing in Applications while this step is open. Stops with the step.
+        .padding(.horizontal, 36)
+        .task(id: permissions.installLocation.isInstalled) {
+            // Notice a copy appearing in Applications while setup is open. Stops with the step.
             while !Task.isCancelled && !permissions.installLocation.isInstalled {
                 let found = InstalledCopy.find()
                 if found != installedCopy { withAnimation(reduceMotion ? nil : .default) { installedCopy = found } }
@@ -314,166 +256,159 @@ struct OnboardingView: View {
         }
     }
 
-    private func installRow(_ number: Int, _ title: String, detail: String, done: Bool) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            ZStack {
-                Circle().fill(done ? OnboardingPalette.success : OnboardingPalette.accent.opacity(0.12)).frame(width: 28, height: 28)
-                if done { Image(systemName: "checkmark").font(.system(size: 12, weight: .bold)).foregroundStyle(.white) }
-                else { Text("\(number)").font(.system(size: 13, weight: .bold)).foregroundStyle(OnboardingPalette.accent) }
+    private var setupTitle: String {
+        if !permissions.installLocation.isInstalled { return "First, move DogBar to Applications." }
+        return permissions.isGranted ? "You're all set." : "Two permissions, and you're in."
+    }
+    private var setupSubtitle: String {
+        if !permissions.installLocation.isInstalled { return "Permissions belong to the copy you keep, so grant them from the installed app." }
+        if permissions.isGranted { return "Want Apple's Dock back at any point? Click the paw in the menu bar and choose Pause DogBar or Restore Native Dock." }
+        return "macOS asks only when you click Allow. You can change either one later in System Settings → Privacy & Security."
+    }
+
+    private var installBanner: some View {
+        HStack(spacing: 14) {
+            iconTile(symbol: "externaldrive.fill", colors: [0xFFC93C, 0xF09A1A])
+            VStack(alignment: .leading, spacing: 3) {
+                Text(permissions.installLocation == .translocated ? "Running from a temporary copy" : "Running from the disk image")
+                    .font(.system(size: 14.5, weight: .semibold)).foregroundStyle(OnboardingPalette.text)
+                Text(installedCopy == nil
+                     ? "Drag DogBar into Applications (yours or your home folder's), then open it from there and eject the disk."
+                     : "Found DogBar in Applications. Open it there; this copy quits. Then eject the disk.")
+                    .font(.system(size: 12)).foregroundStyle(OnboardingPalette.muted).fixedSize(horizontal: false, vertical: true)
             }
+            Spacer(minLength: 8)
+            if let installedCopy {
+                Button("Open It") {
+                    do { try InstalledCopy.openAndQuit(installedCopy) } catch { actionError = error.localizedDescription }
+                }
+                .buttonStyle(OnboardingPrimaryButtonStyle(compact: true))
+            } else {
+                Button("Show in Finder") { NSWorkspace.shared.activateFileViewerSelecting([Bundle.main.bundleURL]) }
+                    .buttonStyle(OnboardingPrimaryButtonStyle(compact: true))
+            }
+        }
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(OnboardingPalette.surface))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(OnboardingPalette.caution.opacity(0.45)))
+    }
+
+    private func iconTile(symbol: String, colors: [UInt32]) -> some View {
+        RoundedRectangle(cornerRadius: 11, style: .continuous)
+            .fill(LinearGradient(colors: colors.map { Color(hex: $0) }, startPoint: .top, endPoint: .bottom))
+            .overlay(RoundedRectangle(cornerRadius: 11, style: .continuous).strokeBorder(Color.white.opacity(0.35), lineWidth: 0.75))
+            .overlay(Image(systemName: symbol).font(.system(size: 19, weight: .semibold)).foregroundStyle(.white))
+            .frame(width: 42, height: 42)
+            .shadow(color: Color(hex: colors[1]).opacity(0.35), radius: 6, y: 3)
+            .accessibilityHidden(true)
+    }
+
+    private func permissionCard(title: String, symbol: String, colors: [UInt32], why: String, access: PermissionAccess,
+                                granted: Bool, isNext: Bool, request: @escaping () -> Void) -> some View {
+        let installed = permissions.installLocation.isInstalled
+        return HStack(alignment: .center, spacing: 14) {
+            iconTile(symbol: symbol, colors: colors)
             VStack(alignment: .leading, spacing: 3) {
                 Text(title).font(.system(size: 14.5, weight: .semibold)).foregroundStyle(OnboardingPalette.text)
-                Text(detail).font(.system(size: 12.5)).foregroundStyle(OnboardingPalette.muted).fixedSize(horizontal: false, vertical: true)
+                Text(why).font(.system(size: 12)).foregroundStyle(OnboardingPalette.muted).lineSpacing(1)
+                    .fixedSize(horizontal: false, vertical: true)
+                if installed { cardHint(title: title, access: access) }
             }
+            Spacer(minLength: 8)
+            Group {
+                if !installed {
+                    Text("Install first").font(.system(size: 12.5, weight: .medium)).foregroundStyle(OnboardingPalette.muted)
+                } else {
+                    switch access {
+                    case .granted:
+                        Label("Allowed", systemImage: "checkmark.circle.fill")
+                            .font(.system(size: 13, weight: .semibold)).foregroundStyle(OnboardingPalette.success)
+                            .padding(.horizontal, 12).padding(.vertical, 7)
+                            .background(Capsule().fill(OnboardingPalette.success.opacity(0.12)))
+                    case .checking, .requesting:
+                        HStack(spacing: 6) {
+                            ProgressView().controlSize(.small)
+                            Text(access == .checking ? "Checking…" : "Asking macOS…").font(.system(size: 12.5)).foregroundStyle(OnboardingPalette.muted)
+                        }
+                    case .notRequested, .waitingForUser:
+                        let label = access == .notRequested ? "Allow…" : "Open Settings"
+                        if isNext {
+                            Button(label, action: request).buttonStyle(OnboardingPrimaryButtonStyle(compact: true))
+                        } else {
+                            Button(label, action: request).buttonStyle(OnboardingBorderedButtonStyle())
+                        }
+                    }
+                }
+            }
+            .fixedSize()
         }
-        .accessibilityElement(children: .combine)
-        .accessibilityValue(done ? "Done" : "")
+        .padding(14)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(OnboardingPalette.surface))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous)
+            .strokeBorder(granted ? OnboardingPalette.success.opacity(0.45) : OnboardingPalette.line))
+        .shadow(color: Color(hex: 0x2B0A74).opacity(0.06), radius: 10, y: 4)
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("\(title): \(statusWords(access, installed: installed))")
     }
 
-    private func permissionStep(kicker: String, title: String, text: String, access: PermissionAccess, granted: Bool,
-                                pane: String, uses: [String], never: String) -> some View {
-        HStack(alignment: .top, spacing: 30) {
-            VStack(alignment: .leading, spacing: 0) {
-                copy(kicker: kicker, title: title, text: text)
-                statusRow(access).padding(.top, 16)
-                hint(for: access).padding(.top, 10)
-                Spacer(minLength: 0)
-                MascotView(pose: granted ? .celebrate : .permissions, size: 140, reactionToken: hopToken, reaction: .hop, reduceMotion: reduceMotion)
-                    .offset(x: -8, y: 6)
-            }
-            .frame(width: 290)
-            PermissionPanel(pane: pane, granted: granted, uses: uses, never: never)
-                .padding(.top, 8)
-        }
-        .padding(.horizontal, 36).padding(.top, 4)
-    }
-
-    private func statusRow(_ access: PermissionAccess) -> some View {
-        let (symbol, label, color): (String, String, Color) = {
-            if !permissions.installLocation.isInstalled { return ("shippingbox", "Install DogBar before allowing this", OnboardingPalette.caution) }
-            switch access {
-            case .checking: return ("ellipsis.circle", "Checking…", OnboardingPalette.muted)
-            case .granted: return ("checkmark.circle.fill", "Allowed", OnboardingPalette.success)
-            case .notRequested: return ("circle.dashed", "Not allowed yet", OnboardingPalette.muted)
-            case .requesting: return ("hourglass", "Asking macOS…", OnboardingPalette.muted)
-            case .waitingForUser: return ("arrow.right.circle", "Turn on DogBar in System Settings", OnboardingPalette.caution)
-            }
-        }()
-        return Label { Text(label) } icon: { Image(systemName: symbol) }
-            .font(.system(size: 13.5, weight: .semibold)).foregroundStyle(color)
-            .padding(.horizontal, 12).padding(.vertical, 7)
-            .background(Capsule().fill(color.opacity(0.1)))
-            .accessibilityLabel("Status: \(label)")
-    }
-
-    @ViewBuilder private func hint(for access: PermissionAccess) -> some View {
-        if !permissions.installLocation.isInstalled {
-            hintText("Grants made now would belong to the copy on the disk image. Move DogBar to Applications first.")
-        } else if step == .screenRecording && access != .granted && (permissions.screenRecordingNeedsRelaunchAfterGrant || access == .waitingForUser) {
-            VStack(alignment: .leading, spacing: 6) {
-                hintText("Switched it on already? macOS applies Screen Recording after DogBar restarts. Choose Quit & Reopen when macOS offers it, or use this button. DogBar comes back to this step.")
-                Button("Quit & Reopen DogBar") {
+    @ViewBuilder private func cardHint(title: String, access: PermissionAccess) -> some View {
+        if title == "Screen Recording" && access != .granted && (permissions.screenRecordingNeedsRelaunchAfterGrant || access == .waitingForUser) {
+            HStack(spacing: 4) {
+                Text("Switched it on? macOS applies it after a restart.").font(.system(size: 11.5, weight: .medium)).foregroundStyle(OnboardingPalette.caution)
+                Button("Quit & Reopen") {
                     do { try AppRelauncher.relaunch() } catch { actionError = error.localizedDescription }
                 }
-                .buttonStyle(OnboardingQuietButtonStyle()).padding(.leading, -14)
+                .buttonStyle(.link).font(.system(size: 11.5, weight: .semibold))
             }
-        } else if step == .accessibility && access == .waitingForUser {
-            hintText("Find DogBar in the list and switch it on. This page updates by itself.")
-        } else if access == .granted {
-            hintText("Thanks! You can change this any time in System Settings → Privacy & Security.")
-        }
-        if permissions.usesAdHocSigning && access != .granted {
-            hintText("This development build has no stable signature, so rebuilding it can make macOS forget this permission.")
+            .padding(.top, 2)
+        } else if access == .waitingForUser {
+            Text("Switch DogBar on in the list. This updates by itself.")
+                .font(.system(size: 11.5, weight: .medium)).foregroundStyle(OnboardingPalette.caution).padding(.top, 2)
         }
     }
 
-    private func hintText(_ text: String) -> some View {
-        Text(text).font(.system(size: 12.5)).foregroundStyle(OnboardingPalette.muted).lineSpacing(2)
-            .fixedSize(horizontal: false, vertical: true)
-    }
-
-    private var privacy: some View {
-        HStack(alignment: .center, spacing: 40) {
-            MascotView(pose: .guide, size: 200, reduceMotion: reduceMotion)
-            VStack(alignment: .leading, spacing: 16) {
-                copy(kicker: "Your choice", title: "Share anonymous usage data?",
-                     text: "It helps decide what to improve next. DogBar works exactly the same either way.")
-                VStack(alignment: .leading, spacing: 8) {
-                    Label("A random install ID, app and macOS version, whether setup finished, and which features you use each day.", systemImage: "chart.bar")
-                    Label("Never window titles, app names, files or anything you type.", systemImage: "hand.raised")
-                }
-                .font(.system(size: 13)).foregroundStyle(OnboardingPalette.text)
-                .fixedSize(horizontal: false, vertical: true)
-                HStack(spacing: 12) {
-                    Button("Don't Share") { choose(false) }
-                        .buttonStyle(OnboardingChoiceButtonStyle(selected: settings.telemetryAsked && !settings.telemetryEnabled))
-                    Button("Share") { choose(true) }
-                        .buttonStyle(OnboardingChoiceButtonStyle(selected: settings.telemetryAsked && settings.telemetryEnabled))
-                }
-                .padding(.top, 4)
-                Text("Change it any time in Settings → General → Privacy.")
-                    .font(.system(size: 12)).foregroundStyle(OnboardingPalette.muted)
-            }
-            .frame(width: 430, alignment: .leading)
+    private func statusWords(_ access: PermissionAccess, installed: Bool) -> String {
+        guard installed else { return "install DogBar first" }
+        switch access {
+        case .checking: return "checking"
+        case .granted: return "allowed"
+        case .notRequested: return "not allowed yet"
+        case .requesting: return "asking macOS"
+        case .waitingForUser: return "turn on DogBar in System Settings"
         }
-        .padding(.horizontal, 40)
     }
 
-    private func choose(_ share: Bool) {
-        let firstAnswer = !settings.telemetryAsked
-        settings.chooseUsageData(share: share)
-        // Answering is the step's action. A changed answer on a replay stays put.
-        if firstAnswer { model.next() }
-    }
-
-    private var ready: some View {
-        HStack(spacing: 30) {
-            MascotView(pose: permissions.isGranted ? .celebrate : .permissions, size: 270, reactionToken: permissions.isGranted ? 1 : 0,
-                       reaction: .hop, reduceMotion: reduceMotion)
-            VStack(alignment: .leading, spacing: 16) {
-                Text(permissions.isGranted ? "You're all set!" : "Almost there.")
-                    .font(.system(size: 36, weight: .bold)).foregroundStyle(.white)
-                    .accessibilityAddTraits(.isHeader).accessibilityFocused($titleFocused)
-                Text(permissions.isGranted
-                     ? (model.mode == .firstRun ? "DogBar's Dock, previews and switcher start when you click Start DogBar." : "Everything DogBar needs is on.")
-                     : "DogBar's Dock, previews and switcher start once Accessibility and Screen Recording are on. Pick up where you left off from the paw menu → Finish Setup.")
-                    .font(.system(size: 15)).foregroundStyle(.white.opacity(0.82)).lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true)
-                VStack(alignment: .leading, spacing: 12) {
-                    tip(symbol: "rectangle.on.rectangle", title: "Switch windows", detail: "Hold \(shortcutText.modifierWords) and tap \(shortcutText.key).")
-                    tip(symbol: "dock.rectangle", title: "Preview from the Dock", detail: "Hover an app to see its windows.")
-                    tip(symbol: "pawprint.fill", title: "Want Apple's Dock back?", detail: "Click the paw in the menu bar: Pause DogBar or Restore Native Dock.")
-                }
-                .padding(18)
-                .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(Color.white.opacity(0.1)))
-                .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.white.opacity(0.18)))
-            }
-            .frame(width: 420, alignment: .leading)
-        }
-        .padding(.horizontal, 40)
-    }
-
-    private func tip(symbol: String, title: String, detail: String) -> some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: symbol).font(.system(size: 15, weight: .semibold)).foregroundStyle(OnboardingPalette.yellow).frame(width: 22)
+    private var privacyRow: some View {
+        HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 14, weight: .semibold)).foregroundStyle(.white)
-                Text(detail).font(.system(size: 13)).foregroundStyle(.white.opacity(0.75)).fixedSize(horizontal: false, vertical: true)
+                Text("Share anonymous usage data?").font(.system(size: 13.5, weight: .semibold)).foregroundStyle(OnboardingPalette.text)
+                Text("A random install ID, versions and which features get used. Never titles, app names, files or typing.")
+                    .font(.system(size: 11.5)).foregroundStyle(OnboardingPalette.muted).fixedSize(horizontal: false, vertical: true)
             }
+            Spacer(minLength: 8)
+            HStack(spacing: 8) {
+                Button("Don't Share") { settings.chooseUsageData(share: false) }
+                    .buttonStyle(OnboardingChoiceButtonStyle(selected: settings.telemetryAsked && !settings.telemetryEnabled))
+                Button("Share") { settings.chooseUsageData(share: true) }
+                    .buttonStyle(OnboardingChoiceButtonStyle(selected: settings.telemetryAsked && settings.telemetryEnabled))
+            }
+            .frame(width: 210)
         }
-        .accessibilityElement(children: .combine)
+        .padding(.horizontal, 14).padding(.vertical, 12)
+        .background(RoundedRectangle(cornerRadius: 16, style: .continuous).fill(OnboardingPalette.surface.opacity(0.6)))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(OnboardingPalette.line, style: StrokeStyle(lineWidth: 1, dash: [4, 3])))
+        .accessibilityElement(children: .contain)
     }
 
-    /// "Option" and "Tab" for the default shortcut, in words for the sentence copy.
-    private var shortcutText: (modifierWords: String, key: String) {
+    /// "Option" and "Tab" for the default shortcut, in words for sentences.
+    private var shortcutWords: (modifiers: String, key: String) {
         let shortcut = settings.switcherShortcut
         var words: [String] = []
         if shortcut.modifiers.contains(.control) { words.append("Control") }
         if shortcut.modifiers.contains(.option) { words.append("Option") }
         if shortcut.modifiers.contains(.shift) { words.append("Shift") }
         if shortcut.modifiers.contains(.command) { words.append("Command") }
-        let label = RecorderButton.label(shortcut)
-        let key = String(label.drop { "⌃⌥⇧⌘".contains($0) })
+        let key = String(RecorderButton.label(shortcut).drop { "⌃⌥⇧⌘".contains($0) })
         return (words.isEmpty ? "the shortcut" : words.joined(separator: "+"), key)
     }
 }

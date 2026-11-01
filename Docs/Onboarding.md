@@ -6,13 +6,15 @@ DogBar's first-run wizard: `Sources/DogBarCore/Features/Onboarding`. Art: `Resou
 
 | Mode | When | Steps |
 | --- | --- | --- |
-| `firstRun` | No onboarding state and no earlier DogBar defaults | Welcome → Dock per desktop → Previews → Switcher → (Install) → Accessibility → Screen Recording → Usage data → Ready |
-| `recovery` | Tour done, but a permission is missing, or DogBar runs from a disk image | Only the missing steps, then Ready |
-| `privacyOnly` | Tour done and permissions on, usage-data question never answered | Usage data |
+| `firstRun` | No onboarding state and no earlier DogBar defaults | Welcome → Dock per desktop → Previews → Switcher → Setup |
+| `recovery` | Tour done, but a permission is missing, or DogBar runs from a disk image | Setup |
+| `privacyOnly` | Tour done and permissions on, usage-data question never answered | Setup (everything already allowed, choice still open) |
 | `tour` | Paw menu or app menu → **Welcome Tour…**, Settings → **Show Setup** when nothing is missing, or launch with `--onboarding-tour` | Full tour. Saves nothing on its own |
 
-- The step list is fixed when the window opens. Granting a permission updates that step (status, toggle, mascot) but never advances it.
-- `firstRun` saves its step in `DogBarOnboarding.resumeStep`. Quit & Reopen after Screen Recording returns to the same step. A saved step that no longer applies (Install after moving the app) resumes at the next one.
+Welcome and each feature screen can be skipped straight to Setup. Setup is one screen: the install-location banner when needed, one card per permission, and the usage-data choice (two equal buttons, nothing preselected, no auto-advance). The primary action is the next permission's **Allow…** until both are on, then **Start DogBar**. **Finish Later** always closes.
+
+- Granting a permission updates the Setup cards and the mascot but never advances or closes the wizard.
+- `firstRun` saves its step in `DogBarOnboarding.resumeStep`. Quit & Reopen after Screen Recording returns to the same step. Steps saved by the earlier five-screen setup map to Setup.
 - Completion is `DogBarOnboarding.completedVersion`. These keys are outside `AppSettings`, so Reset All Settings does not bring the tour back.
 - Existing installs: on the first launch of this version, any earlier DogBar defaults (`DogBar.*`, `DogBarTelemetry.*`, `nativeDock.*`, pins) mark the tour as done. Those users see recovery or the usage-data question only if needed.
 - Closing the first tour early marks it done when both permissions are on. Otherwise the next launch resumes it.
@@ -21,7 +23,7 @@ DogBar's first-run wizard: `Sources/DogBarCore/Features/Onboarding`. Art: `Resou
 
 ### Install location
 
-`PermissionsService.installLocation` (see [Permissions.md](Permissions.md)). From a mounted disk image or App Translocation, the Install step comes before permissions, and the permission steps ask to move DogBar first instead of requesting. DogBar never copies itself. When a copy exists in `/Applications` or `~/Applications`, **Open DogBar from Applications** quits this copy through the normal quit path and opens that one.
+`PermissionsService.installLocation` (see [Permissions.md](Permissions.md)). From a mounted disk image or App Translocation, Setup shows the install banner first and the permission cards say "Install first" instead of requesting. DogBar never copies itself. When a copy exists in `/Applications` or `~/Applications`, **Open DogBar from Applications** quits this copy through the normal quit path and opens that one.
 
 ### Permission copy
 
@@ -35,10 +37,11 @@ Presenting orders the window front, makes it key and activates once, then retrie
 
 ## Design
 
-- Landing page system: deep purple hero for Welcome and Ready, paper and ink for the rest, yellow only for the one primary action, system fonts, thin borders. Dynamic colors for Dark Mode.
-- Product scenes are native SwiftUI recreations of the landing page's art: the same app icons and wallpapers (copied into `Resources/Onboarding/Product`), the same window thumbnails and Dock geometry. No web view, remote assets or analytics.
-- Each scene plays one short sequence when its step opens: one desktop swipe; pointer to Safari, preview, choose Hotel booking, window comes forward; three Tab presses moving the switcher selection. Then it stops. **Play Again** replays it. Sequences are `.task`s and cancel when the step leaves.
-- Keyboard: Return is the primary action, Cmd+[ goes back, Tab moves between controls, Cmd+W closes. Every permission step has **Not Now**.
+- Landing page system: the purple "Get DogBar" hero for Welcome, paper with soft lavender light for the rest, yellow only for the one primary action, system fonts, thin borders. Dynamic colors for Dark Mode.
+- Product scenes are native SwiftUI versions of the landing page's feature art: the same macOS wallpapers and app icons (copied into `Resources/Onboarding/Product`), window thumbnails and Dock geometry, framed in the landing page's white feature card. No web view, remote assets or analytics.
+- Glass: each glass surface (Dock, preview panel, switcher) draws a blurred, saturated crop of the exact wallpaper behind it (`WallpaperGlass`, aligned through a named coordinate space), a tint, a top inner light and a specular rim. This renders the same in a window and offscreen, unlike system materials.
+- Each scene plays one short sequence when its step opens, then stops on an explanatory final frame: Desktop 1's Dock fills icon by icon, then focus moves to Desktop 2 and its own Dock fills (click either desktop to switch); the pointer moves to Safari, the preview opens, Hotel booking is chosen and that window comes forward; the modifier and Tab keys press, the switcher opens and the selection walks across window tiles. **Play Again** replays it. Sequences are `.task`s and cancel when the step leaves.
+- Keyboard: Return is the primary action, Cmd+[ goes back, Tab moves between controls, Cmd+W closes. Setup always has **Finish Later**.
 - VoiceOver: the title of each new step gets accessibility focus, scenes have a text description, the mascot is hidden, grants are announced.
 - Reduce Motion (system or DogBar's setting): no scene sequences, final states shown, no mascot movement, cross-fades only.
 
@@ -46,7 +49,7 @@ Presenting orders the window front, makes it key and activates once, then retrie
 
 Four static poses with alpha (`welcome`, `guide`, `permissions`, `celebrate`). See `Resources/Onboarding/Mascot/README.md`. Native choreography only:
 
-- Pose follows state: welcome on Welcome, guide presenting the scene on feature steps, patient on Install and missing permissions, celebrate once a permission is on and on Ready.
+- Pose follows state: welcome on Welcome, guide presenting the scene on feature steps, patient on Setup until DogBar is installed and both permissions are on, then celebrate.
 - Pose changes cross-fade with a small settle from the paws.
 - Two one-shot reactions: a greeting tilt when the wizard opens and a short hop when a permission turns on. Nothing loops.
 

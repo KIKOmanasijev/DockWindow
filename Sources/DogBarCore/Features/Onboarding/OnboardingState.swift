@@ -2,7 +2,16 @@ import Foundation
 
 /// One screen of the onboarding wizard. Raw values are persisted, so never rename a case.
 public enum OnboardingStep: String, CaseIterable, Codable, Sendable {
-    case welcome, desktops, previews, switcher, install, accessibility, screenRecording, privacy, ready
+    case welcome, desktops, previews, switcher
+    /// Install location (when needed), both permissions and the usage-data choice, on one screen.
+    case setup
+
+    /// Accepts steps saved by earlier builds, which had separate setup screens.
+    public init?(persisted raw: String) {
+        if let step = Self(rawValue: raw) { self = step; return }
+        if ["install", "accessibility", "screenRecording", "privacy", "ready"].contains(raw) { self = .setup; return }
+        return nil
+    }
 }
 
 /// Why the wizard is on screen. Only `.firstRun` persists its position and holds features back.
@@ -19,35 +28,11 @@ public enum OnboardingMode: Equatable, Sendable {
 
 /// Pure decisions about which screens to show. No AppKit, no persistence.
 public enum OnboardingPlan {
-    public struct Inputs: Equatable, Sendable {
-        public var installed: Bool
-        public var accessibility: Bool
-        public var screenRecording: Bool
-        public var privacyAsked: Bool
-        public init(installed: Bool, accessibility: Bool, screenRecording: Bool, privacyAsked: Bool) {
-            self.installed = installed; self.accessibility = accessibility
-            self.screenRecording = screenRecording; self.privacyAsked = privacyAsked
-        }
-    }
-
-    /// The step list is computed once per presentation and stays stable while it is on screen,
-    /// so granting a permission never makes a step vanish under the reader.
-    public static func steps(for mode: OnboardingMode, _ inputs: Inputs) -> [OnboardingStep] {
+    /// Tours show the three features, then setup. Recovery and the usage-data question go straight to setup.
+    public static func steps(for mode: OnboardingMode) -> [OnboardingStep] {
         switch mode {
-        case .firstRun, .tour:
-            var steps: [OnboardingStep] = [.welcome, .desktops, .previews, .switcher]
-            if !inputs.installed { steps.append(.install) }
-            steps += [.accessibility, .screenRecording, .privacy, .ready]
-            return steps
-        case .recovery:
-            var steps: [OnboardingStep] = []
-            if !inputs.installed { steps.append(.install) }
-            if !inputs.accessibility { steps.append(.accessibility) }
-            if !inputs.screenRecording { steps.append(.screenRecording) }
-            if !inputs.privacyAsked { steps.append(.privacy) }
-            return steps + [.ready]
-        case .privacyOnly:
-            return [.privacy]
+        case .firstRun, .tour: return [.welcome, .desktops, .previews, .switcher, .setup]
+        case .recovery, .privacyOnly: return [.setup]
         }
     }
 
@@ -59,14 +44,10 @@ public enum OnboardingPlan {
         return nil
     }
 
-    /// The index to resume at. A saved step that is no longer in the list (for example the
-    /// install step after DogBar was moved) resumes at the next step that is.
+    /// The index to resume at, or the start when the saved step is not in this list.
     public static func resumeIndex(for saved: OnboardingStep?, in steps: [OnboardingStep]) -> Int {
-        guard let saved, !steps.isEmpty else { return 0 }
-        if let index = steps.firstIndex(of: saved) { return index }
-        let order = OnboardingStep.allCases
-        guard let rank = order.firstIndex(of: saved) else { return 0 }
-        return steps.firstIndex { (order.firstIndex(of: $0) ?? 0) > rank } ?? steps.count - 1
+        guard let saved else { return 0 }
+        return steps.firstIndex(of: saved) ?? 0
     }
 }
 
@@ -102,7 +83,7 @@ public enum OnboardingPlan {
     }
     public var isCompleted: Bool { defaults.integer(forKey: Keys.completed) >= 1 }
     public var resumeStep: OnboardingStep? {
-        get { defaults.string(forKey: Keys.resumeStep).flatMap(OnboardingStep.init(rawValue:)) }
+        get { defaults.string(forKey: Keys.resumeStep).flatMap(OnboardingStep.init(persisted:)) }
         set { defaults.set(newValue?.rawValue, forKey: Keys.resumeStep) }
     }
     public func markCompleted() {

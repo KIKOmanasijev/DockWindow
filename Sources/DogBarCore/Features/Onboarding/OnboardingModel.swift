@@ -16,11 +16,11 @@ import Combine
     public var step: OnboardingStep { steps[min(index, steps.count - 1)] }
     var isFirst: Bool { index == 0 }
     var isLast: Bool { index == steps.count - 1 }
-    /// The first step that sets something up, for "Skip to Setup" on the welcome screen.
-    var setupIndex: Int? { steps.firstIndex { [.install, .accessibility, .screenRecording, .privacy].contains($0) } }
+    /// The setup step, for Skip on the welcome and feature screens.
+    var setupIndex: Int? { steps.firstIndex(of: .setup) }
 
     func configure(mode: OnboardingMode, steps: [OnboardingStep], start: Int) {
-        self.mode = mode; self.steps = steps.isEmpty ? [.ready] : steps
+        self.mode = mode; self.steps = steps.isEmpty ? [.setup] : steps
         forward = true
         index = min(max(0, start), self.steps.count - 1)
         persist()
