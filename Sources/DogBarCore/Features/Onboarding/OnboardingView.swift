@@ -180,14 +180,14 @@ struct OnboardingView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 12)
             HStack(spacing: 26) {
+                Button { model.skipToSetup() } label: { Text("Skip to setup").underline() }
+                    .buttonStyle(OnboardingQuietButtonStyle(tint: .white))
                 Button { model.next() } label: {
                     HStack(spacing: 8) { Text(model.mode == .tour ? "Start the Tour" : "Show Me Around"); Image(systemName: "arrow.right") }
                 }
                 .buttonStyle(OnboardingPrimaryButtonStyle())
                 .shadow(color: OnboardingPalette.yellow.opacity(0.35), radius: 18, y: 8)
                 .keyboardShortcut(.defaultAction)
-                Button { model.skipToSetup() } label: { Text("Skip to setup").underline() }
-                    .buttonStyle(OnboardingQuietButtonStyle(tint: .white))
             }
             .padding(.top, 28)
             Text("Three quick looks, then setup.")
@@ -197,7 +197,7 @@ struct OnboardingView: View {
         .padding(.bottom, 30)
         .task {
             heroDog.reduceMotion = reduceMotion
-            heroDog.set(nil) { $0 = MascotState(frame: reduceMotion ? .wave : .celebrate, lift: reduceMotion ? 0 : -heroDogSize * 0.5) }
+            heroDog.set(nil) { $0 = MascotState(frame: reduceMotion ? .wave : .celebrate, lift: reduceMotion ? 0 : -heroDogSize * 0.56) }
             guard !reduceMotion else { return }
             await heroDog.perform {
                 guard await heroDog.beat(0.45) else { return }

@@ -346,13 +346,13 @@ struct DesktopsScene: View {
             MascotRigView(dog: dog, size: dogSize, peek: true)
                 .offset(x: deskCenters[0] - dogSize / 2, y: -dogSize * MascotRig.peekEdge)
             }
-            .padding(.top, 58)
+            .padding(.top, 66)
             ReplayButton(reduceMotion: reduceMotion) { replay += 1 }
         }
         .task(id: replay) {
             dog.reduceMotion = reduceMotion
             active = 0; revealed = reduceMotion ? [true, true] : [false, false]
-            let hidden = -dogSize * 0.5, travel = deskCenters[1] - deskCenters[0]
+            let hidden = -dogSize * 0.56, travel = deskCenters[1] - deskCenters[0]
             dog.set(nil) { $0 = MascotState(frame: .celebrate, lift: reduceMotion ? 0 : hidden) }
             guard !reduceMotion else { return }
             await dog.perform {

@@ -41,8 +41,11 @@ enum MascotFrame: String {
     static let armPivot = UnitPoint(x: 440 / canvas, y: 760 / canvas)
     /// The guide pose's outstretched paw, for touching a target.
     static let guidePaw = CGPoint(x: 1205 / canvas, y: 600 / canvas)
-    /// Where an edge the dog peeks over crosses the rig: just under the chin.
-    static let peekEdge: CGFloat = 595 / canvas
+    /// Where an edge the dog peeks over crosses the rig: at the bottom of the raised paws, so
+    /// they rest on top of the edge rather than hanging in front of it.
+    static let peekEdge: CGFloat = 648 / canvas
+    /// How far the paw tips overlap the edge's rim.
+    static let pawOverlap: CGFloat = 14 / canvas
     static var layers: [String] {
         ["wave-body", "think-body", "arm", "welcome-tail", "guide-body", "guide-tail", "celebrate-body", "celebrate-tail", "celebrate-paws"]
     }
@@ -193,20 +196,17 @@ struct MascotRigView: View {
     var body: some View {
         let state = dog.state
         ZStack {
-            posed(front: false)
-                .mask(alignment: .top) {
-                    Rectangle().frame(height: peek ? size * MascotRig.peekEdge : size)
-                }
             if peek {
-                // Paws in front of the edge fade out a little below it, as if resting on its face.
+                // Behind the edge: only what is above it shows.
+                posed(front: false)
+                    .mask(alignment: .top) { Rectangle().frame(height: size * MascotRig.peekEdge) }
+                // Paw tips curl over the rim, in front of it.
                 posed(front: true)
-                    .mask {
-                        LinearGradient(stops: [.init(color: .black, location: 0),
-                                               .init(color: .black, location: MascotRig.peekEdge + 0.035),
-                                               .init(color: .clear, location: MascotRig.peekEdge + 0.11)],
-                                       startPoint: .top, endPoint: .bottom)
-                    }
+                    .mask(alignment: .top) { Rectangle().frame(height: size * (MascotRig.peekEdge + MascotRig.pawOverlap)) }
                     .modifier(PawsReveal(lift: state.lift, size: size))
+            } else {
+                // Unclipped, so hops and leans never cut off the head.
+                posed(front: false)
             }
         }
         .frame(width: size, height: size)
