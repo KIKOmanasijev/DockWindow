@@ -22,7 +22,14 @@ public final class SpacesService {
         var numbers: [UInt64: Int] = [:]
         for display in displays {
             let key = display["Display Identifier"] as? String ?? "Main"
-            if let current = display["Current Space"] as? [String: Any], let id = Self.id(current) { active[key] = id; all.insert(id) }
+            let reported = (display["Current Space"] as? [String: Any]).flatMap(Self.id)
+            let known = Set((display["Spaces"] as? [[String: Any]] ?? []).compactMap(Self.id))
+            // The copied topology's Current Space can lag the per-display query
+            // during a swipe. Use the live ID, but only if this display owns it.
+            if let id = DesktopTopologyPolicy.currentSpace(reported: reported,
+                live: sky.currentSpace(display: key), known: known) {
+                active[key] = id; all.insert(id)
+            }
             for (index, space) in (display["Spaces"] as? [[String: Any]] ?? []).enumerated() {
                 guard let id = Self.id(space) else { continue }
                 all.insert(id)
@@ -76,5 +83,14 @@ internal enum DesktopIdentityPolicy {
             else { result[id] = "unidentified:\(session):\(id)" }
         }
         return result
+    }
+}
+
+/// Never infer a destination from swipe direction: cancelled gestures and independent
+/// monitor Spaces must resolve to the actual desktop reported by WindowServer.
+internal enum DesktopTopologyPolicy {
+    static func currentSpace(reported: UInt64?, live: UInt64?, known: Set<UInt64>) -> UInt64? {
+        if let live, live != 0, known.contains(live) { return live }
+        return reported
     }
 }

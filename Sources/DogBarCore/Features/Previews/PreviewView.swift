@@ -76,7 +76,7 @@ import SwiftUI
                                 .onDisappear { presentation.visibility(window.id, false) }
                         }
                         if settings.previewShowNewWindowTile {
-                            NewWindowPreviewTile(size: presentation.thumbnailSize, appName: presentation.appName,
+                            NewWindowPreviewTile(size: presentation.thumbnailSize, showsTitleRow: settings.previewShowWindowTitles, appName: presentation.appName,
                                                  opening: presentation.opening, reduceMotion: Theme.reducesMotion(settings),
                                                  action: presentation.open)
                         }
@@ -115,7 +115,7 @@ import SwiftUI
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         level = .popUpMenu; collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
         isOpaque = false; backgroundColor = .clear; hasShadow = false; hidesOnDeactivate = false
-        isReleasedWhenClosed = false; animationBehavior = .none
+        isReleasedWhenClosed = false; animationBehavior = .none; acceptsMouseMovedEvents = true
     }
     public override var canBecomeKey: Bool { false }
     public override var canBecomeMain: Bool { false }
@@ -123,6 +123,7 @@ import SwiftUI
 
 @MainActor private struct NewWindowPreviewTile: View {
     let size: CGSize
+    let showsTitleRow: Bool
     let appName: String
     let opening: Bool
     let reduceMotion: Bool
@@ -137,15 +138,14 @@ import SwiftUI
                 Text(opening ? "Opening…" : "New Window").font(.system(size: 12, weight: .semibold))
             }
             .foregroundStyle(hovered ? Color.accentColor : Color.primary)
-            .frame(width: size.width, height: size.height).padding(8)
+            .frame(width: size.width, height: size.height + (showsTitleRow ? 22 : 0)).padding(8)
             .background(hovered ? Color.accentColor.opacity(0.13) : Color.primary.opacity(0.045), in: RoundedRectangle(cornerRadius: 16))
             .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(hovered ? Color.accentColor.opacity(0.75) : Color.white.opacity(0.10), lineWidth: hovered ? 1.5 : 1))
             .contentShape(RoundedRectangle(cornerRadius: 16))
         }
         .buttonStyle(PreviewTilePressStyle(reduceMotion: reduceMotion))
-        .scaleEffect(hovered && !reduceMotion && !opening ? 1.015 : 1)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovered)
-        .onHover { hovered = $0 }
+        .background(PreviewPointerHover { hovered = $0 })
         .disabled(opening)
         .help("Open another \(appName) window")
         .accessibilityLabel("New \(appName) window")
@@ -158,5 +158,53 @@ private struct PreviewTilePressStyle: ButtonStyle {
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.98 : 1)
             .opacity(configuration.isPressed ? 0.8 : 1)
             .animation(reduceMotion ? nil : .easeOut(duration: 0.08), value: configuration.isPressed)
+    }
+}
+
+/// Re-evaluate the real cursor location on each panel mouse event. SwiftUI enter/exit
+/// callbacks alone can leave a hover latched when fast movement skips a tracking edge.
+@MainActor private struct PreviewPointerHover: NSViewRepresentable {
+    var changed: (Bool) -> Void
+    func makeNSView(context: Context) -> PreviewPointerTrackingView { PreviewPointerTrackingView(changed: changed) }
+    func updateNSView(_ view: PreviewPointerTrackingView, context: Context) { view.changed = changed }
+    static func dismantleNSView(_ view: PreviewPointerTrackingView, coordinator: ()) { view.stop() }
+}
+@MainActor private final class PreviewPointerTrackingView: NSView {
+    var changed: (Bool) -> Void
+    private var monitor: Any?
+    private var area: NSTrackingArea?
+    private var hovered = false
+    init(changed: @escaping (Bool) -> Void) { self.changed = changed; super.init(frame: .zero) }
+    required init?(coder: NSCoder) { nil }
+    override func hitTest(_ point: NSPoint) -> NSView? { nil }
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        stop()
+        guard window != nil else { return }
+        monitor = NSEvent.addLocalMonitorForEvents(matching: [.mouseMoved, .leftMouseDragged, .leftMouseUp]) { [weak self] event in
+            self?.samplePointer(); return event
+        }
+    }
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let area { removeTrackingArea(area) }
+        let area = NSTrackingArea(rect: .zero, options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect, .enabledDuringMouseDrag], owner: self)
+        addTrackingArea(area); self.area = area
+    }
+    override func mouseEntered(with event: NSEvent) { samplePointer() }
+    override func mouseExited(with event: NSEvent) { samplePointer() }
+    override func mouseMoved(with event: NSEvent) { samplePointer() }
+    private func samplePointer() {
+        guard let window, window.isVisible else { publish(false); return }
+        let global = NSEvent.mouseLocation
+        let point = convert(window.convertPoint(fromScreen: global), from: nil)
+        publish(window.frame.contains(global) && visibleRect.contains(point))
+    }
+    private func publish(_ value: Bool) {
+        guard value != hovered else { return }
+        hovered = value; changed(value)
+    }
+    func stop() {
+        if let monitor { NSEvent.removeMonitor(monitor) }; monitor = nil
     }
 }
