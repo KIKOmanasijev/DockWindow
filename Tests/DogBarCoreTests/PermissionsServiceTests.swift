@@ -101,4 +101,120 @@ final class PermissionsServiceTests: XCTestCase {
             XCTAssertTrue(service.usesAdHocSigning)
         }
     }
+    func testFirstLaunchMissingAccessIsNotRequestedNotUnavailable() async {
+        await MainActor.run {
+            let service = PermissionsService(checkAccessibility: { true }, checkScreenRecording: { false },
+                requestAccessibility: {}, requestScreenRecording: { XCTFail("Polling must not request access") }, showSettings: { _ in },
+                defaults: Self.freshDefaults())
+            service.refresh(); service.refresh()
+            XCTAssertEqual(service.accessibilityAccess, .granted)
+            XCTAssertEqual(service.screenRecordingAccess, .notRequested, "A first launch has simply not asked yet.")
+            XCTAssertFalse(service.screenRecordingNeedsRelaunchAfterGrant)
+        }
+    }
+
+    func testDeclinedOrPendingRequestReportsWaitingAndRelaunchHintWithoutClaimingSuccess() async {
+        await MainActor.run {
+            var opened: [String] = []
+            let service = PermissionsService(checkAccessibility: { true }, checkScreenRecording: { false },
+                requestAccessibility: {}, requestScreenRecording: {}, showSettings: { opened.append($0) },
+                defaults: Self.freshDefaults())
+            service.openScreenRecording()
+            XCTAssertEqual(service.screenRecordingAccess, .waitingForUser)
+            XCTAssertTrue(service.screenRecordingNeedsRelaunchAfterGrant)
+            XCTAssertFalse(service.screenRecording)
+            XCTAssertFalse(service.isGranted)
+            XCTAssertEqual(opened, ["Privacy_ScreenCapture"])
+        }
+    }
+
+    func testRequestHistorySurvivesRelaunchButOnlyHintsRelaunchForTheRequestingProcess() async {
+        await MainActor.run {
+            let defaults = Self.freshDefaults()
+            let first = PermissionsService(checkAccessibility: { true }, checkScreenRecording: { false },
+                requestAccessibility: {}, requestScreenRecording: {}, showSettings: { _ in }, defaults: defaults)
+            first.openScreenRecording()
+            var requests = 0
+            let second = PermissionsService(checkAccessibility: { true }, checkScreenRecording: { false },
+                requestAccessibility: {}, requestScreenRecording: { requests += 1 }, showSettings: { _ in }, defaults: defaults)
+            XCTAssertEqual(second.screenRecordingAccess, .waitingForUser)
+            XCTAssertFalse(second.screenRecordingNeedsRelaunchAfterGrant)
+            second.openScreenRecording()
+            XCTAssertEqual(requests, 1, "A new process may ask once; macOS decides whether to prompt.")
+        }
+    }
+
+    func testRequestFinishesBeforeSettingsOpensAndRepeatedClicksAreSerialized() async {
+        let gate = DispatchSemaphore(value: 0)
+        let requestStarted = expectation(description: "Request runs off the main thread")
+        let settingsOpened = expectation(description: "Pane opens after registration")
+        let (service, log) = await MainActor.run { () -> (PermissionsService, EventLog) in
+            let log = EventLog()
+            let service = PermissionsService(checkAccessibility: { true }, checkScreenRecording: { false },
+                requestAccessibility: {}, requestScreenRecording: {
+                    XCTAssertFalse(Thread.isMainThread)
+                    log.append("request")
+                    requestStarted.fulfill()
+                    XCTAssertEqual(gate.wait(timeout: .now() + 5), .success)
+                }, showSettings: { log.append("settings:\($0)"); settingsOpened.fulfill() },
+                workerQueue: DispatchQueue(label: "test.permissions.probe"), defaults: Self.freshDefaults(),
+                settingsFallbackDelay: .seconds(30))
+            service.openScreenRecording()
+            return (service, log)
+        }
+        await fulfillment(of: [requestStarted], timeout: 2)
+        await MainActor.run {
+            XCTAssertEqual(service.screenRecordingAccess == .requesting || !service.hasCheckedPermissions, true)
+            service.openScreenRecording(); service.openScreenRecording()
+            service.refresh()
+        }
+        gate.signal()
+        await fulfillment(of: [settingsOpened], timeout: 2)
+        await MainActor.run {
+            XCTAssertEqual(log.events, ["request", "settings:Privacy_ScreenCapture"])
+        }
+    }
+
+    func testBlockedRequestStillOpensSettingsOnceAfterFallbackDelay() async {
+        let gate = DispatchSemaphore(value: 0)
+        let settingsOpened = expectation(description: "Fallback opens the pane")
+        settingsOpened.assertForOverFulfill = true
+        let log = EventLog()
+        await MainActor.run {
+            let service = PermissionsService(checkAccessibility: { false }, checkScreenRecording: { false },
+                requestAccessibility: { _ = gate.wait(timeout: .now() + 5) }, requestScreenRecording: {},
+                showSettings: { log.append($0); settingsOpened.fulfill() },
+                workerQueue: DispatchQueue(label: "test.permissions.probe"), defaults: Self.freshDefaults(),
+                settingsFallbackDelay: .milliseconds(50))
+            service.openAccessibility()
+            XCTAssertEqual(service.accessibilityAccess == .requesting || !service.hasCheckedPermissions, true)
+        }
+        await fulfillment(of: [settingsOpened], timeout: 2)
+        gate.signal()
+        try? await Task.sleep(for: .milliseconds(200))
+        XCTAssertEqual(log.events, ["Privacy_Accessibility"])
+    }
+
+    func testInstallLocationDistinguishesDiskImageAndTranslocationFromInstalledCopy() {
+        XCTAssertEqual(InstallLocation.classify(bundlePath: "/Applications/DogBar.app", isReadOnlyVolume: false), .installed)
+        XCTAssertEqual(InstallLocation.classify(bundlePath: "/Users/a/Applications/DogBar.app", isReadOnlyVolume: false), .installed)
+        XCTAssertEqual(InstallLocation.classify(bundlePath: "/Volumes/DogBar/DogBar.app", isReadOnlyVolume: true), .diskImage)
+        XCTAssertEqual(InstallLocation.classify(
+            bundlePath: "/private/var/folders/xy/T/AppTranslocation/0A1B/d/DogBar.app", isReadOnlyVolume: true), .translocated)
+        XCTAssertFalse(InstallLocation.diskImage.isInstalled)
+    }
+
+    private static func freshDefaults() -> UserDefaults {
+        let name = "PermissionsServiceTests.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: name)!
+        defaults.removePersistentDomain(forName: name)
+        return defaults
+    }
+}
+
+private final class EventLog: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage: [String] = []
+    var events: [String] { lock.lock(); defer { lock.unlock() }; return storage }
+    func append(_ event: String) { lock.lock(); storage.append(event); lock.unlock() }
 }
