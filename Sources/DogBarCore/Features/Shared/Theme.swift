@@ -162,10 +162,10 @@ import Combine
     private let reflection = CAGradientLayer()
     private let mask = CAShapeLayer()
     private let outer = CAShapeLayer()
-    init() {
+    init(darkEdge: Bool = true) {
         reflection.colors = [NSColor.white.withAlphaComponent(0.58).cgColor,
                              NSColor.white.withAlphaComponent(0.08).cgColor,
-                             NSColor.black.withAlphaComponent(0.16).cgColor,
+                             (darkEdge ? NSColor.black.withAlphaComponent(0.16) : NSColor.white.withAlphaComponent(0.08)).cgColor,
                              NSColor.white.withAlphaComponent(0.42).cgColor]
         reflection.locations = [0, 0.3, 0.7, 1]
         reflection.startPoint = CGPoint(x: 0.5, y: 1)
@@ -173,7 +173,8 @@ import Combine
         mask.fillColor = nil; mask.strokeColor = NSColor.white.cgColor; mask.lineWidth = 1
         reflection.mask = mask
         outer.fillColor = nil; outer.strokeColor = NSColor.black.withAlphaComponent(0.22).cgColor
-        outer.lineWidth = 0.5; outer.zPosition = 9; reflection.zPosition = 10
+        outer.lineWidth = 0.5; outer.isHidden = !darkEdge
+        outer.zPosition = 9; reflection.zPosition = 10
     }
     func attach(to layer: CALayer?) {
         layer?.addSublayer(outer); layer?.addSublayer(reflection)
@@ -196,7 +197,7 @@ import Combine
     private let provider = DockBackgroundProviders.preferred()
     private let glass: NSView
     private let hosting: NSHostingView<Content>
-    private let rim = GlassRim()
+    private let rim = GlassRim(darkEdge: false)
     private let settings: AppSettings
     private var subscription: AnyCancellable?
     init(rootView: Content, settings: AppSettings) {
