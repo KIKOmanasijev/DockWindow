@@ -202,10 +202,12 @@ struct MascotRigView: View {
                 // Behind the edge: only what is above it shows.
                 posed(front: false)
                     .mask(alignment: .top) { Rectangle().frame(height: size * MascotRig.peekEdge) }
+                    .offset(y: 3)
                 // Paw tips curl over the rim, in front of it.
                 posed(front: true)
                     .mask(alignment: .top) { Rectangle().frame(height: size * (MascotRig.peekEdge + MascotRig.pawOverlap)) }
                     .modifier(PawsReveal(lift: state.lift, size: size))
+                    .offset(y: 1)
             } else {
                 // Unclipped, so hops and leans never cut off the head.
                 posed(front: false)
