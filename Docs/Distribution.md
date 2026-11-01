@@ -87,3 +87,7 @@ Commands were checked against local `codesign(1)`, `spctl(8)`, `security find-id
 - [Apple DTS: Testing a notarised product and preliminary checks](https://developer.apple.com/forums/topics/code-signing-topic)
 
 No notarized artifact can be produced until the owner supplies the genuine Apple identity and locally stored notarization credentials. The separate preview download does not satisfy this guide's notarized-release checks.
+
+## Importing a collaborator's notarized DMG
+
+When the collaborator supplies the final DMG and independently known SHA-256 without local notarization logs, use `release.py import --team-id TEAM --version VERSION --build BUILD --release-dir DIRECTORY --sha256 HASH`. Import runs the same full DMG and inner-app signature, ticket, metadata, Sparkle and resource gates. It records `verificationMode: imported-notarized-artifact`, not invented submission IDs or a claimed source revision. Later verify/stage and OTA generation repeat the artifact checks. Import does not sign, rebuild, publish or modify the DMG.

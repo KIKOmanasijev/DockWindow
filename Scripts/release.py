@@ -271,9 +271,27 @@ def load_release(directory, team, v, build):
     require(manifest['available'] is True and manifest['version'] == v, 'Release manifest version mismatch')
     p = json.loads((directory / 'provenance.json').read_text())
     require(p.get('teamID') == team and p.get('version') == v and p.get('build') == build and p.get('sha256') == manifest['sha256'], 'Release provenance mismatch')
-    accepted_submission(p.get('appSubmission'))
-    accepted_submission(p.get('dmgSubmission'))
+    if p.get('verificationMode') == 'imported-notarized-artifact':
+        # Imported records are not build provenance. Revalidate Apple's actual tickets and signatures.
+        verify_dmg(directory / filename(v), team, v, build, manifest['sha256'])
+    else:
+        accepted_submission(p.get('appSubmission'))
+        accepted_submission(p.get('dmgSubmission'))
     return manifest
+
+def import_release(args):
+    """Verify a collaborator's final artifact without fabricating notary submission logs."""
+    prerequisites()
+    v, b = version(args.version), build_number(args.build)
+    team_id(args.team_id)
+    directory = args.release_dir.resolve(strict=True)
+    require(not (directory / 'provenance.json').exists() and not (directory / 'release.json').exists(),
+            'Import records already exist; use verify instead')
+    sha = verify_dmg(directory / filename(v), args.team_id, v, b, args.sha256)
+    atomic_json(directory / 'provenance.json', dict(teamID=args.team_id, version=v, build=b, sha256=sha,
+                verificationMode='imported-notarized-artifact'))
+    atomic_json(directory / 'release.json', ready_manifest(v, sha))
+    print('Imported independently verified notarized artifact; no claim about its source revision or submission IDs')
 
 def verify_or_stage(args, stage=False):
     prerequisites()
@@ -318,7 +336,7 @@ def verify_or_stage(args, stage=False):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest='command', required=True)
-    for command in ('preflight', 'build', 'verify', 'stage'):
+    for command in ('preflight', 'build', 'verify', 'stage', 'import'):
         p = sub.add_parser(command)
         p.add_argument('--team-id', required=True)
         if command in ('preflight', 'build'):
@@ -327,13 +345,17 @@ def main():
         if command != 'preflight':
             p.add_argument('--version', required=True)
             p.add_argument('--build', required=True)
-        if command in ('verify', 'stage'):
+        if command == 'import':
+            p.add_argument('--sha256', required=True)
+        if command in ('verify', 'stage', 'import'):
             p.add_argument('--release-dir', type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.command == 'preflight':
             preflight(args.team_id, args.keychain_profile, args.identity)
             print('Release prerequisites passed')
+        elif args.command == 'import':
+            import_release(args)
         elif args.command == 'build':
             build_release(args)
         else:
