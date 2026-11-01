@@ -28,9 +28,9 @@ test("feature illustrations never inherit album-cover dimensions", { skip: !JSDO
       assert.equal(computed.width, "100%", "fill the feature column");
       assert.equal(computed.height, "auto", "grow with the visual inside");
     }
-    // App icons inside the feature visuals keep their own fixed sizes.
+    // App icons inside the feature visuals fill the macOS icon grid of their Dock slot.
     const icon = document.querySelector(".fx-pop + .fx-dock .fx-dock-app img");
-    assert.equal(dom.window.getComputedStyle(icon).width, "34px");
+    assert.equal(dom.window.getComputedStyle(icon).width, "80.5%");
     // Cmd+Tab icons scale by width and keep their square shape instead of stretching.
     const appIcon = dom.window.getComputedStyle(document.querySelector(".fx-app img"));
     assert.equal(appIcon.width, "100%");

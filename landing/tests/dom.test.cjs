@@ -218,7 +218,7 @@ test("explicit preview enables both downloads with honest status and installatio
 
 test("demo opens on a still frame: Desktop 1 with its own Dock", { skip }, async () => {
   const { w, $, $$ } = await page(json(null));
-  const dockApps = () => $$(".dock-btn").map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
+  const dockApps = () => $$(".dock-btn[data-app]").map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
 
   // Desktop 1: Safari (day plan + hotel booking), Slack with friends and a Notes packing list, all fictional.
   assert.equal($$(".win").length, 4);
@@ -321,7 +321,7 @@ test("pause freezes the walkthrough and play resumes it; chapters jump; reduced 
 });
 
 function $$dockApps(w) {
-  return [...w.document.querySelectorAll(".dock-btn")].map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
+  return [...w.document.querySelectorAll(".dock-btn[data-app]")].map((b) => b.dataset.app + ":" + b.querySelectorAll(".dots i").length).join(",");
 }
 
 test("product and FAQ structured data stay consistent with visible content", { skip }, () => {

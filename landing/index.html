@@ -269,19 +269,20 @@
           <p>Keep work on one desktop and personal stuff on another. When you swipe between them, the Dock changes too, so it only shows what’s open where you are.</p>
           <p class="feature-aside">Rather see everything? Settings can show windows from all desktops instead.</p>
         </div>
-        <figure class="feature-art reveal desks-art" role="img" aria-label="Two Mac desktops side by side, each with its own Dock. Desktop 1, Work, has a Slack window on screen, and its Dock shows Finder, then Slack, Figma, Calendar and Notes. Desktop 2, Personal, has a Music window on screen, and its Dock shows Finder, then Chrome, TV, Music and Photos.">
+        <figure class="feature-art reveal desks-art" role="img" aria-label="Two Mac desktops side by side, each with its own Dock. Desktop 1, Work, has a Slack window on screen, and its Dock shows Finder, then Slack, Figma, Calendar, Notes and Mail, then Trash. Desktop 2, Personal, has a Music window on screen, and its Dock shows Finder, then Chrome, TV, Music, Photos and Messages, then Trash.">
           <div class="desks-art-row">
             <div class="desk-screen" data-wall="1">
               <span class="desk-screen-name">Desktop 1 · Work</span>
               <span class="desk-screen-win thumb thumb-slack"></span>
               <div class="fx-dock">
                 <span class="fx-dock-app"><img src="assets/apps/finder.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
-                <span class="fx-sep"></span>
                 <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/figma.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/calendar.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/notes.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/mail.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-sep"></span>
+                <span class="fx-dock-app"><img class="is-trash" src="assets/apps/trash.png" width="128" height="128" alt=""></span>
               </div>
             </div>
             <svg class="desks-art-swipe" aria-hidden="true" focusable="false"><use href="#i-swipe"/></svg>
@@ -290,12 +291,13 @@
               <span class="desk-screen-win thumb thumb-music"></span>
               <div class="fx-dock">
                 <span class="fx-dock-app"><img src="assets/apps/finder.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
-                <span class="fx-sep"></span>
                 <span class="fx-dock-app"><img src="assets/apps/chrome.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/tv.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/music.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/photos.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/messages.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-sep"></span>
+                <span class="fx-dock-app"><img class="is-trash" src="assets/apps/trash.png" width="128" height="128" alt=""></span>
               </div>
             </div>
           </div>
@@ -340,26 +342,28 @@
 
       <div class="feature-grid">
         <article class="feature">
-          <figure class="feature-art reveal" role="img" aria-label="Two desktops with isolated Docks. After Finder, Desktop 1 shows Slack, Figma and Calendar, and Desktop 2 shows Chrome, TV and Music.">
+          <figure class="feature-art reveal" role="img" aria-label="Two desktops with isolated Docks, each on its own macOS wallpaper. After Finder, Desktop 1 shows Slack, Figma and Calendar, and Desktop 2 shows Chrome, TV and Music. Both end with Trash.">
             <div class="fx-stage fx-desks">
-              <div class="fx-desk">
+              <div class="fx-desk" data-wall="tahoe">
                 <p class="fx-desk-name">Desktop 1 · Work</p>
                 <div class="fx-dock">
                   <span class="fx-dock-app"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
-                  <span class="fx-sep"></span>
                   <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""></span>
                   <span class="fx-dock-app"><img src="assets/apps/figma.png" width="96" height="96" alt=""></span>
                   <span class="fx-dock-app"><img src="assets/apps/calendar.png" width="96" height="96" alt=""></span>
+                <span class="fx-sep"></span>
+                  <span class="fx-dock-app"><img class="is-trash" src="assets/apps/trash.png" width="128" height="128" alt=""></span>
                 </div>
               </div>
-              <div class="fx-desk">
+              <div class="fx-desk" data-wall="sequoia-blue">
                 <p class="fx-desk-name">Desktop 2 · Personal</p>
                 <div class="fx-dock">
                   <span class="fx-dock-app"><img src="assets/apps/finder.png" width="96" height="96" alt=""></span>
-                  <span class="fx-sep"></span>
                   <span class="fx-dock-app"><img src="assets/apps/chrome.png" width="96" height="96" alt=""></span>
                   <span class="fx-dock-app"><img src="assets/apps/tv.png" width="96" height="96" alt=""></span>
                   <span class="fx-dock-app"><img src="assets/apps/music.png" width="96" height="96" alt=""></span>
+                <span class="fx-sep"></span>
+                  <span class="fx-dock-app"><img class="is-trash" src="assets/apps/trash.png" width="128" height="128" alt=""></span>
                 </div>
               </div>
             </div>
@@ -370,16 +374,21 @@
           </div>
         </article>
         <article class="feature">
-          <figure class="feature-art reveal" role="img" aria-label="The Safari Dock icon, with two dots for its two windows, shows two window previews above it: Lisbon day plan and Hotel booking. The pointer is on Hotel booking.">
-            <div class="fx-stage">
+          <figure class="feature-art reveal" role="img" aria-label="On a macOS Sequoia wallpaper, the Safari Dock icon, with two dots for its two windows, shows a preview panel above it headed Safari, 2 windows: Lisbon day plan and Hotel booking. The pointer is on the Safari icon.">
+            <div class="fx-stage" data-wall="sequoia">
               <div class="fx-pop">
-                <span class="fx-pv"><span class="thumb thumb-trip"></span><span class="fx-name">Lisbon day plan</span></span>
-                <span class="fx-pv is-on"><span class="thumb thumb-booking"></span><span class="fx-name">Hotel booking</span><svg class="fx-cursor"><use href="#i-cursor"/></svg></span>
+                <p class="fx-pop-head"><img src="assets/apps/safari.png" width="96" height="96" alt="">Safari <span>2 windows</span></p>
+                <div class="fx-pop-row">
+                  <span class="fx-pv"><span class="thumb thumb-trip"></span><span class="fx-name">Lisbon day plan</span></span>
+                  <span class="fx-pv"><span class="thumb thumb-booking"></span><span class="fx-name">Hotel booking</span></span>
+                </div>
               </div>
               <div class="fx-dock">
                 <span class="fx-dock-app"><img src="assets/apps/finder.png" width="96" height="96" alt=""><b class="fx-dots"></b></span>
-                <span class="fx-dock-app is-on"><img src="assets/apps/safari.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
+                <span class="fx-dock-app"><img src="assets/apps/safari.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b><svg class="fx-cursor"><use href="#i-cursor"/></svg></span>
                 <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
+                <span class="fx-sep"></span>
+                <span class="fx-dock-app"><img class="is-trash" src="assets/apps/trash.png" width="128" height="128" alt=""></span>
               </div>
             </div>
           </figure>
@@ -390,13 +399,15 @@
         </article>
 
         <article class="feature">
-          <figure class="feature-art reveal" role="img" aria-label="A Dock where Safari has two dots, Slack one and Notes three, one dot per open window. A resize grip on the Dock's edge shows it can be dragged. Icons keep a fixed size.">
-            <div class="fx-stage fx-counts">
+          <figure class="feature-art reveal" role="img" aria-label="On a macOS Sonoma wallpaper, a Dock where Safari has two dots, Slack one and Notes three, one dot per open window. A white handle above the Dock's top edge shows it can be dragged to resize. Icons keep a fixed size.">
+            <div class="fx-stage fx-counts" data-wall="sonoma">
               <div class="fx-dock fx-dock-lg">
                 <span class="fx-dock-app"><img src="assets/apps/safari.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/slack.png" width="96" height="96" alt=""><b class="fx-dots"><i></i></b></span>
                 <span class="fx-dock-app"><img src="assets/apps/notes.png" width="96" height="96" alt=""><b class="fx-dots"><i></i><i></i><i></i></b></span>
-                <span class="fx-grip"></span>
+                <span class="fx-sep"></span>
+                <span class="fx-dock-app"><img class="is-trash" src="assets/apps/trash.png" width="128" height="128" alt=""></span>
+                <span class="fx-resize"></span>
               </div>
               <p class="fx-legend fx-legend-row"><span><b>2</b> Safari windows</span><span><b>1</b> Slack</span><span><b>3</b> Notes</span></p>
             </div>

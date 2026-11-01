@@ -204,7 +204,7 @@
     swipeTimer = setTimeout(() => { swipeHud.hidden = true; }, 1700);
   }
 
-  // ----- Dock: pinned apps, a divider, then apps with windows here; one dot each -----
+  // ----- Dock: pinned apps, then apps with windows here, one dot each; a divider and Trash -----
   function dockApps() {
     const running = [];
     for (const w of windowsHere()) if (!running.includes(w.app) && !PINS.includes(w.app)) running.push(w.app);
@@ -214,11 +214,11 @@
     const running = dockApps();
     const item = (key) => {
       const count = windowsHere().filter((w) => w.app === key).length;
-      return `<li><span class="dock-btn${animate && !PINS.includes(key) ? " enter" : ""}" data-app="${key}">
+      return `<li><span class="dock-btn${animate && !PINS.includes(key) ? " enter" : ""}" data-app="${key}" data-name="${APPS[key].name}">
         ${iconMarkup(key)}<span class="dots">${"<i></i>".repeat(count)}</span></span></li>`;
     };
-    dock.innerHTML = PINS.map(item).join("") +
-      (running.length ? `<li class="dock-sep"></li>` : "") + running.map(item).join("");
+    dock.innerHTML = PINS.map(item).join("") + running.map(item).join("") +
+      `<li class="dock-sep"></li><li><span class="dock-btn" data-name="Trash"><img class="ic is-trash" src="assets/apps/trash.png" width="128" height="128" alt="" draggable="false"></span></li>`;
   }
 
   // ----- Bring one window to the front -----
@@ -277,10 +277,11 @@
     dock.querySelectorAll(".dock-btn").forEach((b) => b.classList.toggle("is-open", b === icon));
     const wins = windowsHere().filter((w) => w.app === appKey);
     const name = APPS[appKey].name;
-    preview.innerHTML = wins.map((w) => `<div class="pv">
+    preview.innerHTML = `<p class="pv-head">${iconMarkup(appKey, "pv-ic")}${name}${wins.length > 1 ? ` <span>${wins.length} windows</span>` : ""}</p>
+      <div class="pv-row">${wins.map((w) => `<div class="pv">
         <span class="pv-lights"><i></i><i></i><i></i></span>
         <span class="pv-shot" data-focus="${w.id}">${miniMarkup(w)}</span>
-        <span class="pv-name">${w.title}</span></div>`).join("");
+        <span class="pv-name">${w.title}</span></div>`).join("")}</div>`;
     preview.hidden = false;
     mac.classList.add("is-focus");
     placePreview(icon);
