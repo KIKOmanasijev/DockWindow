@@ -110,6 +110,7 @@ import SwiftUI
     public func updateBackgroundView(_ view: NSView, material: PanelMaterial, cornerRadius: CGFloat, theme: AppTheme) {
         guard let glass = view as? NSGlassEffectView else { return }
         glass.style = .clear
+        glass.tintColor = NSColor.black.withAlphaComponent(0.035)
         glass.cornerRadius = max(0, cornerRadius); glass.appearance = Theme.appearance(theme)
     }
 }
@@ -135,6 +136,9 @@ import SwiftUI
             return
         }
         view.setValue(cornerRadius, forKey: "cornerRadius")
+        if view.responds(to: NSSelectorFromString("setTintColor:")) {
+            view.setValue(NSColor.black.withAlphaComponent(0.035), forKey: "tintColor")
+        }
         view.appearance = Theme.appearance(theme)
     }
 }

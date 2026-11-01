@@ -22,6 +22,8 @@ import QuartzCore
     private let provider: any DockBackgroundProvider
     private let background: NSView
     private let iconSurface = DockIconSurface()
+    private let glassRim = CAGradientLayer()
+    private let glassRimMask = CAShapeLayer()
     private var layers: [String: DockIconLayer] = [:]
     private var separators: [String: CALayer] = [:]
     private let label = NSTextField(labelWithString: "")
@@ -71,6 +73,17 @@ import QuartzCore
         } else {
             addSubview(iconSurface)
         }
+        // Edge-only reflections; the system glass still supplies all backdrop sampling.
+        glassRim.colors = [NSColor.white.withAlphaComponent(0.38).cgColor,
+                           NSColor.white.withAlphaComponent(0.08).cgColor,
+                           NSColor.black.withAlphaComponent(0.16).cgColor,
+                           NSColor.white.withAlphaComponent(0.24).cgColor]
+        glassRim.locations = [0, 0.3, 0.7, 1]
+        glassRim.startPoint = CGPoint(x: 0.5, y: 1)
+        glassRim.endPoint = CGPoint(x: 0.5, y: 0)
+        glassRimMask.fillColor = nil; glassRimMask.strokeColor = NSColor.white.cgColor
+        glassRimMask.lineWidth = 0.75; glassRim.mask = glassRimMask
+        layer?.addSublayer(glassRim)
         label.lineBreakMode = .byTruncatingMiddle
         label.font = .systemFont(ofSize: 13, weight: .medium); label.alignment = .center
         label.wantsLayer = true; label.layer?.cornerRadius = 7; label.layer?.masksToBounds = true
@@ -119,6 +132,11 @@ import QuartzCore
         // proxy can defer the material resize to a later run-loop pass.
         CATransaction.begin(); CATransaction.setDisableActions(true)
         background.frame = geometry.background
+        glassRim.frame = geometry.background
+        glassRimMask.frame = glassRim.bounds
+        let rimRadius = max(0, min(30, displayedIconSize * 0.3) - 0.5)
+        glassRimMask.path = CGPath(roundedRect: glassRim.bounds.insetBy(dx: 0.5, dy: 0.5),
+                                   cornerWidth: rimRadius, cornerHeight: rimRadius, transform: nil)
         background.layoutSubtreeIfNeeded()
         if iconSurface.superview === self {
             iconSurface.frame = bounds
