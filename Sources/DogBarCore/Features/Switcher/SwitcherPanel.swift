@@ -6,7 +6,7 @@ import AppKit
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         level = .popUpMenu
         collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient, .ignoresCycle]
-        isOpaque = false; backgroundColor = .clear; hasShadow = true
+        isOpaque = false; backgroundColor = .clear; hasShadow = false
         hidesOnDeactivate = false; isReleasedWhenClosed = false
         animationBehavior = .none
     }
