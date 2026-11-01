@@ -149,20 +149,18 @@ struct OnboardingView: View {
         switch step {
         case .welcome: welcome
         case .desktops:
-            feature(number: 1, kicker: "A Dock per desktop", title: "Each desktop gets a Dock with just its apps.",
-                    text: "Keep work on one desktop and personal stuff on another. Swipe between them and the Dock follows.",
-                    aside: "DogBar's Dock is its own rebuild of the Mac Dock and stands in for Apple's while it's on. The paw menu's Pause DogBar or Restore Native Dock brings Apple's back.") {
+            feature(number: 1, kicker: "A Dock per desktop", title: "A Dock for every desktop.",
+                    text: "Each one shows only the apps open there.", aside: nil) {
                 DesktopsScene(reduceMotion: reduceMotion)
             }
         case .previews:
-            feature(number: 2, kicker: "Previews from the Dock", title: "Hover an app to see every window.",
-                    text: "Pick the window you want and only that one comes forward. Close or minimize it right from the preview.", aside: nil) {
+            feature(number: 2, kicker: "Dock previews", title: "Hover to see every window.",
+                    text: "Click one and only that window comes forward.", aside: nil) {
                 PreviewsScene(reduceMotion: reduceMotion)
             }
         case .switcher:
-            feature(number: 3, kicker: "Window switching", title: "Switch to any window, not just any app.",
-                    text: "Hold \(shortcutWords.modifiers) and tap \(shortcutWords.key). Every window gets its own tile, so two Safari windows are two choices.",
-                    aside: "Change the shortcut in Settings → Switcher.") {
+            feature(number: 3, kicker: "Window switcher", title: "Switch windows, not apps.",
+                    text: "Hold \(shortcutWords.modifiers) and tap \(shortcutWords.key).", aside: nil) {
                 SwitcherScene(reduceMotion: reduceMotion, shortcut: settings.switcherShortcut)
             }
         case .setup: setup
@@ -192,7 +190,7 @@ struct OnboardingView: View {
                     .buttonStyle(OnboardingQuietButtonStyle(tint: .white))
             }
             .padding(.top, 28)
-            Text("Three quick looks, then two permissions.")
+            Text("Three quick looks, then setup.")
                 .font(.system(size: 12.5, weight: .medium)).foregroundStyle(.white.opacity(0.55))
                 .padding(.top, 16)
         }
@@ -260,19 +258,19 @@ struct OnboardingView: View {
     private func feature<Scene: View>(number: Int, kicker: String, title: String, text: String, aside: String?, @ViewBuilder scene: () -> Scene) -> some View {
         HStack(alignment: .center, spacing: 34) {
             VStack(alignment: .leading, spacing: 0) {
-                Text("\(number) of 3 · \(kicker)".uppercased())
+                Text("\(number) of 3".uppercased())
                     .font(.system(size: 11, weight: .bold)).tracking(0.8).foregroundStyle(OnboardingPalette.accent)
-                Text(title).font(.system(size: 28, weight: .bold)).tracking(-0.5).foregroundStyle(OnboardingPalette.text)
+                Text(title).font(.system(size: 30, weight: .bold)).tracking(-0.6).foregroundStyle(OnboardingPalette.text)
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 10)
                     .accessibilityAddTraits(.isHeader).accessibilityFocused($titleFocused)
-                Text(text).font(.system(size: 14.5)).foregroundStyle(OnboardingPalette.muted).lineSpacing(3)
-                    .fixedSize(horizontal: false, vertical: true).padding(.top, 12)
+                Text(text).font(.system(size: 15)).foregroundStyle(OnboardingPalette.muted).lineSpacing(3)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 10)
                 if let aside {
                     Text(aside).font(.system(size: 12, weight: .medium)).foregroundStyle(OnboardingPalette.accent).lineSpacing(2)
                         .fixedSize(horizontal: false, vertical: true).padding(.top, 14)
                 }
             }
-            .frame(width: 232, alignment: .leading)
+            .frame(width: 236, alignment: .leading)
             scene()
         }
         .padding(.horizontal, 36)
@@ -309,11 +307,11 @@ struct OnboardingView: View {
                 .padding(.bottom, 4)
                 if !permissions.installLocation.isInstalled { installBanner }
                 permissionCard(title: "Accessibility", symbol: "accessibility", colors: [0x3B8BFF, 0x1A56DB],
-                               why: "Brings the exact window forward, closes or minimizes it, and hears your switcher shortcut. Never records what you type.",
+                               why: "Focus, close and minimize single windows. Never reads what you type.",
                                access: permissions.accessibilityAccess, granted: permissions.accessibility,
                                isNext: !permissions.accessibility, request: permissions.openAccessibility)
                 permissionCard(title: "Screen Recording", symbol: "macwindow.on.rectangle", colors: [0xB76DFF, 0x6E24E6],
-                               why: "Shows real window thumbnails in previews and the switcher. Images stay in memory, never saved or sent.",
+                               why: "Real window thumbnails. Images never leave your Mac.",
                                access: permissions.screenRecordingAccess, granted: permissions.screenRecording,
                                isNext: permissions.accessibility && !permissions.screenRecording, request: permissions.openScreenRecording)
                 privacyRow.padding(.top, 2)
@@ -340,9 +338,9 @@ struct OnboardingView: View {
         return permissions.isGranted ? "You're all set." : "Two permissions, and you're in."
     }
     private var setupSubtitle: String {
-        if !permissions.installLocation.isInstalled { return "Permissions belong to the copy you keep, so grant them from the installed app." }
-        if permissions.isGranted { return "Want Apple's Dock back at any point? Click the paw in the menu bar and choose Pause DogBar or Restore Native Dock." }
-        return "macOS asks only when you click Allow. You can change either one later in System Settings → Privacy & Security."
+        if !permissions.installLocation.isInstalled { return "Permissions stay with the copy you keep." }
+        if permissions.isGranted { return "DogBar's Dock replaces Apple's while it runs. The paw in the menu bar brings Apple's back." }
+        return "macOS asks only when you click Allow."
     }
 
     private var installBanner: some View {
@@ -352,8 +350,8 @@ struct OnboardingView: View {
                 Text(permissions.installLocation == .translocated ? "Running from a temporary copy" : "Running from the disk image")
                     .font(.system(size: 14.5, weight: .semibold)).foregroundStyle(OnboardingPalette.text)
                 Text(installedCopy == nil
-                     ? "Drag DogBar into Applications (yours or your home folder's), then open it from there and eject the disk."
-                     : "Found DogBar in Applications. Open it there; this copy quits. Then eject the disk.")
+                     ? "Drag it to Applications, open it there, then eject the disk."
+                     : "Found it in Applications. Open that copy; this one quits.")
                     .font(.system(size: 12)).foregroundStyle(OnboardingPalette.muted).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)
@@ -461,7 +459,7 @@ struct OnboardingView: View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Share anonymous usage data?").font(.system(size: 13.5, weight: .semibold)).foregroundStyle(OnboardingPalette.text)
-                Text("A random install ID, versions and which features get used. Never titles, app names, files or typing.")
+                Text("Anonymous feature counts. Never titles, files or typing.")
                     .font(.system(size: 11.5)).foregroundStyle(OnboardingPalette.muted).fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 8)

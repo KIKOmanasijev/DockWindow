@@ -336,8 +336,6 @@ struct DesktopsScene: View {
                             .accessibilityHidden(true)
                         desk(1)
                     }
-                    Text("Each Dock shows only the apps open on its own desktop.")
-                        .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(OnboardingPalette.muted)
                 }
                 .padding(.vertical, 26).padding(.horizontal, 14)
                 .frame(width: 520)
