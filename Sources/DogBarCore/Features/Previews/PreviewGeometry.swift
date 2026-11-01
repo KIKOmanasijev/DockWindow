@@ -39,4 +39,10 @@ public enum PreviewGeometry {
         }
         return inside
     }
+    /// New Window hover is a pure function of the live cursor and the tile's visible
+    /// screen rect, so a missed exit event can never leave the tile highlighted.
+    public static func newWindowHovered(cursor: CGPoint, region: CGRect?, panel: CGRect) -> Bool {
+        guard let region, !region.isEmpty, panel.contains(cursor) else { return false }
+        return region.intersection(panel).contains(cursor)
+    }
 }
