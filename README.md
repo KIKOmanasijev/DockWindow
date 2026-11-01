@@ -45,7 +45,7 @@ On a Mac, Cmd+Tab shows one icon per app, so two Safari windows look like one, a
 - **Get a separate Dock on every desktop.** Each desktop’s Dock shows only the apps open there. Each desktop has independent pins and ordering, including removable Finder. New desktops copy the current Dock once; later edits affect only that desktop.
 - **See how many windows each app has.** One dot per open window, right under the icon.
 - **Resize the Dock by dragging its edge.** Icons stay still, with no magnifying. Size follows your drag directly, including when you reverse direction.
-- **Keep Apple’s Dock if you prefer.** Native Dock mode leaves Apple’s Dock in place and still gives you window previews and the better alt-tab.
+- **A reimplemented Dock.** DogBar replaces Apple’s Dock while enabled, adding the features above to its own implementation. Pause DogBar or choose Restore Native Dock to bring Apple’s Dock back.
 
 | | macOS | DogBar |
 | --- | :---: | :---: |

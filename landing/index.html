@@ -61,7 +61,7 @@
         "Window previews when hovering the Dock",
         "A separate Dock for each desktop",
         "Window-count indicators",
-        "Optional Native Dock mode"
+        "Reimplemented Dock with window previews"
       ]
     },
     {
@@ -91,10 +91,10 @@
         },
         {
           "@type": "Question",
-          "name": "Do I have to replace Apple’s Dock?",
+          "name": "Is DogBar the built-in macOS Dock?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "No. Native Dock mode keeps Apple’s Dock and still adds window previews and better window switching."
+            "text": "No. DogBar is our own reimplementation of the macOS Dock, with isolated Docks per desktop, window previews, window counts and a window switcher added. It replaces Apple’s Dock while enabled."
           }
         },
         {
@@ -465,8 +465,8 @@
         </tbody>
       </table>
       <div class="native-note">
-        <h3>Rather keep Apple’s Dock?</h3>
-        <p>Turn on Native Dock mode. Apple’s Dock stays, and you still get window previews and better window switching. A Dock per desktop and window dots need DogBar’s own Dock. Pause DogBar anytime and it puts your old Dock and its settings back.</p>
+        <h3>A familiar Dock, rebuilt with more features.</h3>
+        <p>DogBar reimplements the macOS Dock and adds isolated Docks per desktop, window previews, window counts and a window switcher. It replaces Apple’s Dock while enabled. Pause DogBar or choose Restore Native Dock to bring Apple’s Dock back.</p>
       </div>
       <p class="modes-foot">You can also choose whether the Dock, window switcher and previews show windows from this desktop or from all of them.</p>
     </section>
@@ -511,8 +511,8 @@
           <p>The current preview requires an Apple Silicon Mac running macOS 26 or later. It is self-signed and not notarized by Apple.</p>
         </details>
         <details>
-          <summary>Do I have to replace Apple’s Dock?</summary>
-          <p>No. Native Dock mode keeps Apple’s Dock and still adds window previews and better window switching.</p>
+          <summary>Is DogBar the built-in macOS Dock?</summary>
+          <p>No. DogBar is our own reimplementation of the macOS Dock, with isolated Docks per desktop, window previews, window counts and a window switcher added. It replaces Apple’s Dock while enabled.</p>
         </details>
         <details>
           <summary>Why does DogBar need Accessibility and Screen Recording?</summary>

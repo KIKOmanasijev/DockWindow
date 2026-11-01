@@ -184,7 +184,7 @@ test("comparison table marks what macOS lacks and DogBar adds", { skip }, async 
     assert.equal(dogbar.textContent.trim(), "Yes");
     assert.ok(dogbar.querySelector('use[href="#i-yes"]'));
   }
-  assert.match($(".native-note").textContent, /Native Dock mode/, "keeping Apple's Dock is still explained");
+  assert.match($(".native-note").textContent, /DogBar reimplements the macOS Dock/, "the replacement Dock is explained honestly");
 });
 
 test("CTA hierarchy: download is the primary button, the demo a secondary link", { skip }, async () => {

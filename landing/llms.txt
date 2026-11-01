@@ -11,7 +11,7 @@ Source code: https://github.com/KIKOmanasijev/DockWindow (MIT License)
 - Dock window previews: hover an app in the Dock to see all of its windows. Click one and only that window comes forward. Windows can be closed or minimized from the preview.
 - A Dock per desktop: each desktop's Dock shows only the apps open on that desktop.
 - Window counts: each app in the Dock shows one dot per open window. The Dock can be resized by dragging its edge, and icons do not magnify.
-- Native Dock mode: keeps Apple's Dock and still adds window previews and the window switcher. Per-desktop Docks and window dots need DogBar's own Dock.
+- DogBar reimplements the macOS Dock and replaces Apple's Dock while enabled, adding isolated Docks per desktop, window previews, window counts and a window switcher. Pause DogBar or Restore Native Dock brings Apple's Dock back.
 - You can choose whether the Dock, the switcher and previews show windows from the current desktop or from all desktops.
 
 ## Requirements and status
