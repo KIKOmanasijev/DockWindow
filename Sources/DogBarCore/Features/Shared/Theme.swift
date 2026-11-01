@@ -109,6 +109,7 @@ import SwiftUI
     public func makeBackgroundView() -> NSView { NSGlassEffectView() }
     public func updateBackgroundView(_ view: NSView, material: PanelMaterial, cornerRadius: CGFloat, theme: AppTheme) {
         guard let glass = view as? NSGlassEffectView else { return }
+        glass.style = .clear
         glass.cornerRadius = max(0, cornerRadius); glass.appearance = Theme.appearance(theme)
     }
 }
@@ -123,8 +124,8 @@ import SwiftUI
             return MaterialDockBackgroundProvider().makeBackgroundView()
         }
         let view = type.init(frame: .zero)
-        // NSGlassEffectView.Style.regular, documented by AppKit as value 0.
-        if view.responds(to: NSSelectorFromString("setStyle:")) { view.setValue(0, forKey: "style") }
+        // Public NSGlassEffectView.Style.clear (1) keeps wallpaper colour visible.
+        if view.responds(to: NSSelectorFromString("setStyle:")) { view.setValue(1, forKey: "style") }
         return view
     }
     public func updateBackgroundView(_ view: NSView, material: PanelMaterial, cornerRadius: CGFloat, theme: AppTheme) {

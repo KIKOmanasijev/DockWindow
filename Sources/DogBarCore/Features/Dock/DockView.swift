@@ -147,7 +147,12 @@ import QuartzCore
                 let line = separators[item.id] ?? CALayer(); separators[item.id] = line
                 if line.superlayer == nil { iconSurface.layer?.addSublayer(line) }
                 line.backgroundColor = NSColor.labelColor.withAlphaComponent(0.22).cgColor
-                line.frame = settings.dockPosition == .bottom ? CGRect(x: frame.midX, y: frame.minY, width: 1 / scale, height: frame.height) : CGRect(x: frame.minX, y: frame.midY, width: frame.width, height: 1 / scale)
+                let backing = geometry.background
+                let inset = max(8, displayedIconSize * 0.12)
+                let pixel = { (value: CGFloat) in (value * scale).rounded() / scale }
+                line.frame = settings.dockPosition == .bottom
+                    ? CGRect(x: pixel(frame.midX), y: pixel(backing.minY + inset), width: 1, height: pixel(backing.height - 2 * inset))
+                    : CGRect(x: pixel(backing.minX + inset), y: pixel(frame.midY), width: pixel(backing.width - 2 * inset), height: 1)
                 continue
             }
             let icon = layers[item.id] ?? DockIconLayer()

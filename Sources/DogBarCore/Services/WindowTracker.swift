@@ -12,6 +12,7 @@ import Combine
     private let worker = WindowTrackingWorker()
     private var tokens: [NSObjectProtocol] = []
     private var timer: DispatchSourceTimer?
+    private var topologyTimer: DispatchSourceTimer?
     private var launchRefreshTasks: [pid_t: Task<Void, Never>] = [:]
     private var started = false
     internal var isRunning: Bool { started }
@@ -22,7 +23,7 @@ import Combine
     deinit {
         actionCancellation.cancel()
         for task in launchRefreshTasks.values { task.cancel() }
-        timer?.cancel(); worker.stop()
+        timer?.cancel(); topologyTimer?.cancel(); worker.stop()
         for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token); NotificationCenter.default.removeObserver(token) }
     }
     public func start() {
@@ -93,6 +94,12 @@ import Combine
         timer.setEventHandler { [weak worker] in worker?.pollSpaces() }
         timer.resume()
         self.timer = timer
+        // Read only desktop identity during transitions; AX/membership retain their
+        // low-frequency schedule. Workspace notifications can arrive after the swipe.
+        let topologyTimer = DispatchSource.makeTimerSource(queue: DispatchQueue.global(qos: .utility))
+        topologyTimer.schedule(deadline: .now(), repeating: .milliseconds(120), leeway: .milliseconds(20))
+        topologyTimer.setEventHandler { [weak worker] in worker?.requestSpaces(includeMembership: false) }
+        topologyTimer.resume(); self.topologyTimer = topologyTimer
         refresh()
     }
     /// Spaces are polled every 1.5 s and usually unchanged. Every publication rebuilds the Dock,
@@ -106,6 +113,7 @@ import Combine
         for task in launchRefreshTasks.values { task.cancel() }; launchRefreshTasks.removeAll()
         started = false; generation += 1; eventState = DockFocusSnapshotPolicy()
         timer?.cancel(); timer = nil
+        topologyTimer?.cancel(); topologyTimer = nil
         for token in tokens { NSWorkspace.shared.notificationCenter.removeObserver(token); NotificationCenter.default.removeObserver(token) }
         tokens.removeAll(); worker.stop()
     }
@@ -296,7 +304,9 @@ private final class WindowTrackingWorker: @unchecked Sendable {
         if again { focusQueue.async { self.drainFocus() } }
     }
     /// Event topology reads bypass both AX inventory and batched membership work.
-    func requestSpaces() {
+    private var lastTopology: [String: UInt64] = [:]
+    private var lastDesktopKeys: [UInt64: String] = [:]
+    func requestSpaces(includeMembership: Bool = true) {
         spaceLock.lock()
         let enqueueTopology = !topologyQueued
         topologyQueued = true
@@ -309,10 +319,13 @@ private final class WindowTrackingWorker: @unchecked Sendable {
                 self.spaceLock.unlock()
                 let date = Date()
                 let state = SpacesService().read(windowIDs: [])
-                callback?(state, revision, date)
+                if includeMembership || self.lastTopology != state.activeSpaceIDs || self.lastDesktopKeys != state.desktopKeys {
+                    self.lastTopology = state.activeSpaceIDs; self.lastDesktopKeys = state.desktopKeys
+                    callback?(state, revision, date)
+                }
             }
         }
-        requestMembership()
+        if includeMembership { requestMembership() }
     }
     private func requestMembership() {
         spaceLock.lock()

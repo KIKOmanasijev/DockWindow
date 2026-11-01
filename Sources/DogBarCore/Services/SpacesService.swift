@@ -35,7 +35,7 @@ public final class SpacesService {
         if let occupied = sky.spaces(containing: windowIDs) { all.formUnion(occupied) }
         var membership: [CGWindowID: [UInt64]] = [:]
         let wanted = Set(windowIDs)
-        for space in all.sorted() {
+        for space in all.sorted() where !wanted.isEmpty {
             guard let ids = sky.windows(on: space) else { continue }
             for id in ids.intersection(wanted) { membership[id, default: []].append(space) }
         }

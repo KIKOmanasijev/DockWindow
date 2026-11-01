@@ -161,7 +161,11 @@ import ApplicationServices
         reload(); updatePointer()
     }
     private func readTrashFull() -> Bool {
-        ((try? FileManager.default.contentsOfDirectory(atPath: trashURL.path)) ?? []).contains { $0 != ".DS_Store" }
+        // Dock knows about Trash on every mounted volume, including locations this
+        // process cannot enumerate. Never turn an access failure into an empty bin.
+        if let full = UserDefaults.standard.persistentDomain(forName: "com.apple.dock")?["trash-full"] as? Bool { return full }
+        guard let contents = try? FileManager.default.contentsOfDirectory(atPath: trashURL.path) else { return trashFull }
+        return contents.contains { $0 != ".DS_Store" }
     }
     private func refreshTrash() {
         guard started, settings.showTrash, settings.useDogBarDock, !settings.isPaused else { return }
