@@ -123,7 +123,10 @@ public enum WindowTitleFormatter {
         .padding(8)
         .background(selected ? selectionColor : Color.primary.opacity(hovered ? 0.10 : 0.045), in: RoundedRectangle(cornerRadius: 16))
         .overlay(RoundedRectangle(cornerRadius: 16).strokeBorder(selected ? Color.white.opacity(0.65) : Color.white.opacity(hovered ? 0.3 : 0.08), lineWidth: selected ? 2.5 : 1))
-        .scaleEffect(hovered && !reduceMotion ? 1.02 : 1)
+        // Switcher cards live in fixed-size grid slots. Enlarging a header card
+        // pushes its rounded selection ring into the slot's rectangular clip.
+        // Preview cards can still lift; switcher hover uses its fill/ring only.
+        .scaleEffect(layout == .overlay && hovered && !reduceMotion ? 1.02 : 1)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: hovered)
         .onHover { value in hovered = value; if value { select() } }
     }
