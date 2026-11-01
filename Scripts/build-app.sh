@@ -11,6 +11,8 @@ trap 'rm -rf "$staging"' EXIT
 mkdir -p "$staging/DogBar.app/Contents/MacOS" "$staging/DogBar.app/Contents/Resources"
 cp "$bin/DogBar" "$staging/DogBar.app/Contents/MacOS/"
 cp Resources/AppIcon.icns "$staging/DogBar.app/Contents/Resources/"
+# Onboarding art goes in before signing, so the signature covers it.
+/usr/bin/python3 Scripts/onboarding_resources.py copy --app "$staging/DogBar.app"
 cp Resources/Info.plist "$staging/DogBar.app/Contents/"
 /usr/libexec/PlistBuddy -c "Add :DogBarBuildRevision string $(git rev-parse --short HEAD)" "$staging/DogBar.app/Contents/Info.plist"
 # Telemetry tags events with this, so local installs can be filtered out of real usage.

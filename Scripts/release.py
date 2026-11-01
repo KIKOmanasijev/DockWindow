@@ -17,6 +17,7 @@ import uuid
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'Scripts'))
 import sparkle_packaging as sparkle  # noqa: E402
+import onboarding_resources as onboarding  # noqa: E402
 
 MINIMUM_MACOS = '26.0'
 EMPTY = dict(available=False, version=None, url=None, sha256=None,
@@ -177,6 +178,7 @@ def verify_app(app, team, v, build):
     binary = app / 'Contents/MacOS/DogBar'
     require(run('xcrun', 'lipo', '-archs', binary).strip() == 'arm64', 'Release must be arm64 only')
     sparkle.verify(app, requirement(team))
+    onboarding.verify(app)
     verify_signature(app, team, app=True)
     ticket_and_gatekeeper(app, app=True)
 
@@ -236,6 +238,8 @@ def build_release(args):
     (app / 'Contents/Resources').mkdir()
     shutil.copy2(bin_dir / 'DogBar', app / 'Contents/MacOS/DogBar')
     shutil.copy2(ROOT / 'Resources/AppIcon.icns', app / 'Contents/Resources/AppIcon.icns')
+    # Before signing and notarization, so both cover the onboarding art.
+    onboarding.copy(app)
     info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())
     info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar', CFBundleName='DogBar', CFBundleDisplayName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=b, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='release', DogBarUpdateChannel='stable')
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps(info))
@@ -334,7 +338,7 @@ def main():
             build_release(args)
         else:
             verify_or_stage(args, stage=args.command == 'stage')
-    except (ReleaseError, sparkle.SparkleError, OSError, ValueError, KeyError, TypeError) as error:
+    except (ReleaseError, sparkle.SparkleError, onboarding.OnboardingResourceError, OSError, ValueError, KeyError, TypeError) as error:
         print(f'Release blocked: {error}', file=sys.stderr)
         return 1
     return 0

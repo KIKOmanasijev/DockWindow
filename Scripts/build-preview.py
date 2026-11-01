@@ -16,6 +16,7 @@ import tempfile
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'Scripts'))
 import sparkle_packaging as sparkle  # noqa: E402
+import onboarding_resources as onboarding  # noqa: E402
 
 DEVELOPMENT_IDENTITY = 'F6525801B1C563EA82693EBE71D63C6CA41538C6'
 # Self-signed code has no Team ID, so library validation would reject the embedded
@@ -122,6 +123,7 @@ def verify_app(app, identity, value, build):
     require(all(info.get(key) == item for key, item in expected.items()), 'Preview app metadata mismatch')
     require(run('xcrun', 'lipo', '-archs', app / 'Contents/MacOS/DogBar').strip() == 'arm64', 'Preview executable must be arm64 only')
     sparkle.verify(app, requirement(identity))
+    onboarding.verify(app)
     verify_signature(app, identity, app=True)
 
 
@@ -208,6 +210,8 @@ def build_preview(args):
     (app / 'Contents/Resources').mkdir()
     shutil.copy2(binary_dir / 'DogBar', app / 'Contents/MacOS/DogBar')
     shutil.copy2(ROOT / 'Resources/AppIcon.icns', app / 'Contents/Resources/AppIcon.icns')
+    # Before signing, so the app signature covers the onboarding art.
+    onboarding.copy(app)
     info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())
     info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar',
                 CFBundleName='DogBar', CFBundleDisplayName='DogBar',
@@ -256,7 +260,7 @@ def main():
         else:
             require(args.sha256 is None, '--sha256 is only valid with --verify-dmg')
             build_preview(args)
-    except (PreviewError, sparkle.SparkleError, OSError, ValueError, KeyError, plistlib.InvalidFileException) as error:
+    except (PreviewError, sparkle.SparkleError, onboarding.OnboardingResourceError, OSError, ValueError, KeyError, plistlib.InvalidFileException) as error:
         print(f'Preview failed: {error}', file=sys.stderr)
         return 1
     return 0

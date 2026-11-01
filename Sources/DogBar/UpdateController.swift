@@ -12,6 +12,8 @@ import Security
 /// including nested helpers, is checked against the same leaf certificate as this app.
 @MainActor final class UpdateController: NSObject {
     let preferences = UpdatePreferences()
+    /// True while Sparkle should not ask about automatic checks yet.
+    var deferPermissionPrompt: (() -> Bool)?
     private let configuration = UpdateConfiguration(info: Bundle.main.infoDictionary ?? [:])
     private var controller: NSObject?
     private var updater: NSObject? { controller?.value(forKey: "updater") as? NSObject }
@@ -122,6 +124,12 @@ import Security
 extension UpdateController {
     @objc(feedURLStringForUpdater:) func feedURLString(for updater: NSObject) -> String? {
         UpdateConfiguration.feedURL.absoluteString
+    }
+
+    /// Sparkle's own "check automatically?" question waits until onboarding is finished, so it
+    /// never covers the first-run tour. Sparkle asks again on a later launch.
+    @objc(updaterShouldPromptForPermissionToCheckForUpdates:) func shouldPromptForPermission(_ updater: NSObject) -> Bool {
+        !(deferPermissionPrompt?() ?? false)
     }
 
     @objc(allowedChannelsForUpdater:) func allowedChannels(for updater: NSObject) -> Set<String> {

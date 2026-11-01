@@ -4,6 +4,8 @@ import DogBarCore
 import Combine
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
+    /// First, so it can tell an existing install from a first launch before other services write defaults.
+    let onboardingStore = OnboardingStore()
     let updater = UpdateController()
     let permissions = PermissionsService()
     let tracker = WindowTracker()
@@ -20,7 +22,14 @@ import Combine
     lazy var dock = DockController(tracker: tracker, actions: actions, settings: settings, pinnedApps: pinnedApps, newWindowOpener: newWindowOpener)
     lazy var previews = PreviewController(tracker: tracker, actions: actions, thumbnails: thumbnails, settings: settings, newWindowOpener: newWindowOpener)
     lazy var settingsWindow = SettingsWindowController(settings: settings, permissions: permissions, pinnedApps: pinnedApps, updates: updater.preferences,
-        onRestoreNativeDock: { [weak self] in self?.restoreNativeDock() }, onShowPermissions: { [weak self] in self?.showOnboarding() })
+        onRestoreNativeDock: { [weak self] in self?.restoreNativeDock() }, onShowPermissions: { [weak self] in self?.showSetup() })
+    lazy var onboarding: OnboardingWindowController = {
+        let controller = OnboardingWindowController(store: onboardingStore, permissions: permissions, settings: settings)
+        controller.onVisibilityChanged = { [weak self] in self?.updateFeatureState() }
+        return controller
+    }()
+    /// Whether the launch-time onboarding decision has been made (it needs the first permission check).
+    var launchOnboardingDecided = false
     var desktopNumbers: [UInt64: Int] = [:]
     var nativeSessionStarted = false
     var replacementActive = false
@@ -31,8 +40,6 @@ import Combine
     var lastDockMode: Bool?
     var permissionTimer: Timer?
     var statusItem: NSStatusItem?
-    var onboarding: NSWindow?
-    var usageDataWindow: NSWindow?
     private var trackingMenus = Set<ObjectIdentifier>()
     func menuWillOpen(_ menu: NSMenu) {
         trackingMenus.insert(ObjectIdentifier(menu))
@@ -55,6 +62,7 @@ import Combine
         appMenu.delegate = self
         appMenu.addItem(withTitle: "About DogBar", action: #selector(showAbout), keyEquivalent: "").target = self
         appMenu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
+        appMenu.addItem(withTitle: "Welcome Tour...", action: #selector(showTour), keyEquivalent: "").target = self
         appMenu.addItem(withTitle: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "").target = self
         appMenu.addItem(.separator())
         appMenu.addItem(withTitle: "Quit DogBar", action: #selector(quit), keyEquivalent: "q").target = self
@@ -78,17 +86,25 @@ import Combine
         let permissionStatus = NSMenuItem(title: "Checking permissions...", action: nil, keyEquivalent: "")
         permissionStatus.identifier = NSUserInterfaceItemIdentifier("permissionStatus")
         permissionStatus.isEnabled = false
+        permissionStatus.target = self
         menu.addItem(permissionStatus)
         menu.addItem(.separator())
         menu.addItem(withTitle: "About DogBar", action: #selector(showAbout), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Settings...", action: #selector(showSettings), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: "Welcome Tour...", action: #selector(showTour), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Check for Updates...", action: #selector(checkForUpdates), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Pause DogBar", action: #selector(togglePause), keyEquivalent: "").target = self
         menu.addItem(withTitle: "Restore Native Dock", action: #selector(restoreNativeDock), keyEquivalent: "").target = self
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit DogBar", action: #selector(quit), keyEquivalent: "q").target = self
         item.menu = menu; statusItem = item
-        if !permissions.isGranted { showOnboarding() } else if !settings.telemetryAsked { showUsageDataQuestion() }
+        // A first launch shows the tour right away; it needs no permission answer. Returning users are
+        // decided after the first permission check (see presentLaunchOnboardingIfNeeded).
+        if !onboardingStore.isCompleted { launchOnboardingDecided = true; onboarding.present(.firstRun) }
+        updater.deferPermissionPrompt = { [weak self] in
+            guard let self else { return false }
+            return !self.onboardingStore.isCompleted || self.onboarding.isShowing
+        }
         startPermissionTimer()
         dock.onHover = { [weak self] item, anchor, screen in self?.previews.hover(item: item, anchor: anchor, screen: screen) }
         dock.onHoverEnded = { [weak self] in self?.previews.hoverEnded() }
@@ -146,26 +162,34 @@ import Combine
         updateFeatureState()
     }
     private func updateFeatureState() {
-        if previouslyGranted == true && !permissions.isGranted && !terminating { showOnboarding() }
+        // Access was lost while running: offer the short recovery flow once, not the whole tour.
+        if previouslyGranted == true && !permissions.isGranted && !terminating { onboarding.present(.recovery) }
+        presentLaunchOnboardingIfNeeded()
         if permissions.hasCheckedPermissions { previouslyGranted = permissions.isGranted }
         if permissions.isGranted { telemetry.permissionsGranted() }
         if lastDockMode != settings.useDogBarDock {
             previews.dismiss()
             lastDockMode = settings.useDogBarDock
         }
-        let desiredPolicy: NSApplication.ActivationPolicy = settings.showDogBarInDock ? .regular : .accessory
+        // The wizard needs a regular app so it can be key and appear in Cmd+Tab; the preference applies again once it closes.
+        let onboardingShowing = launchOnboardingDecided && onboarding.isShowing
+        let desiredPolicy: NSApplication.ActivationPolicy = settings.showDogBarInDock || onboardingShowing ? .regular : .accessory
         if NSApp.activationPolicy() != desiredPolicy { NSApp.setActivationPolicy(desiredPolicy) }
         if statusItem?.isVisible != settings.showMenuBarIcon { statusItem?.isVisible = settings.showMenuBarIcon }
         if let status = statusItem?.menu?.items.first(where: { $0.identifier?.rawValue == "permissionStatus" }) {
-            let title = !permissions.hasCheckedPermissions ? "Checking permissions..." : permissions.isGranted ? "Permissions granted" : "Current process access unavailable"
+            let missing = permissions.hasCheckedPermissions && !permissions.isGranted
+            let title = !permissions.hasCheckedPermissions ? "Checking permissions..." : missing ? "Finish Setup..." : "Permissions granted"
             if status.title != title { status.title = title }
+            // Missing access makes the status line the way back into setup.
+            status.action = missing ? #selector(showSetup) : nil
+            status.isEnabled = missing
         }
         let subroles = Set(settings.allowedWindowSubroles)
         if tracker.allowedSubroles != subroles { tracker.allowedSubroles = subroles }
         DiagnosticsService.setDebugLogging(settings.debugLogging)
-        let tooltip = !permissions.hasCheckedPermissions ? "DogBar: checking current process access" : permissions.isGranted ? "DogBar" : "DogBar: current process access is unavailable"
+        let tooltip = !permissions.hasCheckedPermissions ? "DogBar: checking permissions" : permissions.isGranted ? "DogBar" : "DogBar: permissions needed. Click the paw and choose Finish Setup."
         if statusItem?.button?.toolTip != tooltip { statusItem?.button?.toolTip = tooltip }
-        let enabled = permissions.isGranted && !settings.isPaused && !terminating
+        let enabled = permissions.isGranted && !settings.isPaused && !terminating && !onboardingHoldsFeatures
         previews.enabled = enabled && settings.previewsEnabled
         switcher.enabled = enabled && settings.switcherEnabled && !SettingsShortcutRecording.isRecording
         var configuration = HotkeyConfiguration()
@@ -190,7 +214,21 @@ import Combine
             if item.title != title { item.title = title }
         }
     }
-    private var wantsReplacement: Bool { permissions.isGranted && !settings.isPaused && settings.useDogBarDock && !terminating }
+    /// The first tour and recovery flows finish before the Dock, previews or switcher start, so nothing changes under the reader.
+    private var onboardingHoldsFeatures: Bool { launchOnboardingDecided && onboarding.holdsFeatures }
+    private var wantsReplacement: Bool { permissions.isGranted && !settings.isPaused && settings.useDogBarDock && !terminating && !onboardingHoldsFeatures }
+    /// Once the first permission check answers, show recovery or the usage-data question when needed.
+    /// `--onboarding-tour` replays the tour on launch without changing any saved state.
+    private func presentLaunchOnboardingIfNeeded() {
+        guard !launchOnboardingDecided, permissions.hasCheckedPermissions, !terminating else { return }
+        launchOnboardingDecided = true
+        if let mode = OnboardingPlan.launchMode(tourCompleted: onboardingStore.isCompleted, permissionsGranted: permissions.isGranted,
+                                                installed: permissions.installLocation.isInstalled, privacyAsked: settings.telemetryAsked) {
+            onboarding.present(mode)
+        } else if ProcessInfo.processInfo.arguments.contains("--onboarding-tour") {
+            onboarding.present(.tour)
+        }
+    }
     private func reconcileDock() {
         guard lifecycleTask == nil else { return }
         guard !nativeSessionStarted || replacementActive != wantsReplacement else { return }
@@ -265,38 +303,19 @@ import Combine
     @objc func togglePause() { settings.isPaused.toggle() }
     func applicationWillTerminate(_ notification: Notification) { permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); previews.dismiss(); nativeReader.stop(); dock.stop(); tracker.stop() }
     @objc func quit() { NSApp.terminate(nil) }
-    @objc func showSettings() { onboarding?.orderOut(nil); settingsWindow.show() }
-    @objc func showOnboarding() {
-        if onboarding == nil {
-            let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 530), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-            window.title = "Welcome to DogBar"; window.isReleasedWhenClosed = false
-            let host = NSHostingController(rootView: PermissionsView(permissions: permissions, settings: settings).frame(width: 640, height: 530))
-            window.contentViewController = host
-            window.setContentSize(NSSize(width: 640, height: 530))
-            host.view.frame = NSRect(x: 0, y: 0, width: 640, height: 530)
-            host.view.autoresizingMask = [.width, .height]
-            host.view.needsLayout = true
-            host.view.layoutSubtreeIfNeeded()
-            window.center(); onboarding = window
-        }
-        guard let onboarding else { return }
-        onboarding.contentView?.layoutSubtreeIfNeeded()
-        onboarding.displayIfNeeded()
-        onboarding.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+    @objc func showSettings() { settingsWindow.show() }
+    /// The whole tour again. Saved progress, permissions and choices are untouched.
+    @objc func showTour() { launchOnboardingDecided = true; onboarding.present(.tour) }
+    /// Settings' Show Setup and the menu's Finish Setup: the short recovery flow when something
+    /// is missing, otherwise the tour.
+    @objc func showSetup() {
+        launchOnboardingDecided = true
+        let complete = permissions.isGranted && permissions.installLocation.isInstalled
+        onboarding.present(complete ? .tour : .recovery)
     }
-    /// Asks people who already finished setup, once, whether to share usage data. Closing the window
-    /// without answering shares nothing, and the question comes back on the next launch.
-    func showUsageDataQuestion() {
-        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 230), styleMask: [.titled, .closable], backing: .buffered, defer: false)
-        window.title = "DogBar"; window.isReleasedWhenClosed = false
-        let view = UsageDataChoiceView(settings: settings) { [weak window] in window?.close() }
-            .padding(24).frame(width: 460)
-        window.contentViewController = NSHostingController(rootView: view)
-        window.center()
-        usageDataWindow = window
-        window.makeKeyAndOrderFront(nil)
-        NSApp.activate()
+    /// Opening DogBar again brings an open wizard forward instead of stacking Settings on top of it.
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if launchOnboardingDecided && onboarding.isShowing { onboarding.present(onboarding.model.mode) } else { showSettings() }
+        return true
     }
-    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
 }

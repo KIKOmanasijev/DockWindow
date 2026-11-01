@@ -137,12 +137,12 @@ Scripts/build-app.sh
 
 ### Set up permissions
 
-Use the app's onboarding window or **Settings > General** to request:
+The first launch opens a short tour that ends with both permissions (see [Docs/Onboarding.md](Docs/Onboarding.md)). Replay it any time from the paw menu → **Welcome Tour…**. You can also use **Settings > General** to request:
 
 - **Accessibility:** window focus, window controls and keyboard shortcuts.
 - **Screen Recording:** window thumbnails and hover previews.
 
-After enabling them in System Settings, use **Relaunch DogBar** if access is still inactive. The app checks effective process access and enables its features only after both permissions are available.
+Run DogBar from Applications, not from the mounted disk image. After enabling Screen Recording, choose **Quit & Reopen** (or **Relaunch DogBar**) so the new grant applies. The app checks effective process access and enables its features only after both permissions are available.
 
 ### Keep development signing consistent
 
