@@ -59,6 +59,11 @@
       api_host: HOST,
       ui_host: "https://eu.posthog.com",
       defaults: "2026-08-30",
+      // This is a static page, not a history-routed app. Let the SDK own both
+      // lifecycle events and use its beacon transport on exit.
+      capture_pageview: true,
+      capture_pageleave: true,
+      disable_beacon: false,
       cookieless_mode: "always", // requires "Enable cookieless tracking" in project settings (on)
       person_profiles: "never",
       autocapture: true, // clicks feed heatmaps and after-the-fact questions
