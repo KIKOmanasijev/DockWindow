@@ -40,4 +40,28 @@ final class TelemetryTests: XCTestCase {
         telemetry.start(); telemetry.permissionsGranted(); telemetry.featureUsed(.switcher)
         XCTAssertNil(defaults.string(forKey: "DogBarTelemetry.installID"), "no install ID is created while off")
     }
+
+    @MainActor func testUsageDataIsOffUntilTheUserOptsIn() throws {
+        let suite = "TelemetryTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        XCTAssertFalse(settings.telemetryEnabled)
+        XCTAssertFalse(settings.telemetryAsked, "the first launch still has to ask")
+    }
+
+    @MainActor func testEitherAnswerCountsAsAsked() throws {
+        let suite = "TelemetryTests.\(UUID().uuidString)"
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let settings = AppSettings(defaults: defaults)
+        settings.chooseUsageData(share: false)
+        XCTAssertTrue(settings.telemetryAsked)
+        XCTAssertFalse(settings.telemetryEnabled)
+        settings.chooseUsageData(share: true)
+        XCTAssertTrue(settings.telemetryEnabled)
+        settings.reset()
+        XCTAssertFalse(settings.telemetryAsked, "resetting settings asks again")
+        XCTAssertFalse(settings.telemetryEnabled)
+    }
 }

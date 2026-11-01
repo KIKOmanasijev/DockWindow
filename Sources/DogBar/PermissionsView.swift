@@ -3,6 +3,7 @@ import DogBarCore
 
 struct PermissionsView: View {
     @ObservedObject var permissions: PermissionsService
+    @ObservedObject var settings: AppSettings
     @State private var relaunchError: String?
     private let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -37,8 +38,14 @@ struct PermissionsView: View {
             Text("Relaunch waits for DogBar to quit and restore the native Dock before starting a fresh process.")
                 .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
             Divider()
-            Label("DogBar sends anonymous usage counts, such as whether setup finished and which features you use, so we know what to improve. Never window titles, app names or files. Turn it off any time in Settings → General → Privacy.", systemImage: "hand.raised")
-                .font(.caption).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+            if settings.telemetryAsked {
+                Text(settings.telemetryEnabled ? "You're sharing anonymous usage data." : "You're not sharing usage data.")
+                    .font(.caption).foregroundStyle(.secondary)
+                Text("Change it any time in Settings → General → Privacy.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } else {
+                UsageDataChoiceView(settings: settings)
+            }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(28)

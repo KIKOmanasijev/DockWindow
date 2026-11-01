@@ -32,6 +32,7 @@ import Combine
     var permissionTimer: Timer?
     var statusItem: NSStatusItem?
     var onboarding: NSWindow?
+    var usageDataWindow: NSWindow?
     private var trackingMenus = Set<ObjectIdentifier>()
     func menuWillOpen(_ menu: NSMenu) {
         trackingMenus.insert(ObjectIdentifier(menu))
@@ -87,7 +88,7 @@ import Combine
         menu.addItem(.separator())
         menu.addItem(withTitle: "Quit DogBar", action: #selector(quit), keyEquivalent: "q").target = self
         item.menu = menu; statusItem = item
-        if !permissions.isGranted { showOnboarding() }
+        if !permissions.isGranted { showOnboarding() } else if !settings.telemetryAsked { showUsageDataQuestion() }
         startPermissionTimer()
         dock.onHover = { [weak self] item, anchor, screen in self?.previews.hover(item: item, anchor: anchor, screen: screen) }
         dock.onHoverEnded = { [weak self] in self?.previews.hoverEnded() }
@@ -268,7 +269,7 @@ import Combine
         if onboarding == nil {
             let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 640, height: 530), styleMask: [.titled, .closable], backing: .buffered, defer: false)
             window.title = "Welcome to DogBar"; window.isReleasedWhenClosed = false
-            let host = NSHostingController(rootView: PermissionsView(permissions: permissions).frame(width: 640, height: 530))
+            let host = NSHostingController(rootView: PermissionsView(permissions: permissions, settings: settings).frame(width: 640, height: 530))
             window.contentViewController = host
             window.setContentSize(NSSize(width: 640, height: 530))
             host.view.frame = NSRect(x: 0, y: 0, width: 640, height: 530)
@@ -281,6 +282,19 @@ import Combine
         onboarding.contentView?.layoutSubtreeIfNeeded()
         onboarding.displayIfNeeded()
         onboarding.makeKeyAndOrderFront(nil)
+        NSApp.activate()
+    }
+    /// Asks people who already finished setup, once, whether to share usage data. Closing the window
+    /// without answering shares nothing, and the question comes back on the next launch.
+    func showUsageDataQuestion() {
+        let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 460, height: 230), styleMask: [.titled, .closable], backing: .buffered, defer: false)
+        window.title = "DogBar"; window.isReleasedWhenClosed = false
+        let view = UsageDataChoiceView(settings: settings) { [weak window] in window?.close() }
+            .padding(24).frame(width: 460)
+        window.contentViewController = NSHostingController(rootView: view)
+        window.center()
+        usageDataWindow = window
+        window.makeKeyAndOrderFront(nil)
         NSApp.activate()
     }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showSettings(); return true }
