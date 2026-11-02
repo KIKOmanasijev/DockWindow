@@ -7,7 +7,7 @@ import SwiftUI
 enum SettingsPane: String, CaseIterable, Identifiable {
     case general = "General", permissions = "Permissions"
     case dock = "Dock & Desktops", previews = "Previews", switcher = "Switcher", appearance = "Appearance"
-    case newWindows = "New Windows", diagnostics = "Diagnostics"
+    case newWindows = "New Windows", diagnostics = "Diagnostics", beta = "Beta"
     var id: String { rawValue }
 
     /// Sidebar groups. The first has no label.
@@ -20,7 +20,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .general, .permissions: return .app
         case .dock, .previews, .switcher, .appearance: return .features
-        case .newWindows, .diagnostics: return .advanced
+        case .newWindows, .diagnostics, .beta: return .advanced
         }
     }
     var symbol: String {
@@ -33,6 +33,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .appearance: return "paintbrush.fill"
         case .newWindows: return "plus.rectangle.on.rectangle"
         case .diagnostics: return "stethoscope"
+        case .beta: return "flask.fill"
         }
     }
     /// The sidebar icon tile's color, as System Settings colors its panes.
@@ -45,6 +46,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         case .switcher: return Color(nsColor: .systemIndigo)
         case .appearance: return Color(nsColor: .systemPink)
         case .newWindows: return Color(nsColor: .systemGreen)
+        case .beta: return Color(nsColor: .systemTeal)
         }
     }
 }

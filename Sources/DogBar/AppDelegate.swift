@@ -21,7 +21,17 @@ import Combine
     lazy var telemetry = TelemetryService(settings: settings)
     lazy var dock = DockController(tracker: tracker, actions: actions, settings: settings, pinnedApps: pinnedApps, newWindowOpener: newWindowOpener)
     lazy var previews = PreviewController(tracker: tracker, actions: actions, thumbnails: thumbnails, settings: settings, newWindowOpener: newWindowOpener)
+    let agentActivity = AgentActivityCenter()
+    lazy var agentIsland: AgentIslandController = {
+        agentActivity.sounds = AgentSounds()
+        agentActivity.soundsEnabled = { [weak self] in self?.settings.agentActivitySounds == true && self?.settings.isPaused == false }
+        agentActivity.repliesWanted = { [weak self] in self?.settings.agentActivityReplies == true }
+        let controller = AgentIslandController(center: agentActivity, settings: settings)
+        controller.onOpenSettings = { [weak self] in self?.settingsWindow.show(pageNamed: "Beta") }
+        return controller
+    }()
     lazy var settingsWindow = SettingsWindowController(settings: settings, permissions: permissions, pinnedApps: pinnedApps, updates: updater.preferences,
+        agentActivity: agentActivity,
         onRestoreNativeDock: { [weak self] in self?.restoreNativeDock() }, onShowPermissions: { [weak self] in self?.showSetup() })
     lazy var onboarding: OnboardingWindowController = {
         let controller = OnboardingWindowController(store: onboardingStore, permissions: permissions, settings: settings)
@@ -149,6 +159,10 @@ import Combine
         }.store(in: &subscriptions)
         permissions.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.updateFeatureState() }.store(in: &subscriptions)
         settings.objectWillChange.receive(on: RunLoop.main).sink { [weak self] in self?.updatePermissions() }.store(in: &subscriptions)
+        // The Agent Activity demo belongs to Settings: closing Settings ends it.
+        NotificationCenter.default.publisher(for: SettingsWindowController.presenceDidChange).receive(on: RunLoop.main).sink { [weak self] _ in
+            if !SettingsWindowController.isOpen { self?.agentActivity.stopDemo() }
+        }.store(in: &subscriptions)
         NotificationCenter.default.publisher(for: SettingsShortcutRecording.recordingDidChange).receive(on: RunLoop.main)
             .sink { [weak self] _ in self?.updatePermissions() }.store(in: &subscriptions)
         updatePermissions()
@@ -220,6 +234,8 @@ import Combine
         } else { hotkey.stop(); switcher.dismiss(); tracker.stop() }
         if !settings.switcherEnabled || SettingsShortcutRecording.isRecording { hotkey.stop() }
         if enabled { nativeReader.start() } else { nativeReader.stop() }
+        // Agent Activity needs no permission to observe hooks; it follows the opt-in and Pause.
+        agentIsland.setFeatureEnabled(settings.agentActivityEnabled && !settings.isPaused && !terminating && !onboardingHoldsFeatures)
         reconcileDock()
         if let item = statusItem?.menu?.items.first(where: { $0.action == #selector(togglePause) }) {
             let title = settings.isPaused ? "Resume DogBar" : "Pause DogBar"
@@ -313,7 +329,7 @@ import Combine
     }
     @objc func checkForUpdates() { updater.check() }
     @objc func togglePause() { settings.isPaused.toggle() }
-    func applicationWillTerminate(_ notification: Notification) { permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); previews.dismiss(); nativeReader.stop(); dock.stop(); tracker.stop() }
+    func applicationWillTerminate(_ notification: Notification) { agentIsland.setFeatureEnabled(false); agentActivity.stopDemo(); permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); previews.dismiss(); nativeReader.stop(); dock.stop(); tracker.stop() }
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showSettings() { settingsWindow.show() }
     /// The whole tour again. Saved progress, permissions and choices are untouched.

@@ -5,49 +5,79 @@ public struct DockLayout {
     public var iconFrames: [CGRect]
     public var background: CGRect
     public var position: DockPosition
-    private var cornerRadius: CGFloat = 0
+    /// Corner radius of the material, from the same measured proportions as its thickness.
+    public private(set) var cornerRadius: CGFloat = 0
+    /// Resting tile size after fitting a crowded Dock; magnification never changes it.
+    public private(set) var iconSize: CGFloat = 0
+    /// Material padding around each icon at this layout's (crowd-fitted) icon size.
+    public private(set) var edgeInset: CGFloat = 0
+    /// Gap between the material and the screen edge.
+    public static let screenGap: CGFloat = 4
+    /// Space between neighbouring icon tiles.
+    public static let iconSpacing: CGFloat = 4
+    /// Proportions measured from the macOS 26 system Dock at 2x (tile ≈ 58 pt): material
+    /// padding ≈ 9.9 pt on every side of the tile (0.17 × tile), corner radius ≈ 22 pt
+    /// (0.28 × thickness), and a separator slot ≈ 0.43 × tile between the two 4 pt gaps.
+    static let insetRatio: CGFloat = 0.17
+    static let cornerRatio: CGFloat = 0.28
+    static let separatorRatio: CGFloat = 0.43
+    /// Material padding around an icon tile, identical on the outer, inner and end sides like
+    /// the system Dock. Running indicators sit inside the outer inset and never add thickness.
+    public static func edgeInset(for size: CGFloat) -> CGFloat { max(4, size * insetRatio) }
+    public static func thickness(for size: CGFloat) -> CGFloat { size + 2 * edgeInset(for: size) }
+    public static func cornerRadius(for size: CGFloat) -> CGFloat { thickness(for: size) * cornerRatio }
+    /// Indicator centre, measured outward from the tile's outer edge. The system Dock puts the
+    /// dot about 6 pt above the material's outer edge, i.e. 0.62 of the inset from the edge.
+    public static func indicatorOffset(for size: CGFloat) -> CGFloat { edgeInset(for: size) * 0.38 }
+    /// Indicator diameter: about 4 pt on a 58 pt tile, never scaled by magnification.
+    public static func indicatorDiameter(for size: CGFloat) -> CGFloat { max(2, min(4, size / 14)) }
     public init(kinds: [DockItem.Kind], bounds: CGRect, position: DockPosition, baseSize: CGFloat,
                 maximumSize: CGFloat, pointer: CGPoint? = nil) {
         self.position = position
         guard !kinds.isEmpty else { iconFrames = []; background = .zero; return }
-        cornerRadius = min(30, baseSize * 0.3)
         let horizontal = position == .bottom
         let length = horizontal ? bounds.width : bounds.height
         let base = min(128, max(16, baseSize.isFinite ? baseSize : 48))
+        let gap = Self.iconSpacing
+        let gaps = CGFloat(max(0, kinds.count - 1)) * gap
         // Fit crowded Docks without putting inaccessible icons offscreen.
-        let units = kinds.reduce(CGFloat(0)) { $0 + ($1 == .separator ? 0.25 : 1) }
-        let size = min(base, max(4, (length - 16 - CGFloat(max(0, kinds.count - 1)) * 4) / max(1, units)))
-        let widths = kinds.map { $0 == .separator ? size * 0.25 : size }
-        let restLength = widths.reduce(0, +) + CGFloat(max(0, kinds.count - 1)) * 4
+        let units = kinds.reduce(CGFloat(0)) { $0 + ($1 == .separator ? Self.separatorRatio : 1) }
+        let size = min(base, max(4, (length - 2 * Self.edgeInset(for: base) - gaps) / max(1, units)))
+        let inset = Self.edgeInset(for: size)
+        edgeInset = inset; iconSize = size
+        cornerRadius = Self.cornerRadius(for: size)
+        let widths = kinds.map { $0 == .separator ? size * Self.separatorRatio : size }
+        let restLength = widths.reduce(0, +) + gaps
         var cursor = (length - restLength) / 2
         let coordinate = pointer.map { horizontal ? $0.x - bounds.minX : bounds.maxY - $0.y }
         let sizes = widths.enumerated().map { index, width -> CGFloat in
-            defer { cursor += width + 4 }
+            defer { cursor += width + gap }
             guard kinds[index] != .separator, let coordinate else { return width }
             let scale = MagnificationPolicy.scale(distance: Double((coordinate - cursor - width / 2) / size), baseSize: Double(base), maximumSize: Double(maximumSize))
             return width * CGFloat(scale)
         }
-        let requested = sizes.reduce(0, +) + CGFloat(max(0, kinds.count - 1)) * 4
-        let spacing = CGFloat(max(0, kinds.count - 1)) * 4
-        let fit = min(1, max(1, length - 16 - spacing) / max(1, requested - spacing))
-        let total = sizes.reduce(0, +) * fit + CGFloat(max(0, kinds.count - 1)) * 4
+        let requested = sizes.reduce(0, +) + gaps
+        let fit = min(1, max(1, length - 2 * inset - gaps) / max(1, requested - gaps))
+        let total = sizes.reduce(0, +) * fit + gaps
         cursor = (length - total) / 2
         let start = cursor
+        let outer = Self.screenGap + inset
         iconFrames = sizes.enumerated().map { index, width in
             let side = width * fit
-            defer { cursor += side + 4 }
+            defer { cursor += side + gap }
             let depth = kinds[index] == .separator ? size * 0.7 : side
             switch position {
-            case .bottom: return CGRect(x: bounds.minX + cursor, y: bounds.minY + 19.5, width: side, height: depth)
-            case .left: return CGRect(x: bounds.minX + 19.5, y: bounds.maxY - cursor - side, width: depth, height: side)
-            case .right: return CGRect(x: bounds.maxX - 19.5 - depth, y: bounds.maxY - cursor - side, width: depth, height: side)
+            case .bottom: return CGRect(x: bounds.minX + cursor, y: bounds.minY + outer, width: side, height: depth)
+            case .left: return CGRect(x: bounds.minX + outer, y: bounds.maxY - cursor - side, width: depth, height: side)
+            case .right: return CGRect(x: bounds.maxX - outer - depth, y: bounds.maxY - cursor - side, width: depth, height: side)
             }
         }
-        let thickness = size + 24
+        // The end padding equals the edge inset, so the material is evenly padded all round.
+        let screenGap = Self.screenGap, thickness = size + 2 * inset, span = total + 2 * inset
         switch position {
-        case .bottom: background = CGRect(x: bounds.minX + start - 8, y: bounds.minY + 4, width: total + 16, height: thickness)
-        case .left: background = CGRect(x: bounds.minX + 4, y: bounds.maxY - start - total - 8, width: thickness, height: total + 16)
-        case .right: background = CGRect(x: bounds.maxX - 4 - thickness, y: bounds.maxY - start - total - 8, width: thickness, height: total + 16)
+        case .bottom: background = CGRect(x: bounds.minX + start - inset, y: bounds.minY + screenGap, width: span, height: thickness)
+        case .left: background = CGRect(x: bounds.minX + screenGap, y: bounds.maxY - start - total - inset, width: thickness, height: span)
+        case .right: background = CGRect(x: bounds.maxX - screenGap - thickness, y: bounds.maxY - start - total - inset, width: thickness, height: span)
         }
     }
     /// Separator gaps are reserved for resizing. Without one, use the inward material edge.
@@ -57,26 +87,30 @@ public struct DockLayout {
             let frame = iconFrames[index]
             return position == .bottom ? frame.insetBy(dx: -3, dy: 0) : frame.insetBy(dx: 0, dy: -3)
         }
+        // Inside the inward inset, which is only 4 pt at the smallest icon size.
+        let depth = min(6, max(1, edgeInset - 2)), margin = min(2, (edgeInset - depth) / 2)
         switch position {
-        case .bottom: return CGRect(x: background.midX - 12, y: background.maxY - 8, width: 24, height: 6)
-        case .left: return CGRect(x: background.maxX - 8, y: background.midY - 12, width: 6, height: 24)
-        case .right: return CGRect(x: background.minX + 2, y: background.midY - 12, width: 6, height: 24)
+        case .bottom: return CGRect(x: background.midX - 12, y: background.maxY - margin - depth, width: 24, height: depth)
+        case .left: return CGRect(x: background.maxX - margin - depth, y: background.midY - 12, width: depth, height: 24)
+        case .right: return CGRect(x: background.minX + margin, y: background.midY - 12, width: depth, height: 24)
         }
     }
     /// The inward border also resizes, without stealing input from app icons.
     public var resizeEdge: CGRect {
         guard !background.isEmpty else { return .zero }
         let radius = min(cornerRadius, min(background.width, background.height) / 2)
+        // Exactly the inner inset, so the edge never overlaps a resting icon.
+        let depth = edgeInset
         switch position {
         case .bottom:
-            return CGRect(x: background.minX + radius, y: background.maxY - 9,
-                          width: max(0, background.width - radius * 2), height: 9)
+            return CGRect(x: background.minX + radius, y: background.maxY - depth,
+                          width: max(0, background.width - radius * 2), height: depth)
         case .left:
-            return CGRect(x: background.maxX - 9, y: background.minY + radius,
-                          width: 9, height: max(0, background.height - radius * 2))
+            return CGRect(x: background.maxX - depth, y: background.minY + radius,
+                          width: depth, height: max(0, background.height - radius * 2))
         case .right:
             return CGRect(x: background.minX, y: background.minY + radius,
-                          width: 9, height: max(0, background.height - radius * 2))
+                          width: depth, height: max(0, background.height - radius * 2))
         }
     }
     public func containsResizeTarget(_ point: CGPoint, kinds: [DockItem.Kind]) -> Bool {

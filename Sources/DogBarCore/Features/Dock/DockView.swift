@@ -22,7 +22,6 @@ import QuartzCore
     private let provider: any DockBackgroundProvider
     private let background: NSView
     private let iconSurface = DockIconSurface()
-    private let glassRim = GlassRim()
     private var layers: [String: DockIconLayer] = [:]
     private var separators: [String: CALayer] = [:]
     private let label = NSTextField(labelWithString: "")
@@ -41,8 +40,13 @@ import QuartzCore
     private var resizeSession: DockResizeSession?
     private var resizeMouseDown = false
     private var resizeHandle = CGRect.zero
+    /// Crisp outer rim plus a fainter inner line, both additive like the system Dock's edge.
     private let edgeRim = CAGradientLayer()
     private let edgeMask = CAShapeLayer()
+    private let innerRim = CAGradientLayer()
+    private let innerMask = CAShapeLayer()
+    /// Restores the backdrop saturation that clear glass washes out (see `DockGlassStyle`).
+    private let vibrance = CAShapeLayer()
     private let resizePill = CALayer()
     private var resizeCuePoint = CGPoint.zero
     private var cancelMonitor: Any?
@@ -63,7 +67,7 @@ import QuartzCore
     }
     func containsInteractivePoint(_ point: CGPoint) -> Bool { geometry.containsInteractivePoint(point) }
     init(settings: AppSettings) {
-        self.settings = settings; provider = DockBackgroundProviders.preferred(); background = provider.makeBackgroundView()
+        self.settings = settings; provider = DockBackgroundProviders.preferred(dock: true); background = provider.makeBackgroundView()
         super.init(frame: .zero)
         wantsLayer = true; addSubview(background)
         iconSurface.wantsLayer = true
@@ -73,7 +77,6 @@ import QuartzCore
         } else {
             addSubview(iconSurface)
         }
-        glassRim.attach(to: layer)
         label.lineBreakMode = .byTruncatingMiddle
         label.font = .systemFont(ofSize: 13, weight: .medium); label.alignment = .center
         label.drawsBackground = false
@@ -86,13 +89,15 @@ import QuartzCore
     override var acceptsFirstResponder: Bool { false }
     override func acceptsFirstMouse(for event: NSEvent?) -> Bool { true }
     override func layout() { super.layout(); render() }
+    /// System light/dark switches re-resolve the glass tint.
+    override func viewDidChangeEffectiveAppearance() { super.viewDidChangeEffectiveAppearance(); needsLayout = true }
     func stopTracking() {
         finishResize(cancelled: true)
         resizeMouseDown = false
         pointer = nil
         longPress?.cancel(); longPress = nil; pressed = nil
         hoverID = nil; onHover?(nil, .zero); render()
-        for icon in layers.values { icon.removeAllAnimations(); icon.imageLayer.removeAllAnimations(); icon.dots.removeAllAnimations() }
+        for icon in layers.values { icon.removeAllAnimations(); icon.imageLayer.removeAllAnimations(); icon.dots.removeAllAnimations(); icon.dotHighlights.removeAllAnimations() }
     }
     func track(_ point: CGPoint?) {
         guard !resizeMouseDown, pointer != point else { return }
@@ -123,7 +128,6 @@ import QuartzCore
         // proxy can defer the material resize to a later run-loop pass.
         CATransaction.begin(); CATransaction.setDisableActions(true)
         background.frame = geometry.background
-        glassRim.update(frame: geometry.background, cornerRadius: min(30, displayedIconSize * 0.3))
         background.layoutSubtreeIfNeeded()
         if iconSurface.superview === self {
             iconSurface.frame = bounds
@@ -134,9 +138,9 @@ import QuartzCore
         iconSurface.bounds = iconSurface.superview === self ? bounds : geometry.background
         CATransaction.commit()
         background.layer?.removeAnimation(forKey: "dock-layout")
-        let style = "\(settings.panelMaterial.rawValue):\(settings.theme.rawValue):\(displayedIconSize)"
+        let style = "\(settings.panelMaterial.rawValue):\(settings.theme.rawValue):\(geometry.cornerRadius):\(effectiveAppearance.name.rawValue)"
         if backingStyle != style {
-            provider.updateBackgroundView(background, material: settings.panelMaterial, cornerRadius: min(30, displayedIconSize * 0.3), theme: settings.theme)
+            provider.updateBackgroundView(background, material: settings.panelMaterial, cornerRadius: geometry.cornerRadius, theme: settings.theme)
             appearance = Theme.appearance(settings.theme); backingStyle = style
         }
         let live = Set(items.map(\.id))
@@ -145,15 +149,23 @@ import QuartzCore
         }
         for key in Array(separators.keys) where !live.contains(key) { separators.removeValue(forKey: key)?.removeFromSuperlayer() }
         let custom = settings.dotColor
-        let color = settings.useCustomDotColor ? NSColor(srgbRed: custom.red, green: custom.green, blue: custom.blue, alpha: custom.alpha) : NSColor.labelColor.withAlphaComponent(0.7)
+        let dark = effectiveAppearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+        // In dark appearance default indicators are additive glass beads; light keeps ink dots.
+        let glassDots = dark && !settings.useCustomDotColor
+        let color = settings.useCustomDotColor ? NSColor(srgbRed: custom.red, green: custom.green, blue: custom.blue, alpha: custom.alpha)
+            : glassDots ? DockGlassStyle.indicator : NSColor.labelColor.withAlphaComponent(0.7)
         for (index, item) in items.enumerated() {
             let frame = geometry.iconFrames[index]
             if item.kind == .separator {
                 let line = separators[item.id] ?? CALayer(); separators[item.id] = line
                 if line.superlayer == nil { iconSurface.layer?.addSublayer(line) }
-                line.backgroundColor = NSColor.labelColor.withAlphaComponent(0.22).cgColor
+                // Additive in dark appearance, so the line is a light streak in the glass.
+                line.backgroundColor = (dark ? NSColor.white.withAlphaComponent(DockGlassStyle.separatorAlpha)
+                                             : NSColor.labelColor.withAlphaComponent(0.22)).cgColor
+                line.compositingFilter = dark ? "plusL" : nil
                 let backing = geometry.background
-                let inset = max(8, displayedIconSize * 0.12)
+                // The system Dock's separator stops one edge inset short of each material edge.
+                let inset = geometry.edgeInset
                 let pixel = { (value: CGFloat) in (value * scale).rounded() / scale }
                 line.frame = settings.dockPosition == .bottom
                     ? CGRect(x: pixel(frame.midX), y: pixel(backing.minY + inset), width: 1, height: pixel(backing.height - 2 * inset))
@@ -179,32 +191,15 @@ import QuartzCore
             icon.backgroundColor = dropID == item.id ? NSColor.controlAccentColor.withAlphaComponent(0.25).cgColor : NSColor.clear.cgColor
             icon.cornerRadius = 10
             icon.update(image: images[item.id], badgeText: item.app?.badgeLabel, indicators: indicators[item.id] ?? .init(count: 0), color: color,
-                        position: settings.dockPosition, scale: scale, reduceMotion: Theme.reducesMotion(settings))
+                        position: settings.dockPosition, scale: scale, reduceMotion: Theme.reducesMotion(settings),
+                        baseSize: geometry.iconSize, glass: glassDots)
             icon.setPressed(pressed?.id == item.id && dragged == nil)
             icon.bounce(position: settings.dockPosition,
                         enabled: settings.bounceOnLaunch && launching.contains(item.id),
                         reduceMotion: Theme.reducesMotion(settings))
         }
         if resizePill.superlayer == nil { layer?.addSublayer(resizePill) }
-        if edgeRim.superlayer == nil {
-            edgeRim.mask = edgeMask; edgeRim.zPosition = 90
-            edgeRim.startPoint = CGPoint(x: 0.35, y: 1)
-            edgeRim.endPoint = CGPoint(x: 0.65, y: 0)
-            layer?.addSublayer(edgeRim)
-        }
-        // A specular edge only. The surface inside remains native Liquid Glass.
-        edgeRim.frame = bounds
-        edgeRim.colors = [NSColor.white.withAlphaComponent(0.48).cgColor,
-                          NSColor.white.withAlphaComponent(0.08).cgColor,
-                          NSColor.white.withAlphaComponent(0.42).cgColor]
-        edgeRim.locations = [0, 0.5, 1]
-        edgeMask.frame = bounds
-        edgeMask.fillColor = NSColor.clear.cgColor
-        edgeMask.strokeColor = NSColor.white.cgColor
-        edgeMask.lineWidth = 0.75
-        let rimRect = geometry.background.insetBy(dx: 0.375, dy: 0.375)
-        let radius = max(0, min(30, displayedIconSize * 0.3) - 0.375)
-        edgeMask.path = CGPath(roundedRect: rimRect, cornerWidth: radius, cornerHeight: radius, transform: nil)
+        updateGlassEdge(dark: dark)
         // Only resize intent shows the pill: hovering or holding the top edge. Pressing or
         // holding an app icon must not, even if the pointer then slides onto the edge.
         let resizeArmed = resizeMouseDown || resizeSession != nil
@@ -239,6 +234,45 @@ import QuartzCore
             label.stringValue = item.app?.name ?? item.pinnedApp?.url.deletingPathExtension().lastPathComponent ?? "Trash"
             positionLabel(relativeTo: geometry.iconFrames[hovered])
         }
+    }
+    /// Rim and saturation layers sit above the glass view, so their compositing filters blend
+    /// with the rendered glass. They are sized to the material, never the whole panel.
+    private func updateGlassEdge(dark: Bool) {
+        let material = geometry.background, radius = geometry.cornerRadius
+        if edgeRim.superlayer == nil {
+            for (rim, mask) in [(edgeRim, edgeMask), (innerRim, innerMask)] {
+                rim.mask = mask; rim.zPosition = 90
+                rim.startPoint = CGPoint(x: 0.5, y: 1); rim.endPoint = CGPoint(x: 0.5, y: 0)
+                // Additive: the rim brightens the glass beneath it, so it keeps the wallpaper's
+                // hue like the system Dock's edge instead of painting a flat grey line.
+                rim.compositingFilter = "plusL"
+                mask.fillColor = NSColor.clear.cgColor; mask.strokeColor = NSColor.white.cgColor
+                layer?.addSublayer(rim)
+            }
+            vibrance.zPosition = 1; vibrance.fillRule = .evenOdd
+            vibrance.fillColor = NSColor(srgbRed: 1, green: 0, blue: 0, alpha: 1).cgColor
+            vibrance.compositingFilter = "saturationBlendMode"
+            layer?.addSublayer(vibrance)
+        }
+        // Light falls from above on every Dock edge, so the gradient always runs top to bottom.
+        let profile = DockGlassStyle.rimProfile(length: material.height)
+        for (rim, mask, peak, inset) in [(edgeRim, edgeMask, DockGlassStyle.rimAlpha, CGFloat(0)),
+                                         (innerRim, innerMask, DockGlassStyle.innerRimAlpha, DockGlassStyle.rimWidth)] {
+            rim.frame = material
+            rim.isHidden = material.isEmpty
+            rim.locations = profile.locations.map { NSNumber(value: Double($0)) }
+            rim.colors = profile.weights.map { NSColor.white.withAlphaComponent(peak * $0).cgColor }
+            mask.frame = rim.bounds
+            mask.lineWidth = DockGlassStyle.rimWidth
+            let half = DockGlassStyle.rimWidth / 2
+            let rect = rim.bounds.insetBy(dx: inset + half, dy: inset + half)
+            let r = max(0, min(radius - inset - half, min(rect.width, rect.height) / 2))
+            mask.path = rect.isEmpty ? nil : CGPath(roundedRect: rect, cornerWidth: r, cornerHeight: r, transform: nil)
+        }
+        vibrance.frame = bounds
+        vibrance.opacity = dark ? DockGlassStyle.darkVibrance : DockGlassStyle.lightVibrance
+        vibrance.path = DockGlassStyle.vibrancePath(material: material, radius: radius,
+                                                    icons: zip(items, geometry.iconFrames).filter { $0.0.kind != .separator && $0.0.kind != .trash }.map(\.1))
     }
     private func positionLabel(relativeTo frame: CGRect) {
         label.sizeToFit()
@@ -401,4 +435,56 @@ import QuartzCore
 /// Event routing stays on DockView; this view only establishes correct glass content.
 @MainActor private final class DockIconSurface: NSView {
     override func hitTest(_ point: NSPoint) -> NSView? { nil }
+}
+
+/// Measured from 2x screenshots of the macOS 26 system Dock and DogBar on the same wallpaper.
+/// Clear glass lifts the backdrop toward grey (wallpaper 98,24,64 became 105,42,75), while the
+/// system Dock keeps its hue and saturation (109,26,71). Its rim is a ~0.5 pt additive line
+/// (+85…110 per channel) with a fainter line inside it, bright along the top and bottom and
+/// fading to nothing halfway down the sides. Its indicators are additive beads (+120…140).
+enum DockGlassStyle {
+    static let rimWidth: CGFloat = 0.5
+    static let rimAlpha: CGFloat = 0.5
+    static let innerRimAlpha: CGFloat = 0.2
+    static let separatorAlpha: CGFloat = 0.22
+    static let indicator = NSColor.white.withAlphaComponent(0.5)
+    /// Opacity of a fully saturated layer in saturation blend mode. It keeps the glass's own
+    /// hue and luminance but raises its saturation, and leaves neutral greys untouched.
+    static let darkVibrance: Float = 0.25
+    static let lightVibrance: Float = 0.2
+
+    /// Rim brightness from the top edge (1) to the middle of the sides, mirrored at the bottom.
+    /// Stops are in points, as measured around the system Dock's corners, so tall side Docks
+    /// fade the same way instead of keeping a bright rim far down their long edges.
+    static func rimProfile(length: CGFloat) -> (locations: [CGFloat], weights: [CGFloat]) {
+        let stops: [(CGFloat, CGFloat)] = [(0, 1), (3, 0.5), (7.5, 0.32), (16, 0.2), (26, 0.1)]
+        guard length > 0 else { return ([0, 1], [1, 1]) }
+        let half = length / 2
+        var top = stops.filter { $0.0 < half }.map { ($0.0 / length, $0.1) }
+        top.append((0.5, half > 30 ? 0.03 : stops.last { $0.0 < half }?.1 ?? 1))
+        let bottom = top.dropLast().reversed().map { (1 - $0.0, $0.1) }
+        let all = top + bottom
+        return (all.map(\.0), all.map(\.1))
+    }
+
+    /// macOS app icon artwork fills 824 of 1024 px, centred, with a 185.4 px corner radius.
+    static let iconArtworkInset: CGFloat = 100 / 1024
+    static let iconArtworkCorner: CGFloat = 185.4 / 824
+
+    /// The material minus each icon's artwork (not its padded tile), so saturation lifts the glass
+    /// right up to the icon edge without boosting the icon itself or leaving a duller square around it.
+    static func vibrancePath(material: CGRect, radius: CGFloat, icons: [CGRect]) -> CGPath {
+        let path = CGMutablePath()
+        guard !material.isEmpty else { return path }
+        let r = max(0, min(radius, min(material.width, material.height) / 2))
+        path.addRoundedRect(in: material, cornerWidth: r, cornerHeight: r)
+        for icon in icons {
+            let artwork = icon.insetBy(dx: icon.width * iconArtworkInset, dy: icon.height * iconArtworkInset)
+            let hole = artwork.intersection(material)
+            guard !hole.isNull, !hole.isEmpty else { continue }
+            let corner = min(min(artwork.width, artwork.height) * iconArtworkCorner, min(hole.width, hole.height) / 2)
+            path.addRoundedRect(in: hole, cornerWidth: corner, cornerHeight: corner)
+        }
+        return path
+    }
 }

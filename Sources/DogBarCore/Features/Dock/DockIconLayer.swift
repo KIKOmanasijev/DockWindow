@@ -8,6 +8,8 @@ import CoreText
     let shade = CALayer()
     private let shadeMask = CALayer()
     let dots = CAShapeLayer()
+    /// Small specular cap on each indicator so it reads as a glass bead, like the system Dock.
+    let dotHighlights = CAShapeLayer()
     let badge = CALayer()
     private let badgeTextLayer = DockBadgeTextLayer()
     private let badgeFont = NSFont.systemFont(ofSize: 11)
@@ -16,7 +18,7 @@ import CoreText
     private var lastIndicators = DotIndicators(count: 0)
     override init() {
         super.init()
-        addSublayer(imageLayer); addSublayer(dots); addSublayer(badge)
+        addSublayer(imageLayer); addSublayer(dots); addSublayer(dotHighlights); addSublayer(badge)
         imageLayer.addSublayer(shade)
         // The raster already matches the layer's pixel size, so no resampling filter applies.
         imageLayer.contentsGravity = .center
@@ -30,9 +32,12 @@ import CoreText
     }
     override init(layer: Any) { super.init(layer: layer) }
     required init?(coder: NSCoder) { nil }
+    /// `baseSize` is the resting tile size: indicators keep their place and size while the
+    /// icon magnifies. `glass` draws them as additive light beads that pick up the backdrop.
     func update(image: NSImage?, badgeText: String?, indicators: DotIndicators, color: NSColor,
-                position: DockPosition, scale: CGFloat, reduceMotion: Bool) {
-        if reduceMotion { dots.removeAllAnimations() }
+                position: DockPosition, scale: CGFloat, reduceMotion: Bool,
+                baseSize: CGFloat? = nil, glass: Bool = false) {
+        if reduceMotion { dots.removeAllAnimations(); dotHighlights.removeAllAnimations() }
         imageLayer.frame = bounds
         shade.frame = imageLayer.bounds; shadeMask.frame = shade.bounds
         let pixels = DockIconRasterizer.pixelSize(size: bounds.size, scale: scale)
@@ -53,32 +58,45 @@ import CoreText
             badgeTextLayer.contentsScale = scale
             badgeTextLayer.setNeedsDisplay()
         }
-        let path = CGMutablePath()
-        let diameter = max(2, min(5, bounds.width / 12))
+        let path = CGMutablePath(), highlights = CGMutablePath()
+        let tile = baseSize ?? (position == .bottom ? bounds.width : bounds.height)
+        let diameter = DockLayout.indicatorDiameter(for: tile)
+        let distance = DockLayout.indicatorOffset(for: tile)
         let stride = diameter + 3
         for index in 0..<indicators.count {
             let offset = (CGFloat(index) - CGFloat(indicators.count - 1) / 2) * stride
             let center: CGPoint
             switch position {
-            case .bottom: center = CGPoint(x: bounds.midX + offset, y: -5)
-            case .left: center = CGPoint(x: -5, y: bounds.midY + offset)
-            case .right: center = CGPoint(x: bounds.maxX + 5, y: bounds.midY + offset)
+            // Overlaid in the outer material inset; the dots never take layout space.
+            case .bottom: center = CGPoint(x: bounds.midX + offset, y: -distance)
+            case .left: center = CGPoint(x: -distance, y: bounds.midY + offset)
+            case .right: center = CGPoint(x: bounds.maxX + distance, y: bounds.midY + offset)
             }
             path.addEllipse(in: CGRect(x: center.x - diameter / 2, y: center.y - diameter / 2, width: diameter, height: diameter))
+            // Light comes from above, whatever edge the Dock is on.
+            let cap = diameter * 0.5
+            highlights.addEllipse(in: CGRect(x: center.x - cap / 2, y: center.y + diameter * 0.42 - cap, width: cap, height: cap * 0.8))
         }
         if indicators != lastIndicators, lastIndicators.count > 0, !reduceMotion {
             let outgoing = CAShapeLayer()
             outgoing.path = dots.path; outgoing.fillColor = dots.fillColor; outgoing.strokeColor = dots.strokeColor
-            outgoing.lineWidth = dots.lineWidth; addSublayer(outgoing)
+            outgoing.lineWidth = dots.lineWidth; outgoing.compositingFilter = dots.compositingFilter; addSublayer(outgoing)
             let fade = CABasicAnimation(keyPath: "opacity"); fade.fromValue = 1; fade.toValue = 0; fade.duration = 0.15
             outgoing.opacity = 0; outgoing.add(fade, forKey: "out")
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) { outgoing.removeFromSuperlayer() }
         }
+        // Glass beads add light to the material (so they carry the wallpaper's hue like the
+        // system Dock's) instead of painting a flat grey disc. Custom colours stay literal.
+        dots.compositingFilter = glass ? "plusL" : nil
+        dotHighlights.compositingFilter = glass ? "plusL" : nil
+        dotHighlights.isHidden = !glass || indicators.isHollow
+        dotHighlights.path = highlights
+        dotHighlights.fillColor = NSColor.white.withAlphaComponent(0.4).cgColor
         dots.path = path; dots.fillColor = indicators.isHollow ? NSColor.clear.cgColor : color.cgColor
         dots.strokeColor = indicators.isHollow ? color.cgColor : NSColor.clear.cgColor; dots.lineWidth = 1
         if indicators != lastIndicators, !reduceMotion {
             let fade = CABasicAnimation(keyPath: "opacity"); fade.fromValue = 0; fade.toValue = 1; fade.duration = 0.15
-            dots.add(fade, forKey: "count")
+            dots.add(fade, forKey: "count"); dotHighlights.add(fade, forKey: "count")
         }
         lastIndicators = indicators
     }

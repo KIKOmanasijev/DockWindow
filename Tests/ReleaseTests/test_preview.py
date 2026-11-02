@@ -151,7 +151,7 @@ class PreviewTests(unittest.TestCase):
                     self.assertTrue(any('--scratch-path' in event for event in events))
                     self.assertFalse(any('--deep' in event for event in events if event[0] == 'codesign'))
                     self.assertFalse(any('notarytool' in event or 'stapler' in event or 'spctl' in event for event in events))
-                    self.assertFalse(any('Applications/DogBar.app' in ' '.join(event) for event in events))
+                    self.assertFalse(any('Applications/DogBar.app' in ' '.join(map(str, event)) for event in events))
                     with self.assertRaises(p.PreviewError):
                         p.build_preview(args)
 

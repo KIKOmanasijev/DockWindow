@@ -160,6 +160,10 @@ import Combine
         }
     }
     internal func inspect(_ action: @escaping () -> Void) { worker.queue.async { action() } }
+    /// Reads about one process. DogBar's own process is read on main, where AppKit answers AX in-process.
+    internal func inspect(pid: pid_t, _ action: @escaping () -> Void) {
+        if pid == getpid() { DispatchQueue.main.async { action() } } else { worker.queue.async { action() } }
+    }
     public func setBadges(_ badges: [String: String]) { worker.setBadges(badges) }
     public func dumpWindows() {
         for app in snapshot.apps { Log.system.info("App \(app.pid) \(app.name) bundle=\(app.bundleIdentifier ?? "unknown")") }
@@ -270,7 +274,22 @@ private final class WindowTrackingWorker: @unchecked Sendable {
         }
     }
     func perform(windowID: CGWindowID, ifMissing: @escaping () -> Void, action: @escaping (AXUIElement) -> Void) {
-        queue.async { if let element = self.elements[windowID] { action(element) } else { ifMissing() }; self.scheduleRefresh() }
+        queue.async {
+            if let element = self.elements[windowID] {
+                // AX requests to DogBar's own windows (Settings, onboarding) are answered in-process
+                // by AppKit on the calling thread; doing that off main traps in AppKit. Run them on main.
+                if WindowTrackingWorker.isOwnProcess(element) {
+                    DispatchQueue.main.async { action(element) }
+                } else {
+                    action(element)
+                }
+            } else { ifMissing() }
+            self.scheduleRefresh()
+        }
+    }
+    static func isOwnProcess(_ element: AXUIElement) -> Bool {
+        var pid: pid_t = 0
+        return AXUIElementGetPid(element, &pid) == .success && pid == getpid()
     }
     /// Coalesced focus-only reads never queue behind full inventory or remote discovery.
     func requestFocus(pid: pid_t, at date: Date) {

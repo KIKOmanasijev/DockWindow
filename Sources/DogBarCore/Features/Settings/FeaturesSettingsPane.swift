@@ -323,6 +323,7 @@ private struct PinnedAppsRow: View {
     var body: some View {
         SettingsRow("Pinned apps", description: "Each desktop keeps its own pins and order.") {
             Button("Copy from Apple’s Dock…") { desktopKey = pinnedApps.activeDesktopKey; confirmation = true }
+                .settingsNeutralControl()
                 .disabled(!pinnedApps.canEdit)
         }
         .settingsAnchor("dock.pins")

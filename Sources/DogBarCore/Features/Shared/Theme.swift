@@ -106,13 +106,15 @@ import Combine
 #if compiler(>=6.2)
 /// Native Liquid Glass backing when built with a macOS 26 or newer SDK.
 @MainActor public struct GlassDockBackgroundProvider: DockBackgroundProvider {
-    public init() {}
+    /// The Dock pulls clear glass toward black in dark mode; floating panels keep their tint.
+    public var dock: Bool
+    public init(dock: Bool = false) { self.dock = dock }
     public func makeBackgroundView() -> NSView { NSGlassEffectView() }
     public func updateBackgroundView(_ view: NSView, material: PanelMaterial, cornerRadius: CGFloat, theme: AppTheme) {
         guard let glass = view as? NSGlassEffectView else { return }
         glass.style = .clear
-        glass.tintColor = NSColor.black.withAlphaComponent(0.035)
         glass.cornerRadius = max(0, cornerRadius); glass.appearance = Theme.appearance(theme)
+        glass.tintColor = DockBackgroundProviders.glassTint(for: glass.effectiveAppearance, dock: dock)
     }
 }
 #endif
@@ -120,7 +122,8 @@ import Combine
 /// Uses Apple's public Liquid Glass view when the build SDK predates its Swift
 /// declarations. No private selectors are used.
 @MainActor public struct RuntimeGlassDockBackgroundProvider: DockBackgroundProvider {
-    public init() {}
+    public var dock: Bool
+    public init(dock: Bool = false) { self.dock = dock }
     public func makeBackgroundView() -> NSView {
         guard let type = NSClassFromString("NSGlassEffectView") as? NSView.Type else {
             return MaterialDockBackgroundProvider().makeBackgroundView()
@@ -137,22 +140,30 @@ import Combine
             return
         }
         view.setValue(cornerRadius, forKey: "cornerRadius")
-        if view.responds(to: NSSelectorFromString("setTintColor:")) {
-            view.setValue(NSColor.black.withAlphaComponent(0.035), forKey: "tintColor")
-        }
         view.appearance = Theme.appearance(theme)
+        if view.responds(to: NSSelectorFromString("setTintColor:")) {
+            view.setValue(DockBackgroundProviders.glassTint(for: view.effectiveAppearance, dock: dock), forKey: "tintColor")
+        }
     }
 }
 
 @MainActor public enum DockBackgroundProviders {
+    /// Clear glass alone brightens the backdrop into a milky wash. Like the system Dock,
+    /// pull it slightly toward black in dark appearance so the wallpaper reads through;
+    /// light appearance stays nearly neutral so it does not turn grey.
+    static func glassTint(for appearance: NSAppearance, dock: Bool) -> NSColor {
+        guard dock else { return NSColor.black.withAlphaComponent(0.035) }
+        return appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor.black.withAlphaComponent(0.06) : NSColor.black.withAlphaComponent(0.03)
+    }
     /// DogBar requires macOS 26, so the Dock always uses Liquid Glass: the typed view with
     /// a macOS 26 SDK, otherwise the same public class looked up at runtime. The material
     /// approximation remains only as that lookup's fallback.
-    public static func preferred() -> any DockBackgroundProvider {
+    public static func preferred(dock: Bool = false) -> any DockBackgroundProvider {
         #if compiler(>=6.2)
-        return GlassDockBackgroundProvider()
+        return GlassDockBackgroundProvider(dock: dock)
         #else
-        return RuntimeGlassDockBackgroundProvider()
+        return RuntimeGlassDockBackgroundProvider(dock: dock)
         #endif
     }
 }

@@ -95,7 +95,7 @@ import ApplicationServices
             do { try await Task.sleep(nanoseconds: 150_000_000) } catch { return false }
             guard !Task.isCancelled, !lifecycle.isCancelled else { return false }
             let isFocused: Bool = await withCheckedContinuation { continuation in
-                tracker.inspect {
+                tracker.inspect(pid: window.pid) {
                     guard !cancellation.isCancelled, !lifecycle.isCancelled else { continuation.resume(returning: false); return }
                     let root = AXUIElementCreateApplication(window.pid)
                     AXUIElementSetMessagingTimeout(root, 0.25)

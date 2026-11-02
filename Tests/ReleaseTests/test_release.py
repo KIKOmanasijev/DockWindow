@@ -158,7 +158,7 @@ class ReleaseTests(unittest.TestCase):
                 self.assertNotIn('com.apple.security.cs.disable-library-validation', r.ENTITLEMENTS)
                 self.assertTrue((out / 'release.json').exists())
                 self.assertFalse(any('--deep' in e for e in events if e[0] == 'codesign'))
-                self.assertTrue(all('Applications/DogBar.app' not in ' '.join(e) for e in events))
+                self.assertTrue(all('Applications/DogBar.app' not in ' '.join(map(str, e)) for e in events))
                 with self.assertRaises(r.ReleaseError):
                     r.build_release(args)
 

@@ -2,6 +2,21 @@
 
 **Version: 0.1.2 · build: 9 · Apple team: DD94BC69WN.** Previous stable release is 0.1.1/build 8. Confirm no newer build has been published before starting. The GitHub release is a private draft; do not publish it yet.
 
+## Refreshed candidate — 2 November 2026
+
+The draft source now includes Agent Activity Beta, hook installation/removal and Claude Code follow-up notes, the Settings-window focus crash fix, neutral dropdowns, and the latest Dock glass, rim and proportional-spacing improvements. Build from the draft's **current pinned SHA**, not the earlier Settings-only candidate. The website review (`index-2.html`), pricing and unfinished Paddle checkout are not part of this app release.
+
+Validation on the preparation Mac (Xcode 27.2):
+
+- `swift build -c release --product DogBar`: passed.
+- Focused Agent Activity, Dock layout, updater policy and window-action tests: 102 executed, 2 intentionally skipped, no failures.
+- `python3 -m unittest discover -s Tests/ReleaseTests -v`: 30 tests passed. Fixed mock-event formatting in two tests; packaging/signing behavior is unchanged.
+- Full Swift suite: 232 executed, 2 skipped, four assertions failed across three tests (`DockResizeTests.testResizePillAppearsWithoutTextOnHoverAndDrag`, `PermissionsServiceTests.testBlockedRequestStillOpensSettingsOnceAfterFallbackDelay`, `ScaffoldTests.testBundleMetadata`). All four assertions also fail on the earlier prepared source, `5b7cd50ed8bb20d6171544f0b69647f802a04f5f`, tested from a separate `git archive` extraction. That baseline reports 31 failures in the same test classes; the candidate removes 27 Dock geometry assertion failures. This is still not a green full-suite result.
+
+Before publishing, manually check real Claude Code/Codex hook delivery, note semantics, hover/click-through and keyboard focus, Reduce Motion, screen changes, Dock glass appearance and actual 0.1.1 → 0.1.2 update/relaunch. Signing and notarization do not establish that these interactions work. Beta remains off by default. Follow-up notes do not approve permissions or become user-message bubbles.
+
+Ivan needs no Sparkle private key. Build and notarize first, then return the exact final bytes and records. Hristijan signs the OTA archive/feed **after** receiving and verifying that DMG. Do not generate an OTA feed from a local development build.
+
 ## Ivan: build the exact draft source
 
 Use Xcode 27.2 (the new SDK is needed for the native Settings appearance), your existing Developer ID Application identity and local notarization Keychain profile. Start with a clean checkout; do not discard local edits.

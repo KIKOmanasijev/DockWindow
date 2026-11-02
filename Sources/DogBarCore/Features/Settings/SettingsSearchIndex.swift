@@ -104,6 +104,16 @@ enum SettingsSearchIndex {
             E(title: "Log file", pane: .diagnostics, anchor: "advanced.log", keywords: "diagnostics reveal finder logs"),
             E(title: "Allowed window subroles", pane: .diagnostics, anchor: "advanced.subroles", keywords: "ax accessibility standard dialog window detection"),
             E(title: "Private API availability", pane: .diagnostics, anchor: "advanced.privateAPI", keywords: "symbols skylight diagnostics", group: "advanced.api.more"),
+
+            // Beta
+            E(title: "Agent Activity", pane: .beta, anchor: "beta.agentActivity", keywords: "claude code codex agents sessions notch island dog beta hooks"),
+            E(title: "Always show the island", pane: .beta, anchor: "beta.alwaysVisible", keywords: "notch idle visible agent activity"),
+            E(title: "Agent Activity connection", pane: .beta, anchor: "beta.connection", keywords: "socket events listening status hooks"),
+            E(title: "Agent Activity sounds", pane: .beta, anchor: "beta.sounds", keywords: "audio cue chime notification alert"),
+            E(title: "Reply from the island", pane: .beta, anchor: "beta.replies", keywords: "answer respond continue claude code asyncrewake"),
+            E(title: "Agent Activity demo", pane: .beta, anchor: "beta.demo", keywords: "preview simulated try play"),
+            E(title: "Claude Code hooks", pane: .beta, anchor: "beta.claude", keywords: "settings.json setup install remove uninstall configuration copy agent"),
+            E(title: "Codex hooks", pane: .beta, anchor: "beta.codex", keywords: "hooks.json setup install remove uninstall configuration copy trust agent"),
         ]
     }()
 

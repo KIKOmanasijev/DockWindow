@@ -376,6 +376,26 @@ public final class AppSettings: ObservableObject {
         get { read("debugLogging", fallback: false) }
         set { write("debugLogging", value: newValue) }
     }
+    /// Beta: the Agent Activity island. Off until the person opts in under Settings > Beta.
+    public var agentActivityEnabled: Bool {
+        get { read("agentActivityEnabled", fallback: false) }
+        set { write("agentActivityEnabled", value: newValue) }
+    }
+    /// Keep the compact island at the top of the screen even with no sessions.
+    public var agentActivityAlwaysVisible: Bool {
+        get { read("agentActivityAlwaysVisible", fallback: true) }
+        set { write("agentActivityAlwaysVisible", value: newValue) }
+    }
+    /// Soft cues when a session needs you, finishes or fails.
+    public var agentActivitySounds: Bool {
+        get { read("agentActivitySounds", fallback: true) }
+        set { write("agentActivitySounds", value: newValue) }
+    }
+    /// Lets a finished Claude Code turn be answered from the island (installs Stop with asyncRewake).
+    public var agentActivityReplies: Bool {
+        get { read("agentActivityReplies", fallback: true) }
+        set { write("agentActivityReplies", value: newValue) }
+    }
     public var allowedWindowSubroles: [String] {
         get { read("allowedWindowSubroles", fallback: ["AXStandardWindow", "AXDialog"]) }
         set { write("allowedWindowSubroles", value: newValue) }
@@ -456,6 +476,10 @@ public final class AppSettings: ObservableObject {
             keyPrefix + "telemetryEnabled": encoded(false as Bool),
             keyPrefix + "telemetryAsked": encoded(false as Bool),
             keyPrefix + "debugLogging": encoded(false as Bool),
+            keyPrefix + "agentActivityEnabled": encoded(false as Bool),
+            keyPrefix + "agentActivityAlwaysVisible": encoded(true as Bool),
+            keyPrefix + "agentActivityReplies": encoded(true as Bool),
+            keyPrefix + "agentActivitySounds": encoded(true as Bool),
             keyPrefix + "allowedWindowSubroles": encoded(["AXStandardWindow", "AXDialog"] as [String])
         ]
     }

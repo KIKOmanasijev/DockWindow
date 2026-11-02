@@ -63,6 +63,8 @@ import SwiftUI
     func settingsDescription(_ description: String) -> some View {
         SettingsControl(description: description) { self }
     }
+    /// Keep native control chrome neutral while retaining its system appearance and states.
+    func settingsNeutralControl() -> some View { tint(.primary) }
     /// Makes this row a search and scroll target, with a brief highlight when revealed.
     func settingsAnchor(_ id: String) -> some View { modifier(SettingsAnchorModifier(id: id)) }
 }
@@ -147,6 +149,7 @@ private struct SettingsAnchorModifier: ViewModifier {
                 ForEach(choices ?? Array(Value.allCases), id: \.self) { item in Text(labels[item] ?? settingsLabel(item.rawValue)).tag(item) }
             }
             .labelsHidden()
+            .settingsNeutralControl()
             .fixedSize()
             // macOS 26 pop-up buttons size to their title; right-align them as System Settings does.
             .frame(width: SettingsMetrics.controlColumn, alignment: .trailing)

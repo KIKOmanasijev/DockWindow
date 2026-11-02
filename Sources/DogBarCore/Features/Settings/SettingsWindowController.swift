@@ -20,7 +20,7 @@ import SwiftUI
     }
 
     public init(settings: AppSettings, permissions: PermissionsService, pinnedApps: PinnedAppsStore,
-                updates: UpdatePreferences, onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
+                updates: UpdatePreferences, agentActivity: AgentActivityCenter, onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
         self.settings = settings
         let navigation = SettingsNavigation()
         let search = SettingsSearch()
@@ -40,6 +40,7 @@ import SwiftUI
             case .appearance: AnyView(AppearanceSettingsPane(settings: settings))
             case .newWindows: AnyView(NewWindowsSettingsPane(settings: settings))
             case .diagnostics: AnyView(DiagnosticsSettingsPane(settings: settings))
+            case .beta: AnyView(BetaSettingsPane(settings: settings, center: agentActivity, visibility: visibility))
             }
         }
         let split = NSSplitViewController()
@@ -86,6 +87,11 @@ import SwiftUI
     public func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
                         willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? { nil }
 
+    /// Opens Settings on a given page by its sidebar title, for example "Beta".
+    public func show(pageNamed name: String) {
+        if let pane = SettingsPane(rawValue: name) { search.text = ""; navigation.pane = pane }
+        show()
+    }
     /// Brings Settings forward, including when DogBar is running as a menu bar app.
     public func show() {
         if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
