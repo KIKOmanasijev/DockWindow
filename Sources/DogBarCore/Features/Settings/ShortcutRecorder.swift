@@ -37,7 +37,11 @@ import SwiftUI
     var onRecord: ((KeyboardShortcut) -> Void)?
     private let recordingID = UUID()
     private var monitor: Any?
-    private var resignObserver: NSObjectProtocol?
+    private var observers: [NSObjectProtocol] = []
+    /// Claims reserved shortcuts such as Command+Tab before the system app switcher sees them.
+    private let captureTap = ShortcutCaptureEventTap()
+    private var capturesSystemShortcuts = false
+    private var recordingTimeout: Timer?
     override init(frame: NSRect) {
         super.init(frame: frame)
         bezelStyle = .rounded
@@ -61,24 +65,51 @@ import SwiftUI
             if event.keyCode == 53 { self.finish(); return nil }
             let modifiers = HotkeyModifiers(rawValue: UInt64(event.modifierFlags.rawValue)).intersection(.relevant)
             guard !modifiers.isEmpty else { NSSound.beep(); return nil }
-            self.value = KeyboardShortcut(keyCode: event.keyCode, modifiers: modifiers)
-            self.onRecord?(self.value)
-            self.finish()
+            // The capture tap owns modifier shortcuts. One reaching here means it already claimed a key.
+            if self.capturesSystemShortcuts { return nil }
+            self.record(KeyboardShortcut(keyCode: event.keyCode, modifiers: modifiers))
             return nil
         }
-        resignObserver = NotificationCenter.default.addObserver(forName: NSWindow.didResignKeyNotification,
-            object: window, queue: .main) { [weak self] _ in
-                Task { @MainActor in self?.finish() }
+        // Without Accessibility the tap cannot exist; the local monitor still records ordinary shortcuts.
+        capturesSystemShortcuts = captureTap.start { [weak self] event in
+            guard let self, self.monitor != nil else { return }
+            guard self.window?.isKeyWindow == true, self.window?.firstResponder === self else { self.finish(); return }
+            switch event {
+            case .cancelled: self.finish()
+            case let .captured(shortcut): self.record(shortcut)
             }
+        }
+        let center = NotificationCenter.default
+        for name in [NSWindow.didResignKeyNotification, NSWindow.willCloseNotification] {
+            observers.append(center.addObserver(forName: name, object: window, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.finish() }
+            })
+        }
+        observers.append(center.addObserver(forName: NSApplication.didResignActiveNotification, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.finish() }
+        })
+        // Interception never outlives an abandoned recording.
+        recordingTimeout = Timer.scheduledTimer(withTimeInterval: 30, repeats: false) { [weak self] _ in
+            MainActor.assumeIsolated { self?.finish() }
+        }
         refreshTitle()
+    }
+    private func record(_ shortcut: KeyboardShortcut) {
+        value = shortcut
+        onRecord?(shortcut)
+        finish()
     }
     override func resignFirstResponder() -> Bool { finish(); return super.resignFirstResponder() }
     func finish() {
         guard monitor != nil else { return }
+        captureTap.stop()
+        capturesSystemShortcuts = false
         if let monitor { NSEvent.removeMonitor(monitor) }
         monitor = nil
-        if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
-        resignObserver = nil
+        observers.forEach(NotificationCenter.default.removeObserver)
+        observers.removeAll()
+        recordingTimeout?.invalidate()
+        recordingTimeout = nil
         SettingsShortcutRecording.release(owner: recordingID)
         refreshTitle()
     }
@@ -88,12 +119,21 @@ import SwiftUI
     }
     deinit {
         if let monitor { NSEvent.removeMonitor(monitor) }
-        if let resignObserver { NotificationCenter.default.removeObserver(resignObserver) }
+        observers.forEach(NotificationCenter.default.removeObserver)
         let token = recordingID
         Task { @MainActor in SettingsShortcutRecording.release(owner: token) }
     }
     func refreshTitle() {
-        title = monitor == nil ? Self.label(value) : "Press shortcut (Esc cancels)"
+        if monitor == nil {
+            title = Self.label(value)
+            toolTip = nil
+        } else if capturesSystemShortcuts {
+            title = "Press shortcut (Esc cancels)"
+            toolTip = nil
+        } else {
+            title = "Press shortcut (⌘Tab needs Accessibility)"
+            toolTip = "DogBar needs Accessibility access to record system shortcuts such as Command+Tab. Other shortcuts still record, and Esc cancels."
+        }
     }
     static func label(_ shortcut: KeyboardShortcut) -> String {
         let keys: [UInt16: String] = [0:"A",1:"S",2:"D",3:"F",4:"H",5:"G",6:"Z",7:"X",8:"C",9:"V",11:"B",12:"Q",13:"W",14:"E",15:"R",16:"Y",17:"T",18:"1",19:"2",20:"3",21:"4",22:"6",23:"5",24:"=",25:"9",26:"7",27:"-",28:"8",29:"0",30:"]",31:"O",32:"U",33:"[",34:"I",35:"P",36:"Return",37:"L",38:"J",39:"'",40:"K",41:";",42:"\\",43:",",44:"/",45:"N",46:"M",47:".",48:"Tab",49:"Space",50:"`",51:"Delete",76:"Enter",115:"Home",116:"Page Up",117:"Forward Delete",119:"End",121:"Page Down",123:"Left",124:"Right",125:"Down",126:"Up"]
