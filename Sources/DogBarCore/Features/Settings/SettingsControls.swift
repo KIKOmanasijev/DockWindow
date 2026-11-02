@@ -1,12 +1,16 @@
 import AppKit
 import SwiftUI
 
+// The building blocks every page uses. One row anatomy everywhere: title and an optional short
+// description on the leading side, one control in a fixed-width trailing column, so menus and
+// sliders line up down the page. Groups are a single quiet surface with hairlines between rows.
+
 /// A control with a description underneath, for controls that need the full row width.
 @MainActor struct SettingsControl<Content: View>: View {
     let description: String
     @ViewBuilder var content: () -> Content
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
+        VStack(alignment: .leading, spacing: 5) {
             content()
             SettingsDescriptionText(description)
         }
@@ -22,16 +26,26 @@ import SwiftUI
         self.title = title; self.description = description; self.accessory = accessory()
     }
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title).fixedSize(horizontal: false, vertical: true)
-                if let description { SettingsDescriptionText(description) }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+        HStack(alignment: .center, spacing: 20) {
+            SettingsRowText(title: Text(title), description: description)
             accessory.fixedSize()
         }
-        .frame(minHeight: 24)
+        .frame(minHeight: 26)
         .accessibilityElement(children: .contain)
+    }
+}
+
+/// The leading half of a row.
+@MainActor struct SettingsRowText: View {
+    let title: Text
+    let description: String?
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            title.font(.system(size: 13)).foregroundStyle(SettingsPalette.text)
+                .fixedSize(horizontal: false, vertical: true)
+            if let description { SettingsDescriptionText(description) }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -39,7 +53,9 @@ import SwiftUI
     let text: String
     init(_ text: String) { self.text = text }
     var body: some View {
-        Text(text).font(.system(size: 11.5)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+        Text(text).font(.system(size: 11.5)).foregroundStyle(SettingsPalette.muted).lineSpacing(1.5)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: SettingsMetrics.textMeasure, alignment: .leading)
     }
 }
 
@@ -76,10 +92,12 @@ private struct SettingsAnchorModifier: ViewModifier {
         let on = reveal.highlighted == id
         content
             .background {
-                RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(SettingsPalette.tint.opacity(on ? 0.13 : 0))
-                    .padding(.horizontal, -8).padding(.vertical, -5)
-                    .animation(.easeOut(duration: on ? 0.2 : 0.6), value: on)
+                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                    .fill(SettingsPalette.tint.opacity(on ? 0.12 : 0))
+                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous)
+                        .strokeBorder(SettingsPalette.tint.opacity(on ? 0.35 : 0), lineWidth: 1))
+                    .padding(.horizontal, -10).padding(.vertical, -6)
+                    .animation(.easeOut(duration: on ? 0.2 : 0.7), value: on)
             }
             .id(id)
     }
@@ -88,7 +106,7 @@ private struct SettingsAnchorModifier: ViewModifier {
 /// A row with a trailing slider and its value.
 @MainActor struct SettingsSlider: View {
     let title: String
-    let description: String
+    let description: String?
     @Binding var value: Double
     let range: ClosedRange<Double>
     var step: Double = 1
@@ -97,16 +115,17 @@ private struct SettingsAnchorModifier: ViewModifier {
     var zeroLabel: String? = nil
     var body: some View {
         SettingsRow(title, description: description) {
-            HStack(spacing: 10) {
+            HStack(spacing: 8) {
                 // Rounded in the binding: a stepped Slider draws a tick for every step.
                 Slider(value: Binding(get: { value }, set: { value = min(range.upperBound, max(range.lowerBound, ($0 / step).rounded() * step)) }),
                        in: range) { Text(title) }
-                    .labelsHidden().frame(width: 168)
+                    .labelsHidden().controlSize(.small)
                     .accessibilityValue(formatted)
-                Text(formatted).monospacedDigit().foregroundStyle(.secondary)
-                    .frame(width: 54, alignment: .trailing)
+                Text(formatted).font(.system(size: 12, weight: .medium)).monospacedDigit().foregroundStyle(SettingsPalette.muted)
+                    .frame(width: 52, alignment: .trailing)
                     .accessibilityHidden(true)
             }
+            .frame(width: SettingsMetrics.controlColumn)
         }
     }
     private var formatted: String {
@@ -126,7 +145,9 @@ private struct SettingsAnchorModifier: ViewModifier {
         SettingsRow(title, description: description) {
             Picker(title, selection: $value) {
                 ForEach(choices ?? Array(Value.allCases), id: \.self) { item in Text(labels[item] ?? settingsLabel(item.rawValue)).tag(item) }
-            }.labelsHidden()
+            }
+            .labelsHidden()
+            .frame(width: SettingsMetrics.controlColumn)
         }
     }
 }
@@ -138,7 +159,7 @@ func settingsLabel(_ raw: String) -> String {
 
 @MainActor struct SettingsColorPicker: View {
     let title: String
-    let description: String
+    let description: String?
     @Binding var value: SettingsColor
     var body: some View {
         SettingsRow(title, description: description) {
@@ -150,6 +171,11 @@ func settingsLabel(_ raw: String) -> String {
     }
 }
 
+/// A hairline in the surface's own line color, not the system gray.
+struct SettingsHairline: View {
+    var body: some View { Rectangle().fill(SettingsPalette.line).frame(height: 1).accessibilityHidden(true) }
+}
+
 /// Rows separated by hairlines. Plain stacks avoid the grouped Form's reconciliation cost.
 @MainActor struct SettingsRows<Content: View>: View {
     let content: Content
@@ -158,15 +184,15 @@ func settingsLabel(_ raw: String) -> String {
         VStack(alignment: .leading, spacing: 0) {
             Group(subviews: content) { subviews in
                 ForEach(subviews) { row in
-                    if row.id != subviews.first?.id { Divider().opacity(0.7) }
-                    row.padding(.vertical, 10)
+                    if row.id != subviews.first?.id { SettingsHairline() }
+                    row.padding(.vertical, 11)
                 }
             }
         }
     }
 }
 
-/// A titled group of rows on a white (or deep ink) surface.
+/// A titled group of rows on one quiet surface.
 @MainActor struct SettingsSection<Content: View>: View {
     let title: String?
     var footer: String? = nil
@@ -177,15 +203,16 @@ func settingsLabel(_ raw: String) -> String {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let title {
-                Text(title).font(.system(size: 13, weight: .semibold)).padding(.leading, 4)
+                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(SettingsPalette.text)
+                    .padding(.leading, 2)
                     .accessibilityAddTraits(.isHeader)
             }
             SettingsRows { content }
-                .padding(.horizontal, 14).padding(.vertical, 2)
+                .padding(.horizontal, 16).padding(.vertical, 2)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .settingsSurface()
             if let footer {
-                SettingsDescriptionText(footer).padding(.horizontal, 4)
+                SettingsDescriptionText(footer).padding(.horizontal, 2)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -193,10 +220,9 @@ func settingsLabel(_ raw: String) -> String {
 }
 
 extension View {
-    func settingsSurface(radius: CGFloat = 12) -> some View {
+    func settingsSurface(radius: CGFloat = SettingsMetrics.radius) -> some View {
         background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(SettingsPalette.surface))
             .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(SettingsPalette.line, lineWidth: 1))
-            .shadow(color: Color(hex: 0x2B0A74).opacity(0.035), radius: 6, y: 2)
     }
 }
 
@@ -207,6 +233,7 @@ extension View {
     let content: Content
     @EnvironmentObject private var reveal: SettingsReveal
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hovering = false
     init(_ id: String, title: String = "More options", @ViewBuilder content: () -> Content) {
         self.id = id; self.title = title; self.content = content()
     }
@@ -214,24 +241,26 @@ extension View {
         let expanded = reveal.isExpanded(id)
         VStack(alignment: .leading, spacing: 0) {
             if expanded {
-                SettingsRows { content }.padding(.top, -10)
-                Divider().opacity(0.7).padding(.top, 10)
+                SettingsRows { content }.padding(.top, -11)
+                SettingsHairline()
             }
             Button {
-                withAnimation(reduceMotion ? nil : .snappy(duration: 0.22)) { reveal.toggle(id) }
+                withAnimation(reduceMotion ? nil : .snappy(duration: 0.24)) { reveal.toggle(id) }
             } label: {
-                HStack(spacing: 5) {
+                HStack(spacing: 6) {
                     Text(expanded ? "Fewer options" : title)
-                    Image(systemName: "chevron.down").font(.system(size: 9.5, weight: .bold))
+                    Image(systemName: "chevron.down").font(.system(size: 8.5, weight: .bold))
                         .rotationEffect(.degrees(expanded ? 180 : 0))
                     Spacer(minLength: 0)
                 }
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(SettingsPalette.accent)
+                .font(.system(size: 12.5, weight: .medium))
+                .foregroundStyle(SettingsPalette.accent.opacity(hovering ? 1 : 0.88))
+                .frame(minHeight: 22)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
-            .padding(.top, expanded ? 10 : 0)
+            .onHover { hovering = $0 }
+            .padding(.top, expanded ? 11 : 0)
             .accessibilityLabel(title)
             .accessibilityValue(expanded ? "Expanded" : "Collapsed")
             .accessibilityHint(expanded ? "Hides less common options" : "Shows less common options")
@@ -247,23 +276,110 @@ extension View {
     let configuration: ToggleStyleConfiguration
     @Environment(\.settingsRowDescription) private var description
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
-            VStack(alignment: .leading, spacing: 2) {
-                configuration.label.fixedSize(horizontal: false, vertical: true)
+        HStack(alignment: .center, spacing: 20) {
+            VStack(alignment: .leading, spacing: 3) {
+                configuration.label.font(.system(size: 13)).foregroundStyle(SettingsPalette.text)
+                    .fixedSize(horizontal: false, vertical: true)
                 if let description { SettingsDescriptionText(description) }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             // VoiceOver reads the switch with its title and description, not the text twice.
             .accessibilityHidden(true)
             Toggle(isOn: configuration.$isOn) { configuration.label }.labelsHidden().toggleStyle(.switch)
+                .controlSize(.small)
                 .accessibilityHint(description ?? "")
         }
-        .frame(minHeight: 24)
+        .frame(minHeight: 26)
     }
 }
 
-/// A quiet text button in the accent color, for Replay and similar inline actions.
-struct SettingsQuietButtonStyle: ButtonStyle {
+/// A short status capsule: Allowed, Not allowed, Checking.
+struct SettingsStatusPill: View {
+    enum Tone { case good, warning, neutral }
+    let text: String
+    let symbol: String?
+    let tone: Tone
+    var body: some View {
+        let color: Color = switch tone {
+        case .good: SettingsPalette.success
+        case .warning: SettingsPalette.caution
+        case .neutral: SettingsPalette.muted
+        }
+        HStack(spacing: 4) {
+            if let symbol { Image(systemName: symbol).font(.system(size: 9.5, weight: .bold)) }
+            Text(text).font(.system(size: 11.5, weight: .semibold))
+        }
+        .foregroundStyle(color)
+        .padding(.horizontal, 8).frame(height: 20)
+        .background(Capsule().fill(color.opacity(0.13)))
+    }
+}
+
+// MARK: - Page hero
+
+/// The top of a page or feature: a visual on onboarding's stage backdrop with its name and one
+/// sentence, then a strip holding its main control in the same row anatomy as the rows below.
+@MainActor struct SettingsHero<Visual: View, Detail: View, Control: View>: View {
+    let title: String
+    let text: String
+    @ViewBuilder var visual: Visual
+    @ViewBuilder var detail: Detail
+    @ViewBuilder var control: Control
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(alignment: .center, spacing: 22) {
+                visual
+                VStack(alignment: .leading, spacing: 7) {
+                    Text(title).font(.system(size: 20, weight: .bold)).tracking(-0.35).foregroundStyle(SettingsPalette.text)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+                    Text(text).font(.system(size: 13)).foregroundStyle(SettingsPalette.muted).lineSpacing(2.5)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: 270, alignment: .leading)
+                    detail
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(14).padding(.trailing, 6)
+            .background(SettingsStageBackdrop())
+            SettingsHairline()
+            VStack(alignment: .leading, spacing: 0) { control }
+                .padding(.horizontal, 16).padding(.vertical, 12)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(SettingsPalette.surface)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(SettingsPalette.line, lineWidth: 1))
+        .shadow(color: Color(hex: 0x2B0A74).opacity(0.06), radius: 14, y: 6)
+    }
+}
+
+extension SettingsHero where Detail == EmptyView {
+    init(title: String, text: String, @ViewBuilder visual: () -> Visual, @ViewBuilder control: () -> Control) {
+        self.title = title; self.text = text; self.visual = visual(); self.detail = EmptyView(); self.control = control()
+    }
+}
+
+/// Onboarding's scene backdrop: lavender into blush, a soft light from the top left and a
+/// specular line along the top edge.
+struct SettingsStageBackdrop: View {
+    @Environment(\.colorScheme) private var colorScheme
+    var body: some View {
+        ZStack(alignment: .top) {
+            LinearGradient(colors: [SettingsPalette.stageStart, SettingsPalette.stageMid, SettingsPalette.stageEnd],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+            RadialGradient(colors: [SettingsPalette.stageGlow.opacity(colorScheme == .dark ? 0.16 : 0.75), .clear],
+                           center: UnitPoint(x: 0.12, y: 0.1), startRadius: 4, endRadius: 300)
+            LinearGradient(colors: [.clear, .white.opacity(colorScheme == .dark ? 0.16 : 0.9), .clear], startPoint: .leading, endPoint: .trailing)
+                .frame(height: 1)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// The page's single dominant action, in onboarding's yellow.
+struct SettingsPrimaryButtonStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View { Styled(configuration: configuration) }
     private struct Styled: View {
         let configuration: ButtonStyleConfiguration
@@ -271,14 +387,17 @@ struct SettingsQuietButtonStyle: ButtonStyle {
         @State private var hovering = false
         var body: some View {
             configuration.label
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(SettingsPalette.accent)
-                .padding(.horizontal, 8).frame(minHeight: 24)
-                .background(RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .fill(SettingsPalette.tint.opacity(configuration.isPressed ? 0.16 : hovering && isEnabled ? 0.08 : 0)))
-                .opacity(isEnabled ? 1 : 0.45)
-                .contentShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                .font(.system(size: 12.5, weight: .semibold))
+                .foregroundStyle(OnboardingPalette.ink)
+                .padding(.horizontal, 13).frame(minHeight: 28)
+                .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(configuration.isPressed ? OnboardingPalette.yellowPressed : hovering && isEnabled ? OnboardingPalette.yellowHover : OnboardingPalette.yellow))
+                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.black.opacity(0.08)))
+                .shadow(color: OnboardingPalette.ink.opacity(0.14), radius: 4, y: 2)
+                .opacity(isEnabled ? 1 : 0.5)
+                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
                 .onHover { hovering = $0 }
+                .animation(.easeOut(duration: 0.12), value: hovering)
         }
     }
 }

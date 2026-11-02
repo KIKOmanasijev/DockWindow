@@ -3,19 +3,36 @@ import SwiftUI
 
 // Small, self-contained feature demos for the Features page, built from the onboarding scene
 // parts: the same wallpapers, app icons, glass and window thumbnails. They never show live
-// windows. Each plays one short take when it comes into view, then holds its last frame;
-// Replay plays it again. Nothing loops. With Reduce Motion, or while the feature is off, each
-// shows a still that explains it. Their static state follows the settings below them.
+// windows. Each plays one take when it comes into view, in four beats: an established scene
+// (anticipation), one clear action, a long hold on the result, and a gentle return to the
+// opening frame (reset). Replay plays it again. Nothing loops. With Reduce Motion, or while the
+// feature is off, each shows a still that explains it. Their static state follows the settings
+// below them.
 
 /// Scene size, shared so every hero lines up.
 enum DemoMetrics {
     static let size = CGSize(width: 264, height: 166)
-    static let radius: CGFloat = 11
+    static let radius: CGFloat = 9
+    /// The Mac-display bezel around a scene.
+    static let bezel: CGFloat = 4
+}
+
+/// Timing shared by every take, so all three demos move at one calm pace.
+enum DemoPace {
+    /// The opening frame is shown before anything moves.
+    static let anticipation = 1.1
+    /// How long a result stays on screen before the scene resets.
+    static let hold = 2.4
+    /// One smooth, unhurried curve for travel: slow out, slow in, no overshoot.
+    static func travel(_ duration: Double) -> Animation { .timingCurve(0.6, 0, 0.3, 1, duration: duration) }
+    /// Things that appear (a preview, the switcher panel) settle without bouncing.
+    static let appear = Animation.spring(response: 0.5, dampingFraction: 0.9)
+    static let reset = Animation.easeInOut(duration: 0.9)
 }
 
 /// Runs a scene's timeline only while it can be seen: the Features page is selected, the window
 /// is visible and the scene is the topmost one in view. Leaving cancels the take mid-way and
-/// shows the still; a finished take holds its last frame until the key changes.
+/// returns to the resting frame; a finished take is not replayed until the key changes.
 private struct DemoDriver: ViewModifier {
     struct Key: Hashable {
         var active: Bool
@@ -27,17 +44,14 @@ private struct DemoDriver: ViewModifier {
         var take: [Int] { [session, replay, config] }
     }
     let key: Key
-    let still: @MainActor () -> Void
+    /// The resting frame: the take's opening frame when animated, an explanatory still otherwise.
+    let rest: @MainActor () -> Void
     let play: @MainActor () async -> Void
     @State private var finished: [Int]?
 
     func body(content: Content) -> some View {
         content.task(id: key) {
-            guard key.active, key.animated else {
-                if !key.animated || finished != key.take { still() }
-                return
-            }
-            guard finished != key.take else { return }
+            guard key.active, key.animated, finished != key.take else { rest(); return }
             await play()
             if !Task.isCancelled { finished = key.take }
         }
@@ -45,9 +59,9 @@ private struct DemoDriver: ViewModifier {
 }
 
 extension View {
-    fileprivate func demo(_ key: DemoDriver.Key, still: @escaping @MainActor () -> Void,
+    fileprivate func demo(_ key: DemoDriver.Key, rest: @escaping @MainActor () -> Void,
                           play: @escaping @MainActor () async -> Void) -> some View {
-        modifier(DemoDriver(key: key, still: still, play: play))
+        modifier(DemoDriver(key: key, rest: rest, play: play))
     }
 }
 
@@ -63,7 +77,7 @@ extension View {
     withTransaction(transaction, change)
 }
 
-/// The rounded frame around every scene, with a small Replay control in its corner.
+/// A scene in a small Mac-display bezel, like onboarding's desktops, with Replay in its corner.
 private struct DemoFrame<Content: View>: View {
     let label: String
     let canReplay: Bool
@@ -73,23 +87,27 @@ private struct DemoFrame<Content: View>: View {
         content
             .frame(width: DemoMetrics.size.width, height: DemoMetrics.size.height)
             .clipShape(RoundedRectangle(cornerRadius: DemoMetrics.radius, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: DemoMetrics.radius, style: .continuous).strokeBorder(Color.black.opacity(0.14), lineWidth: 0.5))
-            .shadow(color: Color(hex: 0x2B0A74).opacity(0.16), radius: 10, y: 5)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel(label)
+            .padding(DemoMetrics.bezel)
+            .background(RoundedRectangle(cornerRadius: DemoMetrics.radius + DemoMetrics.bezel, style: .continuous).fill(Color(hex: 0x0E0C13)))
+            .overlay(RoundedRectangle(cornerRadius: DemoMetrics.radius + DemoMetrics.bezel + 1, style: .continuous)
+                .strokeBorder(LinearGradient(colors: [.white.opacity(0.7), .white.opacity(0.2)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                .padding(-1))
+            .shadow(color: Color(hex: 0x14043C).opacity(0.28), radius: 14, y: 8)
             .overlay(alignment: .bottomTrailing) {
                 if canReplay {
                     Button(action: onReplay) {
-                        Image(systemName: "arrow.counterclockwise").font(.system(size: 9.5, weight: .bold))
-                            .foregroundStyle(OnboardingPalette.ink.opacity(0.8))
-                            .frame(width: 22, height: 22)
-                            .background(Circle().fill(Color.white.opacity(0.82)))
-                            .overlay(Circle().strokeBorder(Color.white, lineWidth: 0.5))
-                            .shadow(color: .black.opacity(0.18), radius: 3, y: 1)
+                        Image(systemName: "arrow.counterclockwise").font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(OnboardingPalette.ink.opacity(0.85))
+                            .frame(width: 24, height: 24)
+                            .background(Circle().fill(.white.opacity(0.86)))
+                            .overlay(Circle().strokeBorder(LinearGradient(colors: [.white, .white.opacity(0.4)], startPoint: .top, endPoint: .bottom), lineWidth: 0.75))
+                            .shadow(color: .black.opacity(0.22), radius: 3, y: 1)
                             .contentShape(Circle())
                     }
                     .buttonStyle(.plain)
-                    .padding(6)
+                    .padding(DemoMetrics.bezel + 6)
                     .help("Replay")
                     .accessibilityLabel("Replay demo")
                 }
@@ -122,8 +140,9 @@ private struct DemoPointer: View {
 
 // MARK: - Dock & Desktops
 
-/// Desktop 1's Dock fills with its own apps, then the view swipes to Desktop 2 and its Dock
-/// fills with different ones. Desktop and dimming choices change what each Dock holds.
+/// Desktop 1 is shown settled, with its own Dock. After a beat the view leans back, then glides
+/// to Desktop 2, whose Dock already holds different apps, and stays there long enough to compare
+/// before gliding home. Desktop and dimming choices change what each Dock holds.
 struct DockDemoScene: View {
     let enabled: Bool
     let scope: WindowScope
@@ -134,7 +153,8 @@ struct DockDemoScene: View {
     let session: Int
     let reduceMotion: Bool
     @State private var desk = 0
-    @State private var revealed = [true, true]
+    /// A small lean against the direction of travel, before the glide.
+    @State private var lean: CGFloat = 0
     @State private var replay = 0
 
     private struct Desk { let wallpaper: String; let name: String; let window: WindowThumb.Kind; let items: [MiniDock.Item] }
@@ -145,12 +165,13 @@ struct DockDemoScene: View {
              items: [.init(app: "finder", windows: 0), .init(app: "safari", windows: 1), .init(app: "music", windows: 1), .init(app: "photos", windows: 1)]),
     ]
     private let gap: CGFloat = 8
+    private var animated: Bool { enabled && !reduceMotion }
 
     var body: some View {
         let width = DemoMetrics.size.width
-        DemoFrame(label: label, canReplay: enabled && !reduceMotion, onReplay: { replay += 1 }) {
+        DemoFrame(label: label, canReplay: animated, onReplay: { replay += 1 }) {
             HStack(spacing: gap) { deskView(0); deskView(1) }
-                .offset(x: -CGFloat(desk) * (width + gap))
+                .offset(x: -CGFloat(desk) * (width + gap) + lean)
                 .frame(width: width, height: DemoMetrics.size.height, alignment: .leading)
                 .background(Color(hex: 0x0E0C13))
                 .overlay(alignment: .top) {
@@ -160,24 +181,30 @@ struct DockDemoScene: View {
                                 .frame(width: index == desk ? 12 : 5, height: 5)
                         }
                     }
+                    .shadow(color: .black.opacity(0.25), radius: 2, y: 1)
                     .padding(.top, 9)
                 }
         }
-        .demo(DemoDriver.Key(active: active, animated: enabled && !reduceMotion, session: session, replay: replay,
+        .demo(DemoDriver.Key(active: active, animated: animated, session: session, replay: replay,
                              config: [scope.rawValue, otherApps.rawValue].hashValue),
-              still: { instantly { desk = 0; revealed = [true, true] } },
+              rest: { instantly { desk = 0; lean = 0 } },
               play: play)
     }
 
     private func play() async {
-        instantly { desk = 0; revealed = [false, false] }
-        guard await beat(0.25) else { return }
-        revealed[0] = true
-        guard await beat(1.25) else { return }
-        withAnimation(.spring(response: 0.6, dampingFraction: 0.9)) { desk = 1 }
-        guard await beat(0.45) else { return }
-        revealed[1] = true
-        _ = await beat(0.6)
+        instantly { desk = 0; lean = 0 }
+        // Anticipation: Desktop 1 and its Dock, settled.
+        guard await beat(DemoPace.anticipation + 0.3) else { return }
+        withAnimation(.easeOut(duration: 0.28)) { lean = 7 }
+        guard await beat(0.28) else { return }
+        // Action: one glide to Desktop 2.
+        withAnimation(DemoPace.travel(1.05)) { desk = 1; lean = 0 }
+        guard await beat(1.05) else { return }
+        // Hold: long enough to read the other Dock.
+        guard await beat(DemoPace.hold + 0.4) else { return }
+        // Reset: back to Desktop 1.
+        withAnimation(DemoPace.travel(1.05)) { desk = 0 }
+        _ = await beat(1.05)
     }
 
     /// What one desktop's Dock shows under the current settings.
@@ -204,7 +231,7 @@ struct DockDemoScene: View {
                 FloatingWindow(kind: desk.window, width: 100)
                 Spacer(minLength: 0)
                 if enabled {
-                    MiniDock(items: dock.items, iconSize: dock.items.count > 5 ? 16 : 19, revealed: revealed[index],
+                    MiniDock(items: dock.items, iconSize: dock.items.count > 5 ? 16 : 19,
                              reduceMotion: reduceMotion, dimmed: dock.dimmed, showsTrash: showTrash)
                         .padding(.bottom, 6)
                 } else {
@@ -225,9 +252,10 @@ struct DockDemoScene: View {
 
 // MARK: - Previews
 
-/// Cause before effect: the pointer hovers Safari, the preview opens after the hover delay, the
-/// pointer moves to Hotel booking and clicks, the preview closes, then only that window comes
-/// forward.
+/// Cause before effect: the pointer rests on the desktop, travels to Safari in the Dock and
+/// hovers; the preview opens after the hover delay; the pointer moves to Hotel booking and
+/// clicks; the preview closes and only that window comes forward. The result holds, then the
+/// scene returns to its opening frame.
 struct PreviewsDemoScene: View {
     let enabled: Bool
     let hoverDelay: Double
@@ -239,41 +267,44 @@ struct PreviewsDemoScene: View {
     let session: Int
     let reduceMotion: Bool
     private enum Pointer { case start, safari, booking }
-    @State private var pointer = Pointer.booking
-    @State private var safariHovered = true
-    @State private var previewShown = true
-    @State private var bookingHovered = true
+    @State private var pointer = Pointer.start
+    @State private var safariHovered = false
+    @State private var previewShown = false
+    @State private var bookingHovered = false
     @State private var pressing = false
     @State private var rippleShown = false
     @State private var rippleDone = false
-    @State private var bookingFront = false
+    /// 0 with Lisbon day plan in front, 1 with Hotel booking brought forward. A crossfade, so the
+    /// change of order reads as one smooth move.
+    @State private var bookingFront = 0.0
     @State private var frames: [String: CGRect] = [:]
     @State private var replay = 0
     private let items: [MiniDock.Item] = [.init(app: "finder", windows: 0), .init(app: "safari", windows: 2),
                                           .init(app: "slack", windows: 1), .init(app: "notes", windows: 1)]
+    private var animated: Bool { enabled && !reduceMotion }
 
     var body: some View {
-        DemoFrame(label: label, canReplay: enabled && !reduceMotion, onReplay: { replay += 1 }) {
+        DemoFrame(label: label, canReplay: animated, onReplay: { replay += 1 }) {
             Stage(wallpaper: "sequoia", size: DemoMetrics.size, radius: 0) { screen }
         }
-        .demo(DemoDriver.Key(active: active, animated: enabled && !reduceMotion, session: session, replay: replay, config: 0),
-              still: still, play: play)
-        .onChange(of: enabled) { _, _ in if !active || reduceMotion { still() } }
+        .demo(DemoDriver.Key(active: active, animated: animated, session: session, replay: replay, config: 0),
+              rest: rest, play: play)
     }
 
     private var screen: some View {
         ZStack {
             ZStack {
+                FloatingWindow(kind: .booking, width: 108).offset(x: 40, y: -26).scaleEffect(0.985)
+                FloatingWindow(kind: .trip, width: 104).offset(x: -36, y: -34)
                 FloatingWindow(kind: .booking, width: 108).offset(x: 40, y: -26)
-                    .scaleEffect(bookingFront ? 1 : 0.985)
-                    .zIndex(bookingFront ? 2 : 0)
-                FloatingWindow(kind: .trip, width: 104).offset(x: -36, y: -34).zIndex(1)
+                    .scaleEffect(0.985 + 0.015 * bookingFront)
+                    .opacity(bookingFront)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             VStack(spacing: 5) {
                 Spacer(minLength: 0)
                 if previewShown {
-                    preview.transition(reduceMotion ? .opacity : .scale(scale: 0.9, anchor: .bottom).combined(with: .opacity))
+                    preview.transition(reduceMotion ? .opacity : .scale(scale: 0.92, anchor: .bottom).combined(with: .opacity))
                 }
                 MiniDock(items: items, iconSize: 22, highlighted: safariHovered ? "safari" : nil, targets: true)
                     .padding(.bottom, 6)
@@ -293,7 +324,7 @@ struct PreviewsDemoScene: View {
             }
         }
         .overlay {
-            if let tip = pointerTip {
+            if enabled, let tip = pointerTip {
                 DemoPointer(tip: tip, pressing: pressing, rippleShown: rippleShown, rippleDone: rippleDone)
             }
         }
@@ -301,52 +332,61 @@ struct PreviewsDemoScene: View {
 
     private var pointerTip: CGPoint? {
         switch pointer {
-        case .start: return CGPoint(x: DemoMetrics.size.width * 0.8, y: DemoMetrics.size.height * 0.42)
+        case .start: return CGPoint(x: DemoMetrics.size.width * 0.85, y: DemoMetrics.size.height * 0.63)
         case .safari: return frames["dock.safari"].map { CGPoint(x: $0.midX + 3, y: $0.midY + 1) }
         case .booking: return frames["tile.booking"].map { CGPoint(x: $0.midX + 5, y: $0.midY - 3) }
         }
     }
 
-    /// The explanatory still: the preview open with Hotel booking under the pointer.
-    private func still() {
+    /// Animated, the opening frame. Otherwise a still that explains the feature: the preview open
+    /// with Hotel booking under the pointer.
+    private func rest() {
         instantly {
-            pressing = false; rippleShown = false; rippleDone = false; bookingFront = false
-            safariHovered = true
-            previewShown = enabled; bookingHovered = enabled
-            pointer = enabled ? .booking : .safari
+            pressing = false; rippleShown = false; rippleDone = false; bookingFront = 0
+            if animated {
+                pointer = .start; safariHovered = false; previewShown = false; bookingHovered = false
+            } else {
+                safariHovered = enabled; previewShown = enabled; bookingHovered = enabled
+                pointer = enabled ? .booking : .start
+            }
         }
     }
 
     private func play() async {
         instantly {
             pointer = .start; safariHovered = false; previewShown = false; bookingHovered = false
-            pressing = false; rippleShown = false; rippleDone = false; bookingFront = false
+            pressing = false; rippleShown = false; rippleDone = false; bookingFront = 0
         }
-        guard await beat(0.3) else { return }
+        // Anticipation: two Safari windows, Lisbon day plan in front, the pointer resting.
+        guard await beat(DemoPace.anticipation) else { return }
         // 1. The pointer travels to Safari in the Dock and rests there.
-        withAnimation(.easeInOut(duration: 0.6)) { pointer = .safari }
-        guard await beat(0.6) else { return }
-        withAnimation(.easeOut(duration: 0.12)) { safariHovered = true }
-        // 2. After the hover delay, the preview opens.
-        guard await beat(max(0.15, min(hoverDelay, 1))) else { return }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) { previewShown = true }
-        guard await beat(0.45), frames["tile.booking"] != nil else { return }
+        withAnimation(DemoPace.travel(0.95)) { pointer = .safari }
+        guard await beat(0.95) else { return }
+        withAnimation(.easeOut(duration: 0.15)) { safariHovered = true }
+        // 2. After the hover delay (kept short here), the preview opens. Time to read it.
+        guard await beat(min(max(hoverDelay, 0.3), 0.8)) else { return }
+        withAnimation(DemoPace.appear) { previewShown = true }
+        guard await beat(1.1), frames["tile.booking"] != nil else { return }
         // 3. The pointer travels to Hotel booking; only that tile highlights.
-        withAnimation(.easeInOut(duration: 0.5)) { pointer = .booking }
+        withAnimation(DemoPace.travel(0.8)) { pointer = .booking }
+        guard await beat(0.8) else { return }
+        withAnimation(.easeOut(duration: 0.15)) { bookingHovered = true }
         guard await beat(0.5) else { return }
-        withAnimation(.easeOut(duration: 0.12)) { bookingHovered = true }
-        guard await beat(0.35) else { return }
         // 4. Click.
-        withAnimation(.easeOut(duration: 0.08)) { pressing = true; rippleShown = true }
-        withAnimation(.easeOut(duration: 0.45)) { rippleDone = true }
-        guard await beat(0.12) else { return }
-        withAnimation(.easeOut(duration: 0.1)) { pressing = false }
-        guard await beat(0.12) else { return }
+        withAnimation(.easeOut(duration: 0.1)) { pressing = true; rippleShown = true }
+        withAnimation(.easeOut(duration: 0.55)) { rippleDone = true }
+        guard await beat(0.15) else { return }
+        withAnimation(.easeOut(duration: 0.12)) { pressing = false }
+        guard await beat(0.2) else { return }
         // 5. The preview closes, then only Hotel booking comes forward.
-        withAnimation(.easeIn(duration: 0.18)) { previewShown = false; safariHovered = false }
-        guard await beat(0.24) else { return }
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) { bookingFront = true }
-        _ = await beat(0.3)
+        withAnimation(.easeIn(duration: 0.22)) { previewShown = false; safariHovered = false }
+        guard await beat(0.3) else { return }
+        withAnimation(.easeInOut(duration: 0.5)) { bookingFront = 1 }
+        // Hold on the result.
+        guard await beat(0.5 + DemoPace.hold) else { return }
+        // Reset: Lisbon day plan returns to the front and the pointer to where it started.
+        withAnimation(DemoPace.reset) { bookingFront = 0; bookingHovered = false; pointer = .start; rippleShown = false; rippleDone = false }
+        _ = await beat(0.9)
     }
 
     private var preview: some View {
@@ -397,9 +437,10 @@ struct PreviewsDemoScene: View {
 
 // MARK: - Switcher
 
-/// Hold the modifier and tap the key: the switcher opens after its delay, the selection walks to
-/// Packing list, and on release that window comes to the front. Follows the mode, shortcut and
-/// selection color. In macOS mode it shows Apple's switcher as a still.
+/// The keys rest; the modifier goes down; each tap of the key moves the selection, and the panel
+/// appears after the switcher's delay; on release Packing list comes to the front. The result
+/// holds, then the scene returns to its opening frame. Follows the mode, shortcut and selection
+/// color. In macOS mode it shows Apple's switcher as a still.
 struct SwitcherDemoScene: View {
     let mode: SwitcherMode
     let shortcut: KeyboardShortcut
@@ -408,65 +449,88 @@ struct SwitcherDemoScene: View {
     let active: Bool
     let session: Int
     let reduceMotion: Bool
-    @State private var panelShown = true
-    @State private var selected = 2
-    @State private var modifiersDown = true
+    @State private var panelShown = false
+    @State private var selected = 0
+    @State private var modifiersDown = false
     @State private var keyDown = false
-    @State private var notesFront = false
+    /// 0 with Lisbon day plan in front, 1 with Packing list brought forward.
+    @State private var notesFront = 0.0
     @State private var replay = 0
     private let windows: [(kind: WindowThumb.Kind, app: String, name: String)] = [
         (.trip, "safari", "Lisbon day plan"), (.booking, "safari", "Hotel booking"), (.notes, "notes", "Packing list"), (.slack, "slack", "#lisbon-trip"),
     ]
     private let apps: [(app: String, name: String)] = [("safari", "Safari"), ("slack", "Slack"), ("notes", "Notes"), ("music", "Music")]
+    private var animated: Bool { mode != .native && !reduceMotion }
 
     var body: some View {
-        DemoFrame(label: label, canReplay: mode != .native && !reduceMotion, onReplay: { replay += 1 }) {
+        DemoFrame(label: label, canReplay: animated, onReplay: { replay += 1 }) {
             Stage(wallpaper: "sonoma", size: DemoMetrics.size, radius: 0) {
                 ZStack {
-                    FloatingWindow(kind: .notes, width: 96).offset(x: -52, y: -34).zIndex(notesFront ? 2 : 0)
-                    FloatingWindow(kind: .trip, width: 104).offset(x: 46, y: -26).zIndex(1)
+                    FloatingWindow(kind: .notes, width: 96).offset(x: -38, y: -36)
+                    FloatingWindow(kind: .trip, width: 104).offset(x: 38, y: -24)
+                    FloatingWindow(kind: .notes, width: 96).offset(x: -38, y: -36)
+                        .scaleEffect(0.985 + 0.015 * notesFront)
+                        .opacity(notesFront)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 VStack(spacing: 8) {
                     Spacer(minLength: 0)
                     if panelShown {
-                        panel.transition(reduceMotion ? .opacity : .scale(scale: 0.94).combined(with: .opacity))
+                        panel.transition(reduceMotion ? .opacity : .scale(scale: 0.95).combined(with: .opacity))
                     }
                     keys
                 }
                 .padding(.bottom, 10)
             }
         }
-        .demo(DemoDriver.Key(active: active, animated: mode != .native && !reduceMotion, session: session, replay: replay,
+        .demo(DemoDriver.Key(active: active, animated: animated, session: session, replay: replay,
                              config: mode.hashValue),
-              still: { instantly { panelShown = true; selected = mode == .native ? 1 : 2; modifiersDown = true; keyDown = false; notesFront = false } },
-              play: play)
+              rest: rest, play: play)
+    }
+
+    /// Animated, the opening frame. Otherwise the panel open on Packing list.
+    private func rest() {
+        instantly {
+            keyDown = false; notesFront = 0
+            if animated {
+                panelShown = false; selected = 0; modifiersDown = false
+            } else {
+                panelShown = true; selected = mode == .native ? 1 : 2; modifiersDown = true
+            }
+        }
     }
 
     private func play() async {
-        instantly { panelShown = false; selected = 0; modifiersDown = false; keyDown = false; notesFront = false }
-        guard await beat(0.3) else { return }
-        withAnimation(.easeOut(duration: 0.08)) { modifiersDown = true }
-        guard await beat(0.2) else { return }
+        instantly { panelShown = false; selected = 0; modifiersDown = false; keyDown = false; notesFront = 0 }
+        // Anticipation: the desktop and the shortcut's keys, at rest.
+        guard await beat(DemoPace.anticipation) else { return }
+        withAnimation(.easeOut(duration: 0.12)) { modifiersDown = true }
+        guard await beat(0.45) else { return }
         // First tap selects the next window; the panel appears after the switcher's delay.
-        await tap(select: 1)
-        guard await beat(max(0, min(appearanceDelay, 0.6) - 0.1)) else { return }
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.86)) { panelShown = true }
-        guard await beat(0.5) else { return }
-        await tap(select: 2)
-        guard await beat(0.55) else { return }
+        guard await tap(select: 1) else { return }
+        guard await beat(min(max(appearanceDelay, 0.1), 0.6)) else { return }
+        withAnimation(DemoPace.appear) { panelShown = true }
+        guard await beat(1.0) else { return }
+        guard await tap(select: 2) else { return }
+        guard await beat(1.0) else { return }
         // Releasing the modifier goes straight to the selected window.
-        withAnimation(.easeOut(duration: 0.1)) { modifiersDown = false }
-        withAnimation(.easeIn(duration: 0.16)) { panelShown = false }
-        guard await beat(0.2) else { return }
-        withAnimation(.spring(response: 0.38, dampingFraction: 0.72)) { notesFront = true }
-        _ = await beat(0.3)
+        withAnimation(.easeOut(duration: 0.12)) { modifiersDown = false }
+        withAnimation(.easeIn(duration: 0.22)) { panelShown = false }
+        guard await beat(0.3) else { return }
+        withAnimation(.easeInOut(duration: 0.5)) { notesFront = 1 }
+        // Hold on the result.
+        guard await beat(0.5 + DemoPace.hold) else { return }
+        // Reset to the opening frame.
+        withAnimation(DemoPace.reset) { notesFront = 0; selected = 0 }
+        _ = await beat(0.9)
     }
-    private func tap(select index: Int) async {
-        withAnimation(.easeOut(duration: 0.07)) { keyDown = true }
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.86)) { selected = index }
-        guard await beat(0.1) else { return }
-        withAnimation(.easeOut(duration: 0.08)) { keyDown = false }
+    /// One visible key press: down, the selection moves, up.
+    private func tap(select index: Int) async -> Bool {
+        withAnimation(.easeOut(duration: 0.08)) { keyDown = true }
+        withAnimation(.spring(response: 0.4, dampingFraction: 0.9)) { selected = index }
+        guard await beat(0.16) else { return false }
+        withAnimation(.easeOut(duration: 0.1)) { keyDown = false }
+        return true
     }
 
     @ViewBuilder private var panel: some View {

@@ -18,28 +18,28 @@ import SwiftUI
 
     var body: some View {
         Group {
-            statusCard
+            statusHero
             SettingsSection("Startup") {
                 Toggle("Launch at login", isOn: Binding(get: { settings.launchAtLogin }, set: { setLogin($0) }))
-                    .settingsDescription("Start DogBar when you sign in. Status: \(loginStatusText)")
+                    .settingsDescription(loginDescription)
                     .disabled(loginBusy || loginStatusChecking)
                     .settingsAnchor("general.login")
                 if loginStatus == .requiresApproval {
-                    SettingsRow("Approval required", description: "Approve DogBar in System Settings to finish enabling login launch.") {
+                    SettingsRow("Approval required", description: "Approve DogBar in System Settings to finish turning this on.") {
                         Button("Open Login Items") { SMAppService.openSystemSettingsLoginItems() }
                     }
                 }
                 Toggle("Show menu bar icon", isOn: $settings.showMenuBarIcon)
-                    .settingsDescription("The paw menu. When it's hidden, open DogBar again to reach Settings.")
+                    .settingsDescription("The paw menu. When hidden, open DogBar again to reach Settings.")
                     .settingsAnchor("general.menubar")
                 Toggle("Show DogBar in the Dock", isOn: $settings.showDogBarInDock)
-                    .settingsDescription("Show DogBar's own icon in either Dock. Settings stays in the paw menu when hidden.")
+                    .settingsDescription("DogBar’s own icon, in either Dock.")
                     .settingsAnchor("general.dockicon")
             }
             permissionsSection
             SettingsSection("Updates") {
                 Toggle("Check for updates automatically", isOn: $updates.automaticChecks)
-                    .settingsDescription("About once a day, from DogBar's signed feed. Nothing installs until you choose Install and Relaunch.")
+                    .settingsDescription("About once a day. Nothing installs until you choose Install and Relaunch.")
                     .disabled(!updates.isAvailable)
                     .settingsAnchor("general.updates")
                 SettingsRow("Software update", description: updates.statusText) {
@@ -50,18 +50,18 @@ import SwiftUI
             SettingsSection("Privacy") {
                 Toggle("Share anonymous usage data", isOn: Binding(
                     get: { settings.telemetryEnabled }, set: { settings.chooseUsageData(share: $0) }))
-                    .settingsDescription("Off unless you choose to share. Never window titles, app names, files or typing.")
+                    .settingsDescription("Off unless you choose it. Never window titles, app names, files or typing.")
                     .settingsAnchor("general.usage")
-                SettingsMore("general.privacy.more", title: "What's shared") {
-                    SettingsDescriptionText("Helps decide what to improve. DogBar sends a random install ID, app and macOS version, whether setup finished, and which features were used each day. Never window titles, app names, files or anything you type.")
+                SettingsMore("general.privacy.more", title: "What’s shared") {
+                    SettingsDescriptionText("A random install ID, the app and macOS versions, whether setup finished, and which features were used each day. It helps decide what to improve.")
                 }
             }
             SettingsSection("Recovery") {
-                SettingsRow("Apple's Dock", description: "Put Apple's Dock back exactly as it was. DogBar's Dock turns off.") {
-                    Button("Restore Apple's Dock", action: onRestoreNativeDock)
+                SettingsRow("Apple’s Dock", description: "Put it back exactly as it was. DogBar’s Dock turns off.") {
+                    Button("Restore Apple’s Dock", action: onRestoreNativeDock)
                 }
                 .settingsAnchor("general.restore")
-                SettingsRow("Reset", description: "Restore default settings. Dock recovery backups and pins are kept.") {
+                SettingsRow("Reset", description: "Default settings. Dock backups and pins are kept.") {
                     Button("Reset All Settings…", role: .destructive) { resetConfirmation = true }
                         .disabled(loginBusy || loginStatusChecking)
                 }
@@ -96,40 +96,52 @@ import SwiftUI
         return permissions.isGranted ? .running : .setup
     }
 
-    /// The one place the dog appears on this page: presenting DogBar's state and its pause switch.
-    private var statusCard: some View {
-        let (title, detail, color): (String, String, Color) = switch status {
-        case .running: ("DogBar is on", settings.useDogBarDock ? "Your Dock, previews and switcher are running." : "Previews and the switcher are running with Apple's Dock.", SettingsPalette.success)
-        case .paused: ("DogBar is paused", "Apple's Dock is back and DogBar's features are off until you resume.", SettingsPalette.caution)
-        case .setup: ("Setup isn't finished", "Allow both permissions below and DogBar starts by itself.", SettingsPalette.caution)
-        case .checking: ("Checking permissions…", "This only takes a moment.", Color.secondary)
+    /// The one place the dog appears on this page: DogBar's state, the way out of an unfinished
+    /// setup, and the pause switch in the same strip as every other main switch.
+    private var statusHero: some View {
+        let (title, detail, tone): (String, String, SettingsStatusPill.Tone) = switch status {
+        case .running: ("DogBar is running", settings.useDogBarDock ? "Your Dock, previews and switcher are on." : "Previews and the switcher are on, with Apple’s Dock.", .good)
+        case .paused: ("DogBar is paused", "Apple’s Dock is back. Everything resumes when you turn this off.", .warning)
+        case .setup: ("Setup isn’t finished", "DogBar starts by itself once both permissions are allowed.", .warning)
+        case .checking: ("Checking permissions…", "This only takes a moment.", .neutral)
         }
-        return HStack(spacing: 14) {
-            SettingsMascot(pose: .guide, size: 78)
-                .padding(.vertical, -6)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 7) {
-                    Circle().fill(color).frame(width: 8, height: 8).accessibilityHidden(true)
-                    Text(title).font(.system(size: 15, weight: .semibold))
+        return SettingsHero(title: title, text: detail) {
+            SettingsMascot(pose: .guide, size: 132)
+                .frame(width: 168, height: 124)
+                .background(alignment: .bottom) {
+                    Ellipse().fill(Color(hex: 0x2B0A74).opacity(0.12)).frame(width: 110, height: 14).blur(radius: 5).offset(y: -2)
                 }
-                Text(detail).font(.system(size: 12)).foregroundStyle(.secondary).fixedSize(horizontal: false, vertical: true)
+                .padding(.vertical, -6)
+        } detail: {
+            HStack(spacing: 10) {
+                SettingsStatusPill(text: statusWord, symbol: statusSymbol, tone: tone)
+                if status == .setup {
+                    Button("Finish Setup…", action: onShowPermissions).buttonStyle(SettingsPrimaryButtonStyle())
+                }
             }
-            .accessibilityElement(children: .combine)
-            Spacer(minLength: 12)
-            Toggle("Pause", isOn: $settings.isPaused)
-                .toggleStyle(.switch)
-                .accessibilityLabel("Pause DogBar")
+            .padding(.top, 4)
+        } control: {
+            Toggle("Pause DogBar", isOn: $settings.isPaused)
+                .settingsDescription("Brings Apple’s Dock back and stops DogBar until you resume.")
                 .accessibilityHint("Suspends DogBar and restores Apple's Dock while paused.")
-                .fixedSize()
         }
-        .padding(.leading, 10).padding(.trailing, 16).padding(.vertical, 12)
-        .background {
-            RoundedRectangle(cornerRadius: 14, style: .continuous).fill(SettingsPalette.surface)
-                .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .fill(RadialGradient(colors: [SettingsPalette.tint.opacity(0.09), .clear], center: .leading, startRadius: 0, endRadius: 260)))
-        }
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(SettingsPalette.line, lineWidth: 1))
         .settingsAnchor("general.pause")
+    }
+    private var statusSymbol: String? {
+        switch status {
+        case .running: return "checkmark"
+        case .paused: return "pause.fill"
+        case .setup: return "exclamationmark"
+        case .checking: return nil
+        }
+    }
+    private var statusWord: String {
+        switch status {
+        case .running: return "Running"
+        case .paused: return "Paused"
+        case .setup: return "Needs permissions"
+        case .checking: return "Checking"
+        }
     }
 
     // MARK: Permissions
@@ -137,10 +149,10 @@ import SwiftUI
     private var permissionsSection: some View {
         SettingsSection("Permissions") {
             permissionRow("Accessibility", granted: permissions.accessibility,
-                          description: "Focus, close and minimize single windows, and keyboard shortcuts.", action: permissions.openAccessibility)
+                          description: "Focus, close and minimize single windows, and use shortcuts.", action: permissions.openAccessibility)
                 .settingsAnchor("general.accessibility")
             permissionRow("Screen Recording", granted: permissions.screenRecording,
-                          description: "Real window thumbnails. A relaunch may be needed after you allow it.", action: permissions.openScreenRecording)
+                          description: "Real window thumbnails. May need a relaunch after allowing.", action: permissions.openScreenRecording)
                 .settingsAnchor("general.screenrecording")
             // Shown in full while something is missing; tucked away once everything is allowed.
             if permissions.hasCheckedPermissions && !permissions.isGranted {
@@ -153,18 +165,18 @@ import SwiftUI
                 }
             }
             if permissions.usesAdHocSigning {
-                SettingsDescriptionText("This build is ad-hoc signed. Rebuilds can lose permission grants. Create a DockWindow Dev code-signing certificate in Keychain Access, then rebuild.")
+                SettingsDescriptionText("This build is ad-hoc signed, so rebuilds can lose permissions. Create a DockWindow Dev code-signing certificate in Keychain Access, then rebuild.")
             }
         }
     }
     private var setupRow: some View {
-        SettingsRow("Guided setup", description: "Walk through permissions again in the setup window.") {
+        SettingsRow("Guided setup", description: "Walk through permissions again.") {
             Button("Show Setup", action: onShowPermissions)
         }
         .settingsAnchor("general.setup")
     }
     private var relaunchRow: some View {
-        SettingsRow("Relaunch", description: "Restart DogBar after permission changes. Apple's Dock is restored first.") {
+        SettingsRow("Relaunch", description: "After permission changes. Apple’s Dock is restored first.") {
             Button("Relaunch DogBar") {
                 do { try AppRelauncher.relaunch() } catch { errorMessage = error.localizedDescription }
             }
@@ -176,12 +188,26 @@ import SwiftUI
         let state = PermissionRowStatus(hasChecked: permissions.hasCheckedPermissions, granted: granted)
         return SettingsRow(title, description: description) {
             HStack(spacing: 10) {
-                Label(state.label, systemImage: state.symbol)
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundStyle(state == .checking ? Color.secondary : (granted ? SettingsPalette.success : SettingsPalette.caution))
-                Button(permissions.hasCheckedPermissions ? (granted ? "Open System Settings" : "Request Access") : "Checking…", action: action)
-                    .disabled(!permissions.hasCheckedPermissions || permissions.isChecking)
+                SettingsStatusPill(text: state.label, symbol: state == .checking ? nil : state.symbol,
+                                   tone: state == .checking ? .neutral : granted ? .good : .warning)
+                Group {
+                    if state == .missing {
+                        Button("Allow…", action: action).buttonStyle(.borderedProminent)
+                    } else {
+                        Button("Open Settings", action: action)
+                    }
+                }
+                .disabled(!permissions.hasCheckedPermissions || permissions.isChecking)
             }
+        }
+    }
+    private var loginDescription: String {
+        if loginStatusChecking { return "Start DogBar when you sign in. Checking status…" }
+        switch loginStatus {
+        case .enabled: return "Start DogBar when you sign in. On."
+        case .requiresApproval: return "Start DogBar when you sign in. Waiting for your approval."
+        case .notFound: return "Start DogBar when you sign in. macOS can’t find DogBar’s login item."
+        default: return "Start DogBar when you sign in."
         }
     }
     private var loginStatusText: String {

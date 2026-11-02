@@ -1,8 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// Sidebar content. The surrounding split-view item supplies the translucent sidebar material.
-/// With a search query it lists matching settings instead of pages.
+/// The sidebar: onboarding's purple, with glass details. Search, then the four pages, with the
+/// Features subsections marked like onboarding's step dots. With a query it lists matching
+/// settings instead of pages. It draws its own background; there is no AppKit sidebar material.
 @MainActor struct SettingsSidebar: View {
     @ObservedObject var navigation: SettingsNavigation
     @ObservedObject var outline: SettingsOutline
@@ -15,14 +16,21 @@ import SwiftUI
     private var searching: Bool { !search.text.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            searchField.padding(.horizontal, 12)
-            if searching { resultList } else { pageList }
-            Text("DogBar \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")")
-                .font(.caption).foregroundStyle(.tertiary).padding(.horizontal, 22).padding(.bottom, 14)
+        VStack(alignment: .leading, spacing: 0) {
+            searchField.padding(.horizontal, 14).padding(.top, 8)
+            Group {
+                if searching { resultList } else { pageList }
+            }
+            .padding(.top, 14)
+            .frame(maxHeight: .infinity, alignment: .top)
+            footer
         }
-        .padding(.top, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // Native pieces inside (the text field, its caret) render for a dark surface. The
+        // backdrop sits outside this so it still follows the system appearance.
+        .environment(\.colorScheme, .dark)
+        .tint(.white)
+        .background(SidebarBackdrop().ignoresSafeArea())
         .onChange(of: search.focusRequest) { _, _ in searchFocused = true }
         .onChange(of: search.text) { _, _ in selectedResult = 0 }
     }
@@ -30,11 +38,14 @@ import SwiftUI
     // MARK: Search
 
     private var searchField: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").font(.system(size: 12, weight: .medium)).foregroundStyle(.secondary)
+        HStack(spacing: 7) {
+            Image(systemName: "magnifyingglass").font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(.white.opacity(0.7))
                 .accessibilityHidden(true)
-            TextField("Search settings", text: $search.text)
+            TextField("Search settings", text: $search.text, prompt: Text("Search settings").foregroundStyle(.white.opacity(0.6)))
                 .textFieldStyle(.plain)
+                .font(.system(size: 13))
+                .foregroundStyle(.white)
                 .focused($searchFocused)
                 .accessibilityLabel("Search settings")
                 .onSubmit { open(selectedIndex) }
@@ -45,14 +56,21 @@ import SwiftUI
                     search.text = ""; return .handled
                 }
             if !search.text.isEmpty {
-                Button { search.text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary) }
-                    .buttonStyle(.plain).accessibilityLabel("Clear search")
+                Button { search.text = "" } label: {
+                    Image(systemName: "xmark.circle.fill").font(.system(size: 12)).foregroundStyle(.white.opacity(0.7))
+                }
+                .buttonStyle(.plain).accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, 9).frame(height: 30)
-        .background(Color.primary.opacity(0.07), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous)
-            .strokeBorder(searchFocused ? SettingsPalette.tint.opacity(0.6) : Color.primary.opacity(0.06), lineWidth: searchFocused ? 1 : 0.5))
+        .padding(.horizontal, 10).frame(height: 30)
+        .background {
+            let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+            shape.fill(Color.white.opacity(searchFocused ? 0.2 : 0.13))
+                .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(searchFocused ? 0.75 : 0.38), .white.opacity(0.08)],
+                                                           startPoint: .top, endPoint: .bottom), lineWidth: 1))
+                .shadow(color: Color(hex: 0x14043C).opacity(0.25), radius: 3, y: 1)
+        }
+        .animation(.easeOut(duration: 0.15), value: searchFocused)
     }
 
     private var selectedIndex: Int { min(selectedResult, max(0, results.count - 1)) }
@@ -75,95 +93,67 @@ import SwiftUI
         let results = results
         return ScrollView {
             if results.isEmpty {
-                VStack(spacing: 8) {
-                    SettingsMascot(pose: .search, size: 104)
-                    Text("No settings match “\(search.text)”")
-                        .font(.system(size: 12.5, weight: .semibold)).multilineTextAlignment(.center)
-                    Text("Try “hover”, “shortcut” or “desktop”.")
-                        .font(.system(size: 11.5)).foregroundStyle(.secondary).multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity).padding(.top, 18).padding(.horizontal, 16)
-                .accessibilityElement(children: .combine)
+                emptySearch
             } else {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(results.count == 1 ? "1 setting" : "\(results.count) settings")
-                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(.secondary)
-                        .padding(.horizontal, 10).padding(.bottom, 4)
+                        .font(.system(size: 11, weight: .semibold)).foregroundStyle(.white.opacity(0.6))
+                        .padding(.horizontal, 10).padding(.bottom, 5)
                     ForEach(Array(results.enumerated()), id: \.element.id) { index, entry in
-                        resultRow(entry, selected: index == selectedIndex) { open(index) }
+                        SidebarResultRow(entry: entry, selected: index == selectedIndex) { open(index) }
                     }
                 }
-                .padding(.horizontal, 10)
+                .padding(.horizontal, 10).padding(.bottom, 12)
             }
         }
+        .scrollIndicators(.never)
         .accessibilityLabel("Search results")
     }
 
-    private func resultRow(_ entry: SettingsSearchEntry, selected: Bool, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            HStack(alignment: .top, spacing: 9) {
-                Image(systemName: entry.section?.symbol ?? entry.pane.symbol)
-                    .font(.system(size: 11, weight: .semibold)).foregroundStyle(SettingsPalette.accent)
-                    .frame(width: 16).padding(.top, 2)
-                VStack(alignment: .leading, spacing: 1) {
-                    Text(entry.title).font(.system(size: 12.5, weight: .medium)).foregroundStyle(.primary)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text(entry.note.map { "\(entry.path) · \($0)" } ?? entry.path)
-                        .font(.system(size: 10.5)).foregroundStyle(.secondary).lineLimit(2)
+    /// The curious dog, what was searched, and three searches that do find something.
+    private var emptySearch: some View {
+        VStack(spacing: 10) {
+            SettingsMascot(pose: .search, size: 96)
+            VStack(spacing: 4) {
+                Text("Nothing matches “\(search.text.trimmingCharacters(in: .whitespaces))”")
+                    .font(.system(size: 12.5, weight: .semibold)).foregroundStyle(.white)
+                    .multilineTextAlignment(.center).lineLimit(3)
+                Text("Try one of these:").font(.system(size: 11.5)).foregroundStyle(.white.opacity(0.65))
+            }
+            HStack(spacing: 6) {
+                ForEach(["hover", "shortcut", "desktop"], id: \.self) { word in
+                    Button(word) { search.text = word; searchFocused = true }
+                        .buttonStyle(SidebarChipStyle())
                 }
-                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 8).padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background {
-                if selected { RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.09)) }
-            }
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(entry.title)
-        .accessibilityHint("In \(entry.path)")
-        .accessibilityAddTraits(selected ? .isSelected : [])
+        .frame(maxWidth: .infinity).padding(.top, 14).padding(.horizontal, 14)
     }
 
     // MARK: Pages
 
     private var pageList: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: 3) {
                 ForEach(SettingsPane.allCases) { pane in
-                    pageRow(pane)
+                    SidebarPageRow(pane: pane, selected: navigation.pane == pane) {
+                        if navigation.pane != pane { navigation.pane = pane }
+                    }
                     if pane == .features {
-                        ForEach(FeatureSection.allCases) { subsectionRow($0) }
+                        VStack(alignment: .leading, spacing: 0) {
+                            ForEach(FeatureSection.allCases) { subsectionRow($0) }
+                        }
+                        .padding(.bottom, 4)
                     }
                 }
             }
             .padding(.horizontal, 10)
         }
+        .scrollIndicators(.never)
     }
 
-    private func pageRow(_ item: SettingsPane) -> some View {
-        let selected = navigation.pane == item
-        return HStack(spacing: 10) {
-            SettingsPaneIcon(pane: item)
-            Text(item.rawValue).font(.system(size: 13, weight: .medium))
-            Spacer(minLength: 0)
-        }
-        .padding(.horizontal, 8).padding(.vertical, 5)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .background {
-            if selected { RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.1)) }
-        }
-        // Select on mouse-down, as AppKit sidebars do, instead of waiting for mouse-up.
-        .gesture(DragGesture(minimumDistance: 0).onChanged { _ in if navigation.pane != item { navigation.pane = item } })
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(item.rawValue)
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityAction { navigation.pane = item }
-    }
-
-    /// Jumps within the Features page. The subsection under the top of the page is marked.
+    /// Jumps within the Features page. The subsection under the top of the page is marked with
+    /// onboarding's current-step capsule.
     private func subsectionRow(_ section: FeatureSection) -> some View {
         let current = navigation.pane == .features && outline.section == section
         let jump = {
@@ -171,34 +161,164 @@ import SwiftUI
             outline.section = section
             reveal.scroll(to: section.anchor, in: .features, alignTop: true)
         }
-        return HStack(spacing: 8) {
-            Circle().fill(current ? SettingsPalette.tint : Color.primary.opacity(0.22)).frame(width: 5, height: 5)
-            Text(section.title).font(.system(size: 12, weight: current ? .semibold : .regular))
-                .foregroundStyle(current ? Color.primary : Color.secondary)
-            Spacer(minLength: 0)
-        }
-        .padding(.leading, 21).padding(.trailing, 8).padding(.vertical, 4)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .contentShape(Rectangle())
-        .gesture(DragGesture(minimumDistance: 0).onEnded { _ in jump() })
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(section.title), in Features")
-        .accessibilityAddTraits(current ? [.isButton, .isSelected] : .isButton)
-        .accessibilityAction { jump() }
+        return SidebarSubsectionRow(title: section.title, current: current, action: jump)
+    }
+
+    private var footer: some View {
+        Text("DogBar \(Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")")
+            .font(.system(size: 11, weight: .medium)).foregroundStyle(.white.opacity(0.5))
+            .padding(.horizontal, 22).padding(.bottom, 14).padding(.top, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-@MainActor struct SettingsPaneIcon: View {
-    let pane: SettingsPane
+/// Onboarding's welcome gradient with its two soft lights.
+private struct SidebarBackdrop: View {
     var body: some View {
-        Image(systemName: pane.symbol)
+        ZStack {
+            LinearGradient(colors: [SettingsPalette.railTop, SettingsPalette.railMid, SettingsPalette.railBottom], startPoint: .top, endPoint: .bottom)
+            RadialGradient(colors: [Color.white.opacity(0.2), .clear], center: UnitPoint(x: 0.3, y: 0), startRadius: 0, endRadius: 260)
+            RadialGradient(colors: [Color(hex: 0xFF8FD1, opacity: 0.16), .clear], center: UnitPoint(x: 1, y: 1), startRadius: 0, endRadius: 280)
+        }
+        // A thin light edge where the sidebar meets the page, like the rim of a glass pane.
+        .overlay(alignment: .trailing) {
+            LinearGradient(colors: [.white.opacity(0.22), .white.opacity(0.06)], startPoint: .top, endPoint: .bottom).frame(width: 1)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+/// A page: glass icon tile and name. The selected page becomes a white chip with a purple tile.
+private struct SidebarPageRow: View {
+    let pane: SettingsPane
+    let selected: Bool
+    let select: () -> Void
+    @State private var hovering = false
+    var body: some View {
+        HStack(spacing: 10) {
+            SidebarIconTile(symbol: pane.symbol, selected: selected)
+            Text(pane.rawValue).font(.system(size: 13.5, weight: selected ? .semibold : .medium))
+                .foregroundStyle(selected ? OnboardingPalette.ink : Color.white.opacity(0.92))
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 6).frame(height: 36)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background {
+            let shape = RoundedRectangle(cornerRadius: 10, style: .continuous)
+            if selected {
+                shape.fill(Color.white.opacity(0.96))
+                    .overlay(shape.strokeBorder(Color.white, lineWidth: 0.5))
+                    .shadow(color: Color(hex: 0x14043C).opacity(0.3), radius: 6, y: 3)
+            } else if hovering {
+                shape.fill(Color.white.opacity(0.1))
+            }
+        }
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        // Select on mouse-down, as AppKit sidebars do, instead of waiting for mouse-up.
+        .gesture(DragGesture(minimumDistance: 0).onChanged { _ in select() })
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(pane.rawValue)
+        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { select() }
+    }
+}
+
+/// One icon family: a white glyph on frosted glass, or on onboarding's purple when selected.
+private struct SidebarIconTile: View {
+    let symbol: String
+    let selected: Bool
+    var body: some View {
+        let shape = RoundedRectangle(cornerRadius: 7, style: .continuous)
+        Image(systemName: symbol)
             .font(.system(size: 11.5, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: 24, height: 24)
-            .background(LinearGradient(colors: pane.tint, startPoint: .top, endPoint: .bottom),
-                        in: RoundedRectangle(cornerRadius: 6, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.white.opacity(0.18), lineWidth: 0.5))
-            .shadow(color: .black.opacity(0.18), radius: 1, y: 0.5)
+            .background {
+                if selected {
+                    shape.fill(LinearGradient(colors: [Color(hex: 0x9B5CFF), Color(hex: 0x6E24E6)], startPoint: .top, endPoint: .bottom))
+                } else {
+                    shape.fill(LinearGradient(colors: [.white.opacity(0.24), .white.opacity(0.1)], startPoint: .top, endPoint: .bottom))
+                }
+            }
+            .overlay(shape.strokeBorder(LinearGradient(colors: [.white.opacity(selected ? 0.45 : 0.5), .white.opacity(0.08)],
+                                                       startPoint: .top, endPoint: .bottom), lineWidth: 0.75))
             .accessibilityHidden(true)
+    }
+}
+
+/// A Features subsection, indented under the page name. The current one gets the yellow capsule.
+private struct SidebarSubsectionRow: View {
+    let title: String
+    let current: Bool
+    let action: () -> Void
+    @State private var hovering = false
+    var body: some View {
+        HStack(spacing: 10) {
+            ZStack {
+                Capsule().fill(current ? SettingsPalette.yellow : Color.white.opacity(0.35))
+                    .frame(width: current ? 12 : 5, height: 5)
+            }
+            .frame(width: 24)
+            Text(title).font(.system(size: 12.5, weight: current ? .semibold : .regular))
+                .foregroundStyle(.white.opacity(current ? 1 : hovering ? 0.9 : 0.72))
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, 6).frame(height: 27)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
+        .onHover { hovering = $0 }
+        .animation(.spring(response: 0.35, dampingFraction: 0.85), value: current)
+        .gesture(DragGesture(minimumDistance: 0).onEnded { _ in action() })
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(title), in Features")
+        .accessibilityAddTraits(current ? [.isButton, .isSelected] : .isButton)
+        .accessibilityAction { action() }
+    }
+}
+
+/// A search result: where the setting lives, then its name.
+private struct SidebarResultRow: View {
+    let entry: SettingsSearchEntry
+    let selected: Bool
+    let action: () -> Void
+    @State private var hovering = false
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.title).font(.system(size: 12.5, weight: .semibold))
+                    .foregroundStyle(selected ? OnboardingPalette.ink : .white)
+                    .fixedSize(horizontal: false, vertical: true)
+                Text(entry.note.map { "\(entry.path) · \($0)" } ?? entry.path)
+                    .font(.system(size: 11))
+                    .foregroundStyle(selected ? OnboardingPalette.ink.opacity(0.6) : .white.opacity(0.62))
+                    .lineLimit(2)
+            }
+            .padding(.horizontal, 10).padding(.vertical, 7)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background {
+                let shape = RoundedRectangle(cornerRadius: 9, style: .continuous)
+                if selected { shape.fill(Color.white.opacity(0.96)).shadow(color: Color(hex: 0x14043C).opacity(0.25), radius: 5, y: 2) }
+                else if hovering { shape.fill(Color.white.opacity(0.1)) }
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { hovering = $0 }
+        .accessibilityLabel(entry.title)
+        .accessibilityHint("In \(entry.path)")
+        .accessibilityAddTraits(selected ? .isSelected : [])
+    }
+}
+
+/// A suggested search, as a small glass capsule.
+private struct SidebarChipStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .font(.system(size: 11.5, weight: .semibold)).foregroundStyle(.white)
+            .padding(.horizontal, 9).frame(height: 22)
+            .background(Capsule().fill(Color.white.opacity(configuration.isPressed ? 0.28 : 0.16)))
+            .overlay(Capsule().strokeBorder(Color.white.opacity(0.35), lineWidth: 0.75))
+            .contentShape(Capsule())
     }
 }

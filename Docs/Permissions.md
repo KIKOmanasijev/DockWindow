@@ -9,7 +9,7 @@ DogBar needs Accessibility and Screen Recording. `PermissionsService` reads acce
 | `PermissionAccess` | Meaning | Suggested copy |
 | --- | --- | --- |
 | `.checking` | The first check has not finished yet. | "Checking…" |
-| `.granted` | This process has access. | "Granted" |
+| `.granted` | This process has access. | "Allowed" |
 | `.notRequested` | DogBar has never asked. This is normal on first launch. | "Not allowed yet" + **Allow…** |
 | `.requesting` | A request is in progress. | "Asking macOS…" (disable the button) |
 | `.waitingForUser` | DogBar asked and macOS still reports no access. | "Turn on DogBar in System Settings" |

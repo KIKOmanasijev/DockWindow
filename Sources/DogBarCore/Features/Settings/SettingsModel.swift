@@ -8,27 +8,18 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var detail: String {
         switch self {
-        case .general: return "Startup, permissions, updates and privacy."
+        case .general: return "Status, startup, permissions and updates."
         case .features: return "Your Dock, window previews and the switcher."
-        case .appearance: return "How DogBar's switcher and previews look."
-        case .advanced: return "Per-app rules, diagnostics and window detection."
+        case .appearance: return "How the switcher and previews look."
+        case .advanced: return "Per-app rules and diagnostics."
         }
     }
     var symbol: String {
         switch self {
-        case .general: return "gearshape.fill"
+        case .general: return "switch.2"
         case .features: return "dock.rectangle"
-        case .appearance: return "paintbrush.fill"
+        case .appearance: return "paintpalette.fill"
         case .advanced: return "wrench.and.screwdriver.fill"
-        }
-    }
-    /// Top and bottom of the icon tile: onboarding's purple family, with ink for the quieter pages.
-    var tint: [Color] {
-        switch self {
-        case .general: return [Color(hex: 0x8C86A3), Color(hex: 0x5E5778)]
-        case .features: return [Color(hex: 0x9B5CFF), Color(hex: 0x6E24E6)]
-        case .appearance: return [Color(hex: 0xE57BD0), Color(hex: 0xA43DD6)]
-        case .advanced: return [Color(hex: 0x4F4570), Color(hex: 0x2B2245)]
         }
     }
 }
@@ -119,19 +110,52 @@ enum FeatureSection: String, CaseIterable, Identifiable {
     }
 }
 
-/// Settings' slice of the onboarding palette: lavender paper, white surfaces, ink text and one
-/// purple accent. Native controls keep the system text colors so they stay readable.
+/// One color system for the whole Settings window, taken from onboarding. The sidebar is the
+/// welcome screen's purple, so the brand sits in navigation, not behind every control. The work
+/// area is paper (light) or a near-neutral ink (dark) with white or raised surfaces, so content
+/// never reads as purple on purple. Feature stages use onboarding's lavender-to-blush backdrop.
 enum SettingsPalette {
-    static let canvas = Color.dynamic(light: 0xF7F5FC, dark: 0x16112A)
-    static let surface = Color.dynamic(light: 0xFFFFFF, dark: 0x1F1937)
-    static let raised = Color.dynamic(light: 0xFBFAFE, dark: 0x251E40)
-    static let line = Color.dynamic(light: 0xE6E0F2, dark: 0x332A52)
-    static let muted = OnboardingPalette.muted
+    // Work area
+    static let canvas = Color.dynamic(light: 0xF7F5FB, dark: 0x14121B)
+    static let surface = Color.dynamic(light: 0xFFFFFF, dark: 0x1D1A26)
+    static let line = Color.dynamic(light: 0xE9E4F2, dark: 0x2C2838)
+    static let text = Color.dynamic(light: 0x1A1033, dark: 0xF3F0FA)
+    static let muted = Color.dynamic(light: 0x645B7D, dark: 0xA59FB6)
+    /// Purple for text and small marks, lightened in Dark Mode to keep contrast.
     static let accent = OnboardingPalette.accent
     /// Switches, sliders and selection marks.
     static let tint = Color.dynamic(light: 0x6E24E6, dark: 0x9C6BFF)
     static let success = OnboardingPalette.success
     static let caution = OnboardingPalette.caution
+    static let yellow = OnboardingPalette.yellow
+
+    // Sidebar: onboarding's welcome gradient, deeper in Dark Mode.
+    static let railTop = Color.dynamic(light: 0x7B3FF2, dark: 0x4A1DB4)
+    static let railMid = Color.dynamic(light: 0x5A1FD0, dark: 0x33128A)
+    static let railBottom = Color.dynamic(light: 0x3A0F99, dark: 0x1D0A52)
+
+    // Feature stages: onboarding's scene backdrop.
+    static let stageStart = Color.dynamic(light: 0xE3D6FF, dark: 0x2A1C58)
+    static let stageMid = Color.dynamic(light: 0xF2ECFF, dark: 0x1E1739)
+    static let stageEnd = Color.dynamic(light: 0xFFE4EE, dark: 0x2E1731)
+    static let stageGlow = Color.dynamic(light: 0xFFFFFF, dark: 0x8A63FF)
+
+    /// The window background behind the titlebar and both columns.
+    static let windowBackground = NSColor(name: nil) { appearance in
+        appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+            ? NSColor(srgbRed: 0x14 / 255, green: 0x12 / 255, blue: 0x1B / 255, alpha: 1)
+            : NSColor(srgbRed: 0xF7 / 255, green: 0xF5 / 255, blue: 0xFB / 255, alpha: 1)
+    }
+}
+
+/// Shared measures so every page has the same rhythm and every trailing control lines up.
+enum SettingsMetrics {
+    /// Width of pop-up menus and slider groups in the trailing column.
+    static let controlColumn: CGFloat = 196
+    /// Descriptions wrap before this width so they stay readable on wide windows.
+    static let textMeasure: CGFloat = 380
+    static let sidebarWidth: CGFloat = 224
+    static let radius: CGFloat = 12
 }
 
 /// Small supporting art copied to `Contents/Resources/Settings` by the packaging scripts.

@@ -18,31 +18,65 @@ import UniformTypeIdentifiers
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Table(settings.newWindowRules, selection: $selection) {
-                TableColumn("Application") { rule in
-                    VStack(alignment: .leading) {
+                TableColumn("App") { rule in
+                    VStack(alignment: .leading, spacing: 1) {
                         Text(appName(rule.bundleIdentifier))
-                        Text(rule.bundleIdentifier).font(.caption).foregroundStyle(.secondary)
+                        Text(rule.bundleIdentifier).font(.system(size: 10.5)).foregroundStyle(SettingsPalette.muted)
                     }
                 }
-                TableColumn("Strategy") { rule in Text(settingsLabel(rule.strategy.rawValue)) }
-            }.frame(height: 185)
-                .settingsDescription("Select an app to edit its opening strategy, shortcut and localized menu titles.")
-            HStack {
-                Button("Add app", action: addApp)
-                    .settingsDescription("Choose an installed application.")
+                TableColumn("Opens with") { rule in Text(settingsLabel(rule.strategy.rawValue)) }
+            }
+            .alternatingRowBackgrounds(.disabled)
+            .scrollContentBackground(.hidden)
+            .frame(height: 150)
+            .background(SettingsPalette.canvas.opacity(0.6), in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(SettingsPalette.line, lineWidth: 1))
+            .overlay {
+                if settings.newWindowRules.isEmpty {
+                    VStack(spacing: 3) {
+                        Text("No rules").font(.system(size: 12.5, weight: .semibold)).foregroundStyle(SettingsPalette.text)
+                        Text("Automatic works for most apps. Add one that opens windows its own way.")
+                            .font(.system(size: 11.5)).foregroundStyle(SettingsPalette.muted).multilineTextAlignment(.center)
+                    }
+                    .padding(.horizontal, 30).padding(.top, 18)
+                    .allowsHitTesting(false)
+                }
+            }
+            HStack(spacing: 8) {
+                Button("Add App…", action: addApp)
+                    .help("Choose an installed application.")
                 Button("Remove", role: .destructive) {
                     guard let selection else { return }
                     settings.newWindowRules.removeAll { $0.id == selection }; self.selection = nil
-                }.disabled(selection == nil).settingsDescription("Return this app to automatic opening.")
+                }
+                .disabled(selection == nil)
+                .help("Return this app to automatic opening.")
+                Spacer(minLength: 8)
+                if selectedRule == nil && !settings.newWindowRules.isEmpty {
+                    Text("Select an app to edit it.").font(.system(size: 11.5)).foregroundStyle(SettingsPalette.muted)
+                }
             }
             if let rule = selectedRule {
-                SettingsChoice(title: "Strategy", description: "Try this strategy first, followed by the remaining fallbacks.", value: rule.strategy)
-                SettingsRow("New window shortcut", description: "Record a modifier and physical key to send to this application.") { ShortcutRecorder(shortcut: rule.shortcut) }
-                TextField("Localized menu titles", text: $menuTitlesText, axis: .vertical)
-                    .onChange(of: menuTitlesText) { _, text in
-                        rule.wrappedValue.menuTitles = text.split(separator: ";").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                VStack(alignment: .leading, spacing: 0) {
+                    SettingsHairline()
+                    SettingsChoice(title: "Try first", description: "The other ways follow if this one fails.", value: rule.strategy)
+                        .padding(.vertical, 11)
+                    SettingsHairline()
+                    SettingsRow("New window shortcut", description: "The keys DogBar sends to this app.") { ShortcutRecorder(shortcut: rule.shortcut) }
+                        .padding(.vertical, 11)
+                    SettingsHairline()
+                    VStack(alignment: .leading, spacing: 8) {
+                        SettingsRowText(title: Text("Menu titles"), description: "Exact menu item names in the app’s language, separated by semicolons.")
+                        TextField("New Window; Nouvelle fenêtre", text: $menuTitlesText, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .accessibilityLabel("Localized menu titles")
+                            .onChange(of: menuTitlesText) { _, text in
+                                rule.wrappedValue.menuTitles = text.split(separator: ";").map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }.filter { !$0.isEmpty }
+                            }
                     }
-                    .settingsDescription("Separate exact menu titles with semicolons, using the app's language.")
+                    .padding(.top, 11)
+                }
             }
         }
         .onChange(of: selection) { _, _ in menuTitlesText = selectedRule?.wrappedValue.menuTitles.joined(separator: "; ") ?? "" }
@@ -63,7 +97,7 @@ import UniformTypeIdentifiers
     private func addApp() {
         let panel = NSOpenPanel()
         panel.title = "Choose an installed application"
-        panel.prompt = "Add app"
+        panel.prompt = "Add App"
         panel.directoryURL = URL(fileURLWithPath: "/Applications")
         panel.allowedContentTypes = [.applicationBundle]
         panel.canChooseDirectories = false; panel.canChooseFiles = true

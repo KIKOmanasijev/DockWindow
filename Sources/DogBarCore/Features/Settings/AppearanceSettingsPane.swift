@@ -4,17 +4,27 @@ import SwiftUI
     @ObservedObject var settings: AppSettings
     var body: some View {
         Group {
-            PanelAppearancePreview(theme: settings.theme, selection: Theme.selection(settings), cornerRadius: settings.panelCornerRadius)
-            SettingsSection("Panels") {
-                SettingsChoice(title: "Theme", description: "The switcher and previews follow macOS, or stay light or dark.",
-                               value: $settings.theme, labels: [.system: "Match macOS", .light: "Light", .dark: "Dark"])
-                    .settingsAnchor("appearance.theme")
+            SettingsHero(title: "Panels", text: "The switcher and previews follow these. The preview here updates as you change them.") {
+                PanelAppearancePreview(theme: settings.theme, selection: Theme.selection(settings), cornerRadius: settings.panelCornerRadius)
+            } control: {
+                SettingsRow("Theme") {
+                    Picker("Theme", selection: $settings.theme) {
+                        Text("Match macOS").tag(AppTheme.system)
+                        Text("Light").tag(AppTheme.light)
+                        Text("Dark").tag(AppTheme.dark)
+                    }
+                    .pickerStyle(.segmented).labelsHidden().fixedSize()
+                }
+                .settingsAnchor("appearance.theme")
+            }
+            SettingsSection("Style") {
                 Toggle("Custom selection color", isOn: $settings.useCustomSelectionColor)
-                    .settingsDescription("Highlight the selected window in your own color instead of the system accent.")
+                    .settingsDescription("Instead of the system accent color.")
                     .settingsAnchor("appearance.selection")
-                SettingsColorPicker(title: "Selection color", description: "The highlight behind the selected window.", value: $settings.selectionColor)
-                    .disabled(!settings.useCustomSelectionColor)
-                SettingsSlider(title: "Corner radius", description: "How round the switcher and preview panels are.",
+                if settings.useCustomSelectionColor {
+                    SettingsColorPicker(title: "Selection color", description: nil, value: $settings.selectionColor)
+                }
+                SettingsSlider(title: "Corner radius", description: nil,
                                value: $settings.panelCornerRadius, range: 0...48, step: 1, unit: "pt")
                     .settingsAnchor("appearance.radius")
                 SettingsMore("appearance.more") {
@@ -26,7 +36,7 @@ import SwiftUI
             }
             SettingsSection("Motion") {
                 Toggle("Reduce animations", isOn: $settings.reduceAnimations)
-                    .settingsDescription("Limit motion in DogBar, on top of the macOS Reduce Motion setting. Settings demos show stills.")
+                    .settingsDescription("Less motion in DogBar, on top of the macOS setting. Settings demos show stills.")
                     .settingsAnchor("appearance.motion")
             }
         }
@@ -45,33 +55,37 @@ private struct PanelAppearancePreview: View {
     ]
     private var dark: Bool { theme == .dark || (theme == .system && colorScheme == .dark) }
     var body: some View {
-        GeometryReader { proxy in stage(CGSize(width: proxy.size.width, height: 150)) }
-            .frame(height: 150)
-            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.black.opacity(0.12), lineWidth: 0.5))
+        stage(DemoMetrics.size)
+            .padding(DemoMetrics.bezel)
+            .background(RoundedRectangle(cornerRadius: DemoMetrics.radius + DemoMetrics.bezel, style: .continuous).fill(Color(hex: 0x0E0C13)))
+            .overlay(RoundedRectangle(cornerRadius: DemoMetrics.radius + DemoMetrics.bezel + 1, style: .continuous)
+                .strokeBorder(LinearGradient(colors: [.white.opacity(0.7), .white.opacity(0.2)], startPoint: .top, endPoint: .bottom), lineWidth: 1)
+                .padding(-1))
+            .shadow(color: Color(hex: 0x14043C).opacity(0.28), radius: 14, y: 8)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("Preview of the switcher panel with the current theme, selection color and corner radius.")
     }
     private func stage(_ size: CGSize) -> some View {
         // Half scale, like the tiles: a 26 pt panel radius reads as 13 here.
         let radius = max(0, cornerRadius / 2)
-        return Stage(wallpaper: "tahoe", size: size, radius: 14) {
-            HStack(spacing: 6) {
+        return Stage(wallpaper: "tahoe", size: size, radius: DemoMetrics.radius) {
+            HStack(spacing: 5) {
                 ForEach(tiles.indices, id: \.self) { index in
                     let tile = tiles[index], on = index == 1
                     VStack(spacing: 3) {
                         WindowThumb(kind: tile.kind)
-                        AppIconImage(name: tile.app, size: 18).padding(.top, -12).shadow(color: .black.opacity(0.3), radius: 1.5, y: 1)
-                        Text(tile.name).font(.system(size: 9, weight: .semibold)).lineLimit(1)
+                        AppIconImage(name: tile.app, size: 15).padding(.top, -10).shadow(color: .black.opacity(0.3), radius: 1.5, y: 1)
+                        Text(tile.name).font(.system(size: 7.5, weight: .semibold)).lineLimit(1)
                             .foregroundStyle(dark ? Color(hex: 0xF3F0FA) : Color(hex: 0x1A1033))
                     }
-                    .padding(6).frame(width: 96)
+                    .padding(5).frame(width: 72)
                     .background(RoundedRectangle(cornerRadius: max(2, radius * 0.55), style: .continuous)
                         .fill(on ? selection.opacity(0.55) : Color.clear))
                     .overlay(RoundedRectangle(cornerRadius: max(2, radius * 0.55), style: .continuous)
                         .strokeBorder(Color.white.opacity(on ? 0.6 : 0), lineWidth: 1))
                 }
             }
-            .padding(8)
+            .padding(6)
             .glass(RoundedRectangle(cornerRadius: radius, style: .continuous), style: dark ? .dark : .light, shadow: 0.6)
         }
     }

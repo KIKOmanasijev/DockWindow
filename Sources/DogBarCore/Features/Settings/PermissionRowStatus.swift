@@ -5,9 +5,9 @@ enum PermissionRowStatus: Equatable {
         self = hasChecked ? (granted ? .granted : .missing) : .checking
     }
     var label: String {
-        switch self { case .checking: return "Checking..."; case .granted: return "Granted"; case .missing: return "Missing" }
+        switch self { case .checking: return "Checking…"; case .granted: return "Allowed"; case .missing: return "Not allowed" }
     }
     var symbol: String {
-        switch self { case .checking: return "clock"; case .granted: return "checkmark.circle.fill"; case .missing: return "exclamationmark.triangle.fill" }
+        switch self { case .checking: return "clock"; case .granted: return "checkmark"; case .missing: return "exclamationmark" }
     }
 }
