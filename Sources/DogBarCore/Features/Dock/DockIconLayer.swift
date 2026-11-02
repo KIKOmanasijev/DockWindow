@@ -7,7 +7,9 @@ import AppKit
     let shade = CALayer()
     private let shadeMask = CALayer()
     let dots = CAShapeLayer()
-    let badge = CATextLayer()
+    let badge = CALayer()
+    private let badgeTextLayer = CATextLayer()
+    private let badgeFont = NSFont.systemFont(ofSize: 11)
     private var cachedImage: NSImage?
     private var cachedPixelSize = CGSize.zero
     private var lastIndicators = DotIndicators(count: 0)
@@ -22,7 +24,9 @@ import AppKit
         shade.backgroundColor = NSColor.black.withAlphaComponent(0.35).cgColor
         shade.mask = shadeMask; shade.isHidden = true
         shadeMask.contentsGravity = .center
-        badge.fontSize = 11; badge.alignmentMode = .center; badge.foregroundColor = NSColor.white.cgColor
+        badge.addSublayer(badgeTextLayer)
+        badgeTextLayer.font = badgeFont; badgeTextLayer.fontSize = badgeFont.pointSize
+        badgeTextLayer.alignmentMode = .center; badgeTextLayer.foregroundColor = NSColor.white.cgColor
         badge.backgroundColor = NSColor.systemRed.cgColor; badge.cornerRadius = 9
     }
     override init(layer: Any) { super.init(layer: layer) }
@@ -42,10 +46,14 @@ import AppKit
         }
         imageLayer.contentsScale = scale; shadeMask.contentsScale = scale
         let text = badgeText ?? ""
-        badge.isHidden = text.isEmpty; badge.string = text
-        let width = max(18, (text as NSString).size(withAttributes: [.font: NSFont.systemFont(ofSize: 11)]).width + 10)
+        badge.isHidden = text.isEmpty; badgeTextLayer.string = text
+        let width = max(18, (text as NSString).size(withAttributes: [.font: badgeFont]).width + 10)
         badge.frame = CGRect(x: bounds.maxX - width + 2, y: bounds.maxY - 17, width: width, height: 18)
-        badge.contentsScale = scale
+        // CATextLayer aligns text to the top of its bounds. Center its line box
+        // within the badge instead of letting the full badge height determine the baseline.
+        let lineHeight = ceil(badgeFont.ascender - badgeFont.descender + badgeFont.leading)
+        badgeTextLayer.frame = CGRect(x: 0, y: (18 - lineHeight) / 2, width: width, height: lineHeight)
+        badgeTextLayer.contentsScale = scale
         let path = CGMutablePath()
         let diameter = max(2, min(5, bounds.width / 12))
         let stride = diameter + 3
