@@ -9,6 +9,14 @@ import Combine
         didSet { worker.setSubroles(allowedSubroles); refresh() }
     }
     public var onWindowInventoryChanged: (() -> Void)?
+    /// AppKit menus own the main thread while tracking. Keep collecting worker state,
+    /// but coalesce downstream rendering and thumbnail invalidation until tracking ends.
+    public var presentationSuspended = false {
+        didSet {
+            guard presentationSuspended != oldValue, !presentationSuspended, started else { return }
+            publishEventState()
+        }
+    }
     private let worker = WindowTrackingWorker()
     private var tokens: [NSObjectProtocol] = []
     private var timer: DispatchSourceTimer?
@@ -35,10 +43,8 @@ import Combine
         worker.start(publish: { [weak self] snapshot, revision, activationRevision in
             DispatchQueue.main.async { [weak self] in
                 guard let self, self.started, self.generation == session else { return }
-                let previous = Set(self.snapshot.windows.map(\.id))
                 self.eventState.inventory(snapshot, revision: revision, activationRevision: activationRevision)
                 self.publishEventState()
-                if previous != Set(self.snapshot.windows.map(\.id)) { self.onWindowInventoryChanged?() }
             }
         }, focus: { [weak self] id, pid, date in
             DispatchQueue.main.async { [weak self] in
@@ -105,8 +111,12 @@ import Combine
     /// Spaces are polled every 1.5 s and usually unchanged. Every publication rebuilds the Dock,
     /// an open preview and the switcher, so only publish values that differ.
     private func publishEventState() {
+        guard !presentationSuspended else { return }
         let next = eventState.snapshot
-        if next != snapshot { snapshot = next }
+        guard next != snapshot else { return }
+        let inventoryChanged = Set(next.windows.map(\.id)) != Set(snapshot.windows.map(\.id))
+        snapshot = next
+        if inventoryChanged { onWindowInventoryChanged?() }
     }
     public func stop() {
         actionCancellation.cancel()

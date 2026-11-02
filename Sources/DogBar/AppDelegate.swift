@@ -43,6 +43,8 @@ import Combine
     private var trackingMenus = Set<ObjectIdentifier>()
     func menuWillOpen(_ menu: NSMenu) {
         trackingMenus.insert(ObjectIdentifier(menu))
+        tracker.presentationSuspended = true
+        permissionTimer?.invalidate(); permissionTimer = nil
         dock.applicationMenuTracking = true
         previews.contextMenuTracking = true
     }
@@ -51,8 +53,11 @@ import Combine
         // Let AppKit finish menu teardown and dispatch its selected action first.
         DispatchQueue.main.async { [weak self] in
             guard let self, self.trackingMenus.isEmpty else { return }
+            self.tracker.presentationSuspended = false
             self.previews.contextMenuTracking = false
             self.dock.applicationMenuTracking = false
+            self.startPermissionTimer()
+            self.updatePermissions()
         }
     }
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -162,6 +167,9 @@ import Combine
         updateFeatureState()
     }
     private func updateFeatureState() {
+        // Permission/settings publishers can arrive during AppKit's nested tracking loop.
+        // Reconcile once after the final menu closes, rather than mutate menus and surfaces mid-hover.
+        guard trackingMenus.isEmpty else { return }
         // Access was lost while running: offer the short recovery flow once, not the whole tour.
         if previouslyGranted == true && !permissions.isGranted && !terminating { onboarding.present(.recovery) }
         presentLaunchOnboardingIfNeeded()
