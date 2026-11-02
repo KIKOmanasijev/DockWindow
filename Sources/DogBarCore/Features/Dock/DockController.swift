@@ -48,6 +48,7 @@ import ApplicationServices
     private var localMonitor: Any?
     private var globalMonitor: Any?
     private var screenObserver: NSObjectProtocol?
+    private var settingsPresenceObserver: NSObjectProtocol?
     private var workspaceObservers: [NSObjectProtocol] = []
     private var lifecycleGeneration: UInt64 = 0
     private var screen: NSScreen?
@@ -125,6 +126,9 @@ import ApplicationServices
             self?.trackDisplayPush(event)
             self?.updatePointer()
         }
+        settingsPresenceObserver = NotificationCenter.default.addObserver(forName: SettingsWindowController.presenceDidChange, object: nil, queue: .main) { [weak self] _ in
+            MainActor.assumeIsolated { self?.reload() }
+        }
         screenObserver = NotificationCenter.default.addObserver(forName: NSApplication.didChangeScreenParametersNotification, object: nil, queue: .main) { [weak self] _ in
             MainActor.assumeIsolated { self?.screen = nil; self?.reload() }
         }
@@ -199,6 +203,7 @@ import ApplicationServices
         for monitor in [localMonitor, globalMonitor].compactMap({ $0 }) { NSEvent.removeMonitor(monitor) }
         localMonitor = nil; globalMonitor = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }; screenObserver = nil
+        if let settingsPresenceObserver { NotificationCenter.default.removeObserver(settingsPresenceObserver) }; settingsPresenceObserver = nil
         for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }; workspaceObservers = []
         launchMonitor.stop(); checkedInLaunches.removeAll(); announcedLaunches.removeAll()
         for task in pendingLaunchTasks.values { task.cancel() }; pendingLaunchTasks.removeAll(); pendingLaunches.removeAll()
@@ -456,7 +461,8 @@ import ApplicationServices
         }
         items.removeAll { item in
             guard item.kind == .application else { return false }
-            if item.id == "dev.hristijan.dogbar" { return !settings.showDogBarInDock }
+            // DogBar's own icon: by preference, and always while its Settings window is open.
+            if item.id == "dev.hristijan.dogbar" { return !(settings.showDogBarInDock || SettingsWindowController.isOpen) }
             // Permanent pins stay launchable even when their app has no windows.
             guard !item.isPinned, settings.hideWindowlessApps else { return false }
             guard let pid = item.app?.pid else { return true }
@@ -810,6 +816,7 @@ import ApplicationServices
         for task in openingTasks.values { task.cancel() }
         for monitor in [localMonitor, globalMonitor].compactMap({ $0 }) { NSEvent.removeMonitor(monitor) }
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }
+        if let settingsPresenceObserver { NotificationCenter.default.removeObserver(settingsPresenceObserver) }
         for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }
         let surface = view
         Task { @MainActor in surface.stopTracking() }

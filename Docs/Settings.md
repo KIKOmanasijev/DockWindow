@@ -43,6 +43,8 @@ Pages are grouped sections like System Settings: a `.headline` heading, a rounde
 | Appearance | Hero with the live panel preview and the Theme segmented control; Style; Motion |
 | Advanced | New window rules (with an empty state), Diagnostics (Private API availability collapsed), Window detection |
 
+While Settings is open, DogBar is a regular app, and its icon shows in DogBar’s Dock and Apple’s, whatever **Show DogBar in the Dock** says. Closing Settings returns to that preference. `SettingsWindowController.isOpen` and `presenceDidChange` carry this to the Dock and the app delegate.
+
 Command-1 to Command-4 select pages, Command-F focuses search, Command-W closes and Command-Q quits.
 
 The window keeps one hosting view per page after first use and switches by hiding the others. Pages build one per main-queue turn after Settings opens.

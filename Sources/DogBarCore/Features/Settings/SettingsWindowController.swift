@@ -11,6 +11,13 @@ import SwiftUI
     private let settings: AppSettings
     private let content: SettingsContentController
     private var titleSubscription: AnyCancellable?
+    /// Posted when Settings opens or closes. DogBar shows its own Dock icon while Settings is open.
+    public static let presenceDidChange = Notification.Name("DogBar.SettingsPresenceDidChange")
+    /// Whether the Settings window is open. While it is, DogBar is a regular app and its icon
+    /// shows in either Dock, whatever "Show DogBar in the Dock" says.
+    public private(set) static var isOpen = false {
+        didSet { if oldValue != isOpen { NotificationCenter.default.post(name: presenceDidChange, object: nil) } }
+    }
 
     public init(settings: AppSettings, permissions: PermissionsService, pinnedApps: PinnedAppsStore,
                 updates: UpdatePreferences, onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
@@ -79,7 +86,8 @@ import SwiftUI
 
     /// Brings Settings forward, including when DogBar is running as a menu bar app.
     public func show() {
-        NSApp.setActivationPolicy(settings.showDogBarInDock ? .regular : .accessory)
+        if NSApp.activationPolicy() != .regular { NSApp.setActivationPolicy(.regular) }
+        Self.isOpen = true
         if window?.isVisible != true { visibility.beginSession() }
         visibility.isVisible = true
         showWindow(nil)
@@ -94,6 +102,7 @@ import SwiftUI
     public func windowWillClose(_ notification: Notification) {
         visibility.isVisible = false
         SettingsShortcutRecording.activeRecorder?.finish()
+        Self.isOpen = false
         NSApp.setActivationPolicy(settings.showDogBarInDock ? .regular : .accessory)
     }
     private func updateVisibility() {

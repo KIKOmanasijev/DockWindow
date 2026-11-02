@@ -182,9 +182,10 @@ import Combine
         // Hide our surfaces synchronously before activation can reveal Apple's Dock.
         // Native preference restoration then completes through reconcileDock below.
         if onboardingHoldsFeatures { previews.dismiss(); switcher.dismiss(); dock.stop() }
-        // The wizard needs a regular app so it can be key and appear in Cmd+Tab; the preference applies again once it closes.
+        // The wizard and Settings need a regular app so they can be key, appear in Cmd+Tab and show
+        // DogBar in the Dock; the preference applies again once they close.
         let onboardingShowing = launchOnboardingDecided && onboarding.isShowing
-        let desiredPolicy: NSApplication.ActivationPolicy = settings.showDogBarInDock || onboardingShowing ? .regular : .accessory
+        let desiredPolicy: NSApplication.ActivationPolicy = settings.showDogBarInDock || onboardingShowing || SettingsWindowController.isOpen ? .regular : .accessory
         if NSApp.activationPolicy() != desiredPolicy { NSApp.setActivationPolicy(desiredPolicy) }
         if statusItem?.isVisible != settings.showMenuBarIcon { statusItem?.isVisible = settings.showMenuBarIcon }
         if let status = statusItem?.menu?.items.first(where: { $0.identifier?.rawValue == "permissionStatus" }) {
