@@ -15,7 +15,7 @@ public init(
 @MainActor public func show()
 ```
 
-The public type is `SettingsWindowController: NSWindowController, NSWindowDelegate`. Pass the same model and services used by the coordinator. The controller hosts six SwiftUI panes in a `NavigationSplitView`. The titled, closable, miniaturizable, resizable window has a minimum size of 720 by 520. `show()` saves the current activation policy, sets `.accessory`, activates the app and makes Settings key. Closing restores the saved policy. Repeated `show()` calls do not overwrite the saved policy.
+The public type is `SettingsWindowController: NSWindowController, NSWindowDelegate`. Pass the same model and services used by the coordinator. The controller hosts four SwiftUI pages (General, Features, Appearance, Advanced) beside a sidebar in an `NSSplitViewController`; see `Docs/Settings.md` for layout and control mapping. The titled, closable, miniaturizable, resizable window has a minimum size of 820 by 580. `show()` saves the current activation policy, sets `.accessory`, activates the app and makes Settings key. Closing restores the saved policy. Repeated `show()` calls do not overwrite the saved policy.
 
 `onRestoreNativeDock` must use the coordinator's existing restore path, disable replacement UI and report restoration errors. `onShowPermissions` opens the existing onboarding window. Settings does not edit or own that executable view. Relaunch calls the existing throwing `AppRelauncher.relaunch()` and displays errors; the helper's delayed restoration-safe termination behavior is preserved.
 

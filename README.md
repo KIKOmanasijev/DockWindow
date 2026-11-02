@@ -81,17 +81,17 @@ A Dock per desktop and window dots need DogBar’s own Dock. Previews and the sw
 | Open Settings | Click the paw in the menu bar, or the DogBar icon |
 | Get your normal Dock back | Paw menu → **Pause DogBar** or **Restore Native Dock** |
 
-**Settings → Switcher** offers three modes: **Windows** (default, one preview per window), **Apps** (one icon per running app, across desktops), and **macOS default** (DogBar stops intercepting switcher shortcuts, leaving Apple’s Cmd+Tab in place). Windows and Apps use your configured DogBar shortcut; the same-app shortcut continues to show windows.
+**Settings → Features → Switcher** offers three modes: **Windows** (default, one preview per window), **Apps** (one icon per running app, across desktops), and **macOS** (DogBar stops intercepting switcher shortcuts, leaving Apple’s Cmd+Tab in place). Windows and Apps use your configured DogBar shortcut; the same-app shortcut continues to show windows.
 
 In Settings you can choose whether the Dock, the window switcher and previews each show windows from the current desktop or from all desktops. You can also move the Dock to the bottom, left or right, turn on autohide, pin apps and set app rules.
 
 DogBar saves your original Dock settings before hiding Apple’s Dock and puts them back when you pause, restore or quit. If DogBar crashes, it restores them the next time it launches.
 
-Apps without open windows and DogBar’s own Dock icon are hidden by default. Both options are available in **Settings → Dock**. The windowless filter applies to unpinned running and recent apps. Pinned apps stay available even with no open windows.
+Apps without open windows and DogBar’s own Dock icon are hidden by default. Turn them on in **Settings → Features → Dock & Desktops** and **Settings → General → Startup**. The windowless filter applies to unpinned running and recent apps. Pinned apps stay available even with no open windows.
 
-Maximized windows are adjusted to leave space above or beside the replacement Dock. This is enabled by default under **Settings → Dock → Keep maximized windows clear of the Dock**. Autohiding Docks and true full-screen windows are unaffected.
+Maximized windows are adjusted to leave space above or beside the replacement Dock. This is enabled by default under **Settings → Features → Dock & Desktops → Keep maximized windows clear of the Dock**. Autohiding Docks and true full-screen windows are unaffected.
 
-Dock previews can include a **+ New Window** tile (enabled by default). Optional CPU and RAM totals appear under the app name; enable them individually in **Settings → Dock Previews**. Usage is app-wide, including identifiable helper processes, and is sampled only while previews are visible. Windowless apps are hidden from Option+Tab by default; **Settings → Switcher → Show windowless apps** restores them.
+Dock previews can include a **+ New Window** tile (enabled by default). Optional CPU and RAM totals appear under the app name; enable them individually in **Settings → Features → Previews → More options**. Usage is app-wide, including identifiable helper processes, and is sampled only while previews are visible. Windowless apps are hidden from Option+Tab by default; **Settings → Features → Switcher → Show apps without windows** restores them.
 
 ## Updates
 

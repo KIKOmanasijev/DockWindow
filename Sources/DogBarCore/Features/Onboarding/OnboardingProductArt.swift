@@ -211,6 +211,9 @@ struct MiniDock: View {
     var targets = false
     /// An icon pressed in by the mascot.
     var pressed: String? = nil
+    /// Apps shown dimmed, like DogBar's apps from other desktops. Used by Settings.
+    var dimmed: Set<String> = []
+    var showsTrash = true
     var body: some View {
         let u = iconSize / 48
         HStack(alignment: .top, spacing: 4 * u) {
@@ -229,12 +232,15 @@ struct MiniDock: View {
                     }
                     .frame(height: max(2, 4 * u))
                 }
+                .saturation(dimmed.contains(item.app) ? 0.2 : 1)
                 .scaleEffect(revealed ? 1 : 0.5, anchor: .bottom)
-                .opacity(revealed ? 1 : 0)
+                .opacity(revealed ? (dimmed.contains(item.app) ? 0.45 : 1) : 0)
                 .animation(reduceMotion ? nil : .spring(response: 0.42, dampingFraction: 0.7).delay(revealed ? Double(index) * 0.05 : 0), value: revealed)
             }
-            Rectangle().fill(Color.white.opacity(0.5)).frame(width: max(0.75, u), height: iconSize * 0.7).padding(.top, iconSize * 0.15)
-            AppIconImage(name: "trash", size: iconSize).frame(width: iconSize, height: iconSize)
+            if showsTrash {
+                Rectangle().fill(Color.white.opacity(0.5)).frame(width: max(0.75, u), height: iconSize * 0.7).padding(.top, iconSize * 0.15)
+                AppIconImage(name: "trash", size: iconSize).frame(width: iconSize, height: iconSize)
+            }
         }
         .padding(.top, 8.5 * u).padding(.horizontal, 8 * u).padding(.bottom, 8 * u)
         .glass(RoundedRectangle(cornerRadius: 0.3 * iconSize, style: .continuous), shadow: max(0.4, u))
