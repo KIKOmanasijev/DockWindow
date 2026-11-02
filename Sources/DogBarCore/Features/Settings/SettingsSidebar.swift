@@ -1,8 +1,8 @@
 import AppKit
 import SwiftUI
 
-/// Sidebar content for the native sidebar item. It paints the page canvas over AppKit's sidebar
-/// material, so the window reads as one surface. Search, then the four pages; the Features
+/// Sidebar content for the native sidebar item. It draws no background of its own, so AppKit's
+/// glass sidebar material shows through. Search, then the four pages; the Features
 /// subsections show under Features while it is selected. With a query it lists matching
 /// settings instead of pages.
 @MainActor struct SettingsSidebar: View {
@@ -23,7 +23,6 @@ import SwiftUI
         }
         .padding(.top, 6)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(SettingsPalette.canvas.ignoresSafeArea())
         .tint(SettingsPalette.tint)
         .onChange(of: search.focusRequest) { _, _ in searchFocused = true }
         .onChange(of: search.text) { _, _ in selectedResult = 0 }

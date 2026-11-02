@@ -33,8 +33,7 @@ import SwiftUI
             }
         }
         let split = NSSplitViewController()
-        // A native sidebar item: AppKit's resizing, divider and titlebar handling. The sidebar
-        // paints the page canvas over its material so both columns read as one surface.
+        // A native sidebar item: AppKit's glass material, resizing, divider and titlebar handling.
         let sidebar = NSSplitViewItem(sidebarWithViewController: NSHostingController(rootView:
             SettingsSidebar(navigation: navigation, outline: outline, search: search, reveal: reveal)))
         sidebar.minimumThickness = 210; sidebar.maximumThickness = 260; sidebar.canCollapse = false

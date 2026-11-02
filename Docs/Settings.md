@@ -1,12 +1,12 @@
 # Settings
 
-DogBar Settings uses onboarding's look with one color system for the whole window. The sidebar and pages share one canvas: paper in light mode, near-neutral ink in dark mode. Surfaces are white or raised, with one purple accent. Onboarding's lavender-to-blush scene backdrop appears only behind each page's hero. Yellow is kept for the single most important action (**Finish Setup…** while permissions are missing).
+DogBar Settings uses onboarding's look. The sidebar is the native glass sidebar. The pages use one canvas: paper in light mode, near-neutral ink in dark mode. Surfaces are white or raised, with one purple accent. Onboarding's lavender-to-blush scene backdrop appears only behind each page's hero. Yellow is kept for the single most important action (**Finish Setup…** while permissions are missing).
 
 Sources live in `Sources/DogBarCore/Features/Settings`. `Docs/SettingsIntegration.md` covers the coordinator API, which is unchanged.
 
 ## Window and color
 
-The window uses a native `NSSplitViewController` with a sidebar item (210–260 pt), so resizing, the divider and the titlebar behave like AppKit. The sidebar's SwiftUI content paints the page canvas edge to edge, over AppKit's sidebar material, so no gray shows. The titlebar is transparent over a full-size content view, and the window background matches the canvas. Content scrolling under the titlebar fades into the canvas. `SettingsPalette` holds every color; `SettingsMetrics` holds the shared measures.
+The window uses a native `NSSplitViewController` with a sidebar item (210–260 pt), so resizing, the divider and the titlebar behave like AppKit. The sidebar's SwiftUI content draws no background, so AppKit's glass sidebar material shows through. The titlebar is transparent over a full-size content view, and the window background matches the canvas. Content scrolling under the titlebar fades into the canvas. `SettingsPalette` holds every color; `SettingsMetrics` holds the shared measures.
 
 The sidebar is deliberately plain:
 - A search field on a surface with a hairline border.
@@ -89,7 +89,7 @@ Compile with `swift build --build-tests`. Rendered offscreen at 820 × 580 and 9
 
 Manual checks still needed in the live app:
 - Accent colors in the key window.
-- Traffic-light placement over the sidebar, and sidebar resizing.
+- The glass sidebar (offscreen renders cannot capture behind-window materials), traffic-light placement over it, and sidebar resizing.
 - Titlebar dragging over both columns.
 - Hover states.
 - Demo pacing at real frame rates.
