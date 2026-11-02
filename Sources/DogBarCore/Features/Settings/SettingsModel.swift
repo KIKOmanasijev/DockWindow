@@ -6,20 +6,20 @@ import SwiftUI
 enum SettingsPane: String, CaseIterable, Identifiable {
     case general = "General", features = "Features", appearance = "Appearance", advanced = "Advanced"
     var id: String { rawValue }
-    var detail: String {
-        switch self {
-        case .general: return "Status, startup, permissions and updates."
-        case .features: return "Your Dock, window previews and the switcher."
-        case .appearance: return "How the switcher and previews look."
-        case .advanced: return "Per-app rules and diagnostics."
-        }
-    }
     var symbol: String {
         switch self {
-        case .general: return "switch.2"
+        case .general: return "gearshape.fill"
         case .features: return "dock.rectangle"
-        case .appearance: return "paintpalette.fill"
+        case .appearance: return "paintbrush.fill"
         case .advanced: return "wrench.and.screwdriver.fill"
+        }
+    }
+    /// The sidebar icon tile's color, as System Settings colors its panes.
+    var tileColor: Color {
+        switch self {
+        case .general, .advanced: return Color(nsColor: .systemGray)
+        case .features: return Color(hex: 0x7B3FF2)
+        case .appearance: return Color(nsColor: .systemBlue)
         }
     }
 }
@@ -110,35 +110,24 @@ enum FeatureSection: String, CaseIterable, Identifiable {
     }
 }
 
-/// One color system for the whole Settings window. Pages use neutral grays close to the native
-/// glass sidebar's tone, so the two columns read as one window; purple is only the accent.
-/// Onboarding's lavender-to-blush backdrop appears only behind page heroes, subdued in Dark Mode.
+/// Settings uses the system's own colors so it sits with the native glass sidebar like any
+/// macOS settings window. Purple appears only as the app's accent.
 enum SettingsPalette {
-    // Work area
-    static let canvas = Color.dynamic(light: 0xF5F5F7, dark: 0x1D1D1F)
-    static let surface = Color.dynamic(light: 0xFFFFFF, dark: 0x262628)
-    static let line = Color.dynamic(light: 0xE3E3E8, dark: 0x343437)
-    static let text = Color.dynamic(light: 0x1D1D1F, dark: 0xF5F5F7)
-    static let muted = Color.dynamic(light: 0x6E6E76, dark: 0xA1A1A8)
-    /// Purple for text and small marks, lightened in Dark Mode to keep contrast.
-    static let accent = OnboardingPalette.accent
-    /// Switches, sliders and selection marks.
-    static let tint = Color.dynamic(light: 0x6E24E6, dark: 0x9C6BFF)
-    static let success = OnboardingPalette.success
-    static let caution = OnboardingPalette.caution
-
-    // Hero backdrops: onboarding's scene colors in light, a quiet violet glow on gray in dark.
-    static let stageStart = Color.dynamic(light: 0xE6DCFF, dark: 0x2A2731)
-    static let stageMid = Color.dynamic(light: 0xF3EEFF, dark: 0x252428)
-    static let stageEnd = Color.dynamic(light: 0xFFE8F0, dark: 0x2A262B)
-    static let stageGlow = Color.dynamic(light: 0xFFFFFF, dark: 0x8A63FF)
-
-    /// The window background behind the titlebar and both columns.
-    static let windowBackground = NSColor(name: nil) { appearance in
+    static let canvas = Color(nsColor: .windowBackgroundColor)
+    /// Grouped section fill, as in System Settings.
+    static let surface = Color(nsColor: NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(srgbRed: 0x1D / 255, green: 0x1D / 255, blue: 0x1F / 255, alpha: 1)
-            : NSColor(srgbRed: 0xF5 / 255, green: 0xF5 / 255, blue: 0xF7 / 255, alpha: 1)
-    }
+            ? NSColor(white: 1, alpha: 0.05) : NSColor(white: 1, alpha: 0.75)
+    })
+    static let line = Color(nsColor: .separatorColor)
+    static let text = Color(nsColor: .labelColor)
+    static let muted = Color(nsColor: .secondaryLabelColor)
+    /// Purple for small marks, lightened in Dark Mode to keep contrast.
+    static let accent = OnboardingPalette.accent
+    /// The app's accent for switches, sliders and selection.
+    static let tint = Color.dynamic(light: 0x6E24E6, dark: 0x9C6BFF)
+    static let success = Color(nsColor: .systemGreen)
+    static let caution = Color(nsColor: .systemOrange)
 }
 
 /// Shared measures so every page has the same rhythm and every trailing control lines up.
@@ -147,7 +136,7 @@ enum SettingsMetrics {
     static let controlColumn: CGFloat = 196
     /// Descriptions wrap before this width so they stay readable on wide windows.
     static let textMeasure: CGFloat = 380
-    static let radius: CGFloat = 12
+    static let radius: CGFloat = 10
 }
 
 /// Small supporting art copied to `Contents/Resources/Settings` by the packaging scripts.

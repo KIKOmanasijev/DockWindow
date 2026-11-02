@@ -301,14 +301,14 @@ import SwiftUI
     }
 }
 
-/// W, M, H and Q: keys that act on the selection while the switcher is open, as keycap toggles.
+/// W, M, H and Q: keys that act on the selection while the switcher is open, as checkboxes.
 private struct SwitcherKeyActions: View {
     @ObservedObject var settings: AppSettings
     let windows: Bool
     var body: some View {
-        VStack(alignment: .leading, spacing: 9) {
+        VStack(alignment: .leading, spacing: 8) {
             SettingsRowText(title: Text("Keys while switching"), description: "Press one while the panel is open.")
-            HStack(spacing: 8) {
+            HStack(spacing: 18) {
                 if windows {
                     action("W", "Close window", $settings.switcherCloseWithW)
                     action("M", "Minimize", $settings.switcherMinimizeWithM)
@@ -320,45 +320,14 @@ private struct SwitcherKeyActions: View {
         .frame(maxWidth: .infinity, alignment: .leading)
     }
     private func action(_ key: String, _ title: String, _ isOn: Binding<Bool>) -> some View {
-        Toggle(isOn: isOn) { Text(title) }
-            .toggleStyle(KeycapToggleStyle(key: key))
-            .accessibilityLabel("\(key) to \(title.lowercased())")
-    }
-}
-
-/// A keycap and its action in one capsule. On, the keycap fills with the accent.
-private struct KeycapToggleStyle: ToggleStyle {
-    let key: String
-    func makeBody(configuration: Configuration) -> some View { Styled(configuration: configuration, key: key) }
-    private struct Styled: View {
-        let configuration: Configuration
-        let key: String
-        @Environment(\.isEnabled) private var isEnabled
-        @State private var hovering = false
-        var body: some View {
-            let on = configuration.isOn
-            Button { configuration.isOn.toggle() } label: {
-                HStack(spacing: 7) {
-                    Text(key).font(.system(size: 11, weight: .bold, design: .rounded))
-                        .foregroundStyle(on ? Color.white : SettingsPalette.text)
-                        .frame(width: 20, height: 20)
-                        .background(RoundedRectangle(cornerRadius: 5, style: .continuous).fill(on ? SettingsPalette.tint : SettingsPalette.canvas))
-                        .overlay(RoundedRectangle(cornerRadius: 5, style: .continuous).strokeBorder(on ? Color.clear : SettingsPalette.line, lineWidth: 1))
-                        .shadow(color: .black.opacity(on ? 0.18 : 0.06), radius: 0, y: 1)
-                    configuration.label.font(.system(size: 12, weight: .medium))
-                        .foregroundStyle(on ? SettingsPalette.text : SettingsPalette.muted)
-                }
-                .padding(.leading, 4).padding(.trailing, 11).frame(height: 28)
-                .background(Capsule().fill(on ? SettingsPalette.tint.opacity(0.1) : hovering ? SettingsPalette.line.opacity(0.45) : .clear))
-                .overlay(Capsule().strokeBorder(on ? SettingsPalette.tint.opacity(0.4) : SettingsPalette.line, lineWidth: 1))
-                .contentShape(Capsule())
+        Toggle(isOn: isOn) {
+            HStack(spacing: 5) {
+                Text(title)
+                Text(key).foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
-            .onHover { hovering = $0 }
-            .opacity(isEnabled ? 1 : 0.45)
-            .accessibilityAddTraits(on ? .isSelected : [])
-            .accessibilityValue(on ? "On" : "Off")
         }
+        .toggleStyle(.checkbox)
+        .accessibilityLabel("\(key) to \(title.lowercased())")
     }
 }
 

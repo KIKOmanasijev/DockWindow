@@ -1,69 +1,75 @@
 import AppKit
 import SwiftUI
 
-/// Sidebar content for the native sidebar item. It draws no background of its own, so AppKit's
-/// glass sidebar material shows through. Search, then the four pages; the Features
-/// subsections show under Features while it is selected. With a query it lists matching
-/// settings instead of pages.
+/// The native sidebar: a search field, then a sidebar list of the four pages. While Features is
+/// selected its subsections list under it. With a query it lists matching settings instead.
+/// The split view item supplies the glass material; nothing here draws a background.
 @MainActor struct SettingsSidebar: View {
     @ObservedObject var navigation: SettingsNavigation
     @ObservedObject var outline: SettingsOutline
     @ObservedObject var search: SettingsSearch
     let reveal: SettingsReveal
-    @FocusState private var searchFocused: Bool
     @State private var selectedResult = 0
 
+    private enum Item: Hashable { case pane(SettingsPane), section(FeatureSection) }
     private var results: [SettingsSearchEntry] { SettingsSearchIndex.results(for: search.text) }
     private var searching: Bool { !search.text.trimmingCharacters(in: .whitespaces).isEmpty }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            searchField.padding(.horizontal, 12)
+        VStack(spacing: 0) {
+            SidebarSearchField(text: $search.text, focusRequest: search.focusRequest, onMove: move, onSubmit: { open(selectedIndex) })
+                .padding(.horizontal, 10).padding(.top, 2).padding(.bottom, 8)
             if searching { resultList } else { pageList }
         }
-        .padding(.top, 6)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .tint(SettingsPalette.tint)
-        .onChange(of: search.focusRequest) { _, _ in searchFocused = true }
         .onChange(of: search.text) { _, _ in selectedResult = 0 }
+    }
+
+    // MARK: Pages
+
+    private var pageList: some View {
+        List(selection: Binding<Item?>(
+            get: { .pane(navigation.pane) },
+            set: { item in
+                switch item {
+                case let .pane(pane)?: if navigation.pane != pane { navigation.pane = pane }
+                case let .section(section)?: jump(to: section)
+                case nil: break
+                }
+            })) {
+            ForEach(SettingsPane.allCases) { pane in
+                Label { Text(pane.rawValue) } icon: { SettingsIconTile(symbol: pane.symbol, color: pane.tileColor) }
+                    .tag(Item.pane(pane))
+                if pane == .features && navigation.pane == .features {
+                    ForEach(FeatureSection.allCases) { section in
+                        Text(section.title)
+                            .foregroundStyle(outline.section == section ? SettingsPalette.text : SettingsPalette.muted)
+                            .fontWeight(outline.section == section ? .medium : .regular)
+                            .padding(.leading, 28)
+                            .tag(Item.section(section))
+                            .accessibilityLabel("\(section.title), in Features")
+                            .accessibilityAddTraits(outline.section == section ? .isSelected : [])
+                    }
+                }
+            }
+        }
+        .listStyle(.sidebar)
+    }
+
+    private func jump(to section: FeatureSection) {
+        navigation.pane = .features
+        outline.section = section
+        reveal.scroll(to: section.anchor, in: .features, alignTop: true)
     }
 
     // MARK: Search
 
-    private var searchField: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").font(.system(size: 12, weight: .medium)).foregroundStyle(SettingsPalette.muted)
-                .accessibilityHidden(true)
-            TextField("Search", text: $search.text)
-                .textFieldStyle(.plain)
-                .font(.system(size: 13))
-                .focused($searchFocused)
-                .accessibilityLabel("Search settings")
-                .onSubmit { open(selectedIndex) }
-                .onKeyPress(.downArrow) { move(1) }
-                .onKeyPress(.upArrow) { move(-1) }
-                .onKeyPress(.escape) {
-                    guard searching else { return .ignored }
-                    search.text = ""; return .handled
-                }
-            if !search.text.isEmpty {
-                Button { search.text = "" } label: {
-                    Image(systemName: "xmark.circle.fill").font(.system(size: 12)).foregroundStyle(SettingsPalette.muted)
-                }
-                .buttonStyle(.plain).accessibilityLabel("Clear search")
-            }
-        }
-        .padding(.horizontal, 9).frame(height: 30)
-        // Neutral and translucent, so it sits on the glass like a native sidebar search field.
-        .background(Color.primary.opacity(searchFocused ? 0.09 : 0.06), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
-    }
-
     private var selectedIndex: Int { min(selectedResult, max(0, results.count - 1)) }
-    private func move(_ delta: Int) -> KeyPress.Result {
-        guard searching, !results.isEmpty else { return .ignored }
+    /// Arrow keys in the search field move the selection; Return opens it.
+    private func move(_ delta: Int) -> Bool {
+        guard searching, !results.isEmpty else { return false }
         selectedResult = (selectedIndex + delta + results.count) % results.count
-        return .handled
+        return true
     }
     private func open(_ index: Int) {
         guard results.indices.contains(index) else { return }
@@ -75,141 +81,95 @@ import SwiftUI
                       expanding: entry.group.map { [$0] } ?? [], highlight: true)
     }
 
-    private var resultList: some View {
+    @ViewBuilder private var resultList: some View {
         let results = results
-        return ScrollView {
-            if results.isEmpty {
-                VStack(spacing: 6) {
-                    SettingsMascot(pose: .search, size: 72)
-                    Text("No results for “\(search.text.trimmingCharacters(in: .whitespaces))”")
-                        .font(.system(size: 12, weight: .semibold)).foregroundStyle(SettingsPalette.text)
-                        .multilineTextAlignment(.center).lineLimit(3)
-                    Text("Try “hover”, “shortcut” or “desktop”.")
-                        .font(.system(size: 11.5)).foregroundStyle(SettingsPalette.muted).multilineTextAlignment(.center)
-                }
-                .frame(maxWidth: .infinity).padding(.top, 12).padding(.horizontal, 14)
-                .accessibilityElement(children: .combine)
-            } else {
-                VStack(alignment: .leading, spacing: 1) {
-                    ForEach(Array(results.enumerated()), id: \.element.id) { index, entry in
-                        SidebarResultRow(entry: entry, selected: index == selectedIndex) { open(index) }
-                    }
-                }
-                .padding(.horizontal, 10).padding(.bottom, 12)
-            }
-        }
-        .scrollIndicators(.never)
-        .accessibilityLabel("Search results")
-    }
-
-    // MARK: Pages
-
-    private var pageList: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 1) {
-                ForEach(SettingsPane.allCases) { pane in
-                    SidebarPageRow(pane: pane, selected: navigation.pane == pane) {
-                        if navigation.pane != pane { navigation.pane = pane }
-                    }
-                    if pane == .features && navigation.pane == .features {
-                        ForEach(FeatureSection.allCases) { subsectionRow($0) }
+        if results.isEmpty {
+            ContentUnavailableView.search(text: search.text.trimmingCharacters(in: .whitespaces))
+                .frame(maxHeight: .infinity, alignment: .top)
+                .padding(.top, 20)
+        } else {
+            List(selection: Binding<Int?>(get: { selectedIndex }, set: { index in if let index { open(index) } })) {
+                Section(results.count == 1 ? "1 Result" : "\(results.count) Results") {
+                    ForEach(results.indices, id: \.self) { index in
+                        let entry = results[index]
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(entry.title)
+                            Text(entry.note.map { "\(entry.path) · \($0)" } ?? entry.path)
+                                .font(.subheadline).foregroundStyle(.secondary).lineLimit(2)
+                        }
+                        .padding(.vertical, 2)
+                        .tag(index)
+                        .accessibilityElement(children: .combine)
                     }
                 }
             }
-            .padding(.horizontal, 10)
+            .listStyle(.sidebar)
+            .accessibilityLabel("Search results")
         }
-        .scrollIndicators(.never)
-    }
-
-    /// Jumps within the Features page. The subsection under the top of the page is marked.
-    private func subsectionRow(_ section: FeatureSection) -> some View {
-        let jump = {
-            navigation.pane = .features
-            outline.section = section
-            reveal.scroll(to: section.anchor, in: .features, alignTop: true)
-        }
-        return SidebarSubsectionRow(title: section.title, current: outline.section == section, action: jump)
     }
 }
 
-/// A page: its symbol and name. The selected page gets a neutral fill, as in native sidebars.
-private struct SidebarPageRow: View {
-    let pane: SettingsPane
-    let selected: Bool
-    let select: () -> Void
-    @State private var hovering = false
+/// A white symbol on a colored rounded square, as System Settings draws its panes.
+struct SettingsIconTile: View {
+    let symbol: String
+    let color: Color
     var body: some View {
-        HStack(spacing: 9) {
-            Image(systemName: pane.symbol)
-                .font(.system(size: 13, weight: .medium))
-                .foregroundStyle(selected ? SettingsPalette.accent : SettingsPalette.muted)
-                .frame(width: 20)
-                .accessibilityHidden(true)
-            Text(pane.rawValue).font(.system(size: 13, weight: selected ? .semibold : .regular))
-                .foregroundStyle(SettingsPalette.text)
-            Spacer(minLength: 0)
+        Image(systemName: symbol)
+            .font(.system(size: 11, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 20, height: 20)
+            .background(color.gradient, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .accessibilityHidden(true)
+    }
+}
+
+/// AppKit's search field, at the large size macOS 26 sidebars use. Arrow keys and Return drive
+/// the result list; Escape clears.
+struct SidebarSearchField: NSViewRepresentable {
+    @Binding var text: String
+    let focusRequest: Int
+    let onMove: (Int) -> Bool
+    let onSubmit: () -> Void
+
+    func makeCoordinator() -> Coordinator { Coordinator(self) }
+    func makeNSView(context: Context) -> NSSearchField {
+        let field = NSSearchField()
+        field.placeholderString = "Search"
+        field.controlSize = .large
+        field.sendsSearchStringImmediately = true
+        field.delegate = context.coordinator
+        field.setAccessibilityLabel("Search settings")
+        context.coordinator.lastFocusRequest = focusRequest
+        return field
+    }
+    func updateNSView(_ field: NSSearchField, context: Context) {
+        context.coordinator.parent = self
+        if field.stringValue != text { field.stringValue = text }
+        if focusRequest != context.coordinator.lastFocusRequest {
+            context.coordinator.lastFocusRequest = focusRequest
+            DispatchQueue.main.async { field.window?.makeFirstResponder(field) }
         }
-        .padding(.horizontal, 8).frame(height: 30)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 7, style: .continuous)
-            .fill(Color.primary.opacity(selected ? 0.09 : hovering ? 0.05 : 0)))
-        .contentShape(Rectangle())
-        .onHover { hovering = $0 }
-        // Select on mouse-down, as AppKit sidebars do, instead of waiting for mouse-up.
-        .gesture(DragGesture(minimumDistance: 0).onChanged { _ in select() })
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(pane.rawValue)
-        .accessibilityAddTraits(selected ? [.isButton, .isSelected] : .isButton)
-        .accessibilityAction { select() }
     }
-}
 
-/// A Features subsection, indented to the page name. The current one is in the accent color.
-private struct SidebarSubsectionRow: View {
-    let title: String
-    let current: Bool
-    let action: () -> Void
-    @State private var hovering = false
-    var body: some View {
-        Text(title)
-            .font(.system(size: 12.5, weight: current ? .medium : .regular))
-            .foregroundStyle(current ? SettingsPalette.accent : hovering ? SettingsPalette.text : SettingsPalette.muted)
-            .padding(.leading, 37).frame(height: 26)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .contentShape(Rectangle())
-            .onHover { hovering = $0 }
-            .gesture(DragGesture(minimumDistance: 0).onEnded { _ in action() })
-            .accessibilityElement(children: .ignore)
-            .accessibilityLabel("\(title), in Features")
-            .accessibilityAddTraits(current ? [.isButton, .isSelected] : .isButton)
-            .accessibilityAction { action() }
-    }
-}
-
-/// A search result: the setting's name, then where it lives.
-private struct SidebarResultRow: View {
-    let entry: SettingsSearchEntry
-    let selected: Bool
-    let action: () -> Void
-    @State private var hovering = false
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 1) {
-                Text(entry.title).font(.system(size: 12.5, weight: .medium)).foregroundStyle(SettingsPalette.text)
-                    .fixedSize(horizontal: false, vertical: true)
-                Text(entry.note.map { "\(entry.path) · \($0)" } ?? entry.path)
-                    .font(.system(size: 11)).foregroundStyle(SettingsPalette.muted).lineLimit(2)
+    @MainActor final class Coordinator: NSObject, NSSearchFieldDelegate {
+        var parent: SidebarSearchField
+        var lastFocusRequest = 0
+        init(_ parent: SidebarSearchField) { self.parent = parent }
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSSearchField else { return }
+            parent.text = field.stringValue
+        }
+        func control(_ control: NSControl, textView: NSTextView, doCommandBy selector: Selector) -> Bool {
+            switch selector {
+            case #selector(NSResponder.moveDown(_:)): return parent.onMove(1)
+            case #selector(NSResponder.moveUp(_:)): return parent.onMove(-1)
+            case #selector(NSResponder.insertNewline(_:)): parent.onSubmit(); return true
+            case #selector(NSResponder.cancelOperation(_:)):
+                guard !parent.text.isEmpty else { return false }
+                parent.text = ""; (control as? NSSearchField)?.stringValue = ""
+                return true
+            default: return false
             }
-            .padding(.horizontal, 8).padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(Color.primary.opacity(selected ? 0.09 : hovering ? 0.05 : 0)))
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .onHover { hovering = $0 }
-        .accessibilityLabel(entry.title)
-        .accessibilityHint("In \(entry.path)")
-        .accessibilityAddTraits(selected ? .isSelected : [])
     }
 }

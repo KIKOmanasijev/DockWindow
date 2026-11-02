@@ -147,7 +147,9 @@ private struct SettingsAnchorModifier: ViewModifier {
                 ForEach(choices ?? Array(Value.allCases), id: \.self) { item in Text(labels[item] ?? settingsLabel(item.rawValue)).tag(item) }
             }
             .labelsHidden()
-            .frame(width: SettingsMetrics.controlColumn)
+            .fixedSize()
+            // macOS 26 pop-up buttons size to their title; right-align them as System Settings does.
+            .frame(width: SettingsMetrics.controlColumn, alignment: .trailing)
         }
     }
 }
@@ -171,9 +173,9 @@ func settingsLabel(_ raw: String) -> String {
     }
 }
 
-/// A hairline in the surface's own line color, not the system gray.
+/// The system separator between rows.
 struct SettingsHairline: View {
-    var body: some View { Rectangle().fill(SettingsPalette.line).frame(height: 1).accessibilityHidden(true) }
+    var body: some View { Divider() }
 }
 
 /// Rows separated by hairlines. Plain stacks avoid the grouped Form's reconciliation cost.
@@ -185,7 +187,7 @@ struct SettingsHairline: View {
             Group(subviews: content) { subviews in
                 ForEach(subviews) { row in
                     if row.id != subviews.first?.id { SettingsHairline() }
-                    row.padding(.vertical, 11)
+                    row.padding(.vertical, 9)
                 }
             }
         }
@@ -203,12 +205,12 @@ struct SettingsHairline: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let title {
-                Text(title).font(.system(size: 13, weight: .semibold)).foregroundStyle(SettingsPalette.text)
-                    .padding(.leading, 2)
+                Text(title).font(.headline).foregroundStyle(SettingsPalette.text)
+                    .padding(.leading, 4)
                     .accessibilityAddTraits(.isHeader)
             }
             SettingsRows { content }
-                .padding(.horizontal, 16).padding(.vertical, 2)
+                .padding(.horizontal, 14).padding(.vertical, 1)
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .settingsSurface()
             if let footer {
@@ -220,9 +222,10 @@ struct SettingsHairline: View {
 }
 
 extension View {
+    /// A grouped section's fill and edge, as System Settings draws them.
     func settingsSurface(radius: CGFloat = SettingsMetrics.radius) -> some View {
         background(RoundedRectangle(cornerRadius: radius, style: .continuous).fill(SettingsPalette.surface))
-            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(SettingsPalette.line, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: radius, style: .continuous).strokeBorder(Color.primary.opacity(0.07), lineWidth: 0.5))
     }
 }
 
@@ -241,7 +244,7 @@ extension View {
         let expanded = reveal.isExpanded(id)
         VStack(alignment: .leading, spacing: 0) {
             if expanded {
-                SettingsRows { content }.padding(.top, -11)
+                SettingsRows { content }.padding(.top, -9)
                 SettingsHairline()
             }
             Button {
@@ -253,14 +256,14 @@ extension View {
                         .rotationEffect(.degrees(expanded ? 180 : 0))
                     Spacer(minLength: 0)
                 }
-                .font(.system(size: 12.5, weight: .medium))
-                .foregroundStyle(SettingsPalette.accent.opacity(hovering ? 1 : 0.88))
+                .font(.system(size: 12))
+                .foregroundStyle(hovering ? SettingsPalette.text : SettingsPalette.muted)
                 .frame(minHeight: 22)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .onHover { hovering = $0 }
-            .padding(.top, expanded ? 11 : 0)
+            .padding(.top, expanded ? 9 : 0)
             .accessibilityLabel(title)
             .accessibilityValue(expanded ? "Expanded" : "Collapsed")
             .accessibilityHint(expanded ? "Hides less common options" : "Shows less common options")
@@ -293,7 +296,7 @@ extension View {
     }
 }
 
-/// A short status capsule: Allowed, Not allowed, Checking.
+/// A status as macOS writes it: a colored symbol and a secondary label.
 struct SettingsStatusPill: View {
     enum Tone { case good, warning, neutral }
     let text: String
@@ -305,20 +308,18 @@ struct SettingsStatusPill: View {
         case .warning: SettingsPalette.caution
         case .neutral: SettingsPalette.muted
         }
-        HStack(spacing: 4) {
-            if let symbol { Image(systemName: symbol).font(.system(size: 9.5, weight: .bold)) }
-            Text(text).font(.system(size: 11.5, weight: .semibold))
+        HStack(spacing: 5) {
+            if let symbol { Image(systemName: symbol).foregroundStyle(color) }
+            Text(text).foregroundStyle(.secondary)
         }
-        .foregroundStyle(color)
-        .padding(.horizontal, 8).frame(height: 20)
-        .background(Capsule().fill(color.opacity(0.13)))
+        .font(.system(size: 12))
     }
 }
 
 // MARK: - Page hero
 
-/// The top of a page or feature: a visual on onboarding's stage backdrop with its name and one
-/// sentence, then a strip holding its main control in the same row anatomy as the rows below.
+/// The top of a page or feature, as one grouped section: its picture, name and one sentence,
+/// then its main control in the same row layout as the rows below.
 @MainActor struct SettingsHero<Visual: View, Detail: View, Control: View>: View {
     let title: String
     let text: String
@@ -327,77 +328,33 @@ struct SettingsStatusPill: View {
     @ViewBuilder var control: Control
 
     var body: some View {
-        VStack(spacing: 0) {
-            HStack(alignment: .center, spacing: 22) {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .center, spacing: 20) {
                 visual
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(title).font(.system(size: 20, weight: .bold)).tracking(-0.35).foregroundStyle(SettingsPalette.text)
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(title).font(.title3.weight(.semibold)).foregroundStyle(SettingsPalette.text)
                         .fixedSize(horizontal: false, vertical: true)
                         .accessibilityAddTraits(.isHeader)
-                    Text(text).font(.system(size: 13)).foregroundStyle(SettingsPalette.muted).lineSpacing(2.5)
+                    Text(text).font(.system(size: 12)).foregroundStyle(SettingsPalette.muted).lineSpacing(1.5)
                         .fixedSize(horizontal: false, vertical: true)
-                        .frame(maxWidth: 270, alignment: .leading)
+                        .frame(maxWidth: 280, alignment: .leading)
                     detail
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(14).padding(.trailing, 6)
-            .background(SettingsStageBackdrop())
-            SettingsHairline()
+            .padding(.vertical, 14)
+            Divider()
             VStack(alignment: .leading, spacing: 0) { control }
-                .padding(.horizontal, 16).padding(.vertical, 12)
+                .padding(.vertical, 10)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(SettingsPalette.surface)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(SettingsPalette.line, lineWidth: 1))
-        .shadow(color: .black.opacity(0.05), radius: 12, y: 5)
+        .padding(.horizontal, 14)
+        .settingsSurface()
     }
 }
 
 extension SettingsHero where Detail == EmptyView {
     init(title: String, text: String, @ViewBuilder visual: () -> Visual, @ViewBuilder control: () -> Control) {
         self.title = title; self.text = text; self.visual = visual(); self.detail = EmptyView(); self.control = control()
-    }
-}
-
-/// Onboarding's scene backdrop: lavender into blush, a soft light from the top left and a
-/// specular line along the top edge.
-struct SettingsStageBackdrop: View {
-    @Environment(\.colorScheme) private var colorScheme
-    var body: some View {
-        ZStack(alignment: .top) {
-            LinearGradient(colors: [SettingsPalette.stageStart, SettingsPalette.stageMid, SettingsPalette.stageEnd],
-                           startPoint: .topLeading, endPoint: .bottomTrailing)
-            RadialGradient(colors: [SettingsPalette.stageGlow.opacity(colorScheme == .dark ? 0.12 : 0.75), .clear],
-                           center: UnitPoint(x: 0.12, y: 0.1), startRadius: 4, endRadius: 300)
-            LinearGradient(colors: [.clear, .white.opacity(colorScheme == .dark ? 0.16 : 0.9), .clear], startPoint: .leading, endPoint: .trailing)
-                .frame(height: 1)
-        }
-        .accessibilityHidden(true)
-    }
-}
-
-/// The page's single dominant action, in onboarding's yellow.
-struct SettingsPrimaryButtonStyle: ButtonStyle {
-    func makeBody(configuration: Configuration) -> some View { Styled(configuration: configuration) }
-    private struct Styled: View {
-        let configuration: ButtonStyleConfiguration
-        @Environment(\.isEnabled) private var isEnabled
-        @State private var hovering = false
-        var body: some View {
-            configuration.label
-                .font(.system(size: 12.5, weight: .semibold))
-                .foregroundStyle(OnboardingPalette.ink)
-                .padding(.horizontal, 13).frame(minHeight: 28)
-                .background(RoundedRectangle(cornerRadius: 8, style: .continuous)
-                    .fill(configuration.isPressed ? OnboardingPalette.yellowPressed : hovering && isEnabled ? OnboardingPalette.yellowHover : OnboardingPalette.yellow))
-                .overlay(RoundedRectangle(cornerRadius: 8, style: .continuous).strokeBorder(Color.black.opacity(0.08)))
-                .shadow(color: OnboardingPalette.ink.opacity(0.14), radius: 4, y: 2)
-                .opacity(isEnabled ? 1 : 0.5)
-                .contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-                .onHover { hovering = $0 }
-                .animation(.easeOut(duration: 0.12), value: hovering)
-        }
     }
 }

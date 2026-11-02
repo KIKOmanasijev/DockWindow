@@ -1,30 +1,48 @@
 # Settings
 
-DogBar Settings uses onboarding's look on a native base. The sidebar is the native glass sidebar. The pages use neutral grays close to the glass's tone (`#F5F5F7` light, `#1D1D1F` dark), with white or slightly raised surfaces, so the two columns read as one window. Purple is only the accent. Onboarding's lavender-to-blush scene backdrop appears behind each page's hero, subdued to a faint violet glow in Dark Mode. Yellow is kept for the single most important action (**Finish Setup…** while permissions are missing). In the sidebar, search and selection are neutral translucent fills, as in native sidebars.
+DogBar Settings is a native macOS 26 settings window, built against the macOS 26+ SDK so it gets Liquid Glass. It has:
+- the system's glass sidebar;
+- a unified toolbar showing the page name as the window title;
+- system colors throughout.
+
+Purple appears only as the app's accent, and onboarding's art appears only as the pictures inside page heroes and demos.
 
 Sources live in `Sources/DogBarCore/Features/Settings`. `Docs/SettingsIntegration.md` covers the coordinator API, which is unchanged.
 
-## Window and color
+## Window
 
-The window uses a native `NSSplitViewController` with a sidebar item (210–260 pt), so resizing, the divider and the titlebar behave like AppKit. The sidebar's SwiftUI content draws no background, so AppKit's glass sidebar material shows through. The titlebar is transparent over a full-size content view, and the window background matches the canvas. Content scrolling under the titlebar fades into the canvas. `SettingsPalette` holds every color; `SettingsMetrics` holds the shared measures.
+The window uses an `NSSplitViewController` with a sidebar item (210–260 pt) and a unified `NSToolbar` with a sidebar-tracking separator. The window title follows the selected page. When built with Swift 6.2 or newer, the page scroll view uses `scrollEdgeEffectStyle(.soft, for: .top)` under the glass toolbar.
 
-The sidebar is deliberately plain:
-- A neutral, translucent search field.
-- One SF Symbol and name per page, with a neutral fill on the selected page.
-- The Features subsections as indented text, shown while Features is selected, with the current one in the accent color.
+`SettingsPalette` maps to system colors:
+- window background;
+- `labelColor` and `secondaryLabelColor`;
+- `separatorColor`;
+- `systemGreen` and `systemOrange` for status;
+- a grouped-section fill.
+
+## Sidebar
+
+The sidebar has an AppKit `NSSearchField` at large size, then a SwiftUI `List` in `.sidebar` style, so selection, hover and keyboard behavior are native.
+- **Pages:** each shows a System Settings–style tile (a white SF Symbol on a colored rounded square).
+- **Features subsections:** these list as indented rows while Features is selected. The one under the top of the page is in primary text, and clicking one scrolls to it.
+- **Search results:** these use the same list. With no matches it shows `ContentUnavailableView.search`.
 
 ## Layout
 
-Each page has a 26 pt title and a one-line summary. General, Features (once per subsection) and Appearance then open with a **hero**: a visual on the scene backdrop, its name (20 pt) and one sentence. Below sits a white strip with the main control, using the same row layout as every other row. Groups follow, each with a 13 pt heading and a single surface with hairlines between rows. In each row, the title (13 pt) and an optional short description (11.5 pt, wrapping at 380 pt) sit on the left. One control sits on the right: pop-up menus and slider groups share a 196 pt column so they line up, and switches are small. Rarely changed options sit behind a quiet **More options** row.
+Pages are grouped sections like System Settings: a `.headline` heading, a rounded section, and `Divider` between rows.
+- **Rows:** the title (13 pt) and an optional short description (11.5 pt, wrapping at 380 pt) sit on the left. One control sits on the right. Pop-up menus are right-aligned at their natural width, sliders share a 196 pt column, and switches are small.
+- **More options:** rarely changed options sit behind a quiet **More options** row.
+- **Page heroes:** General, each Features subsection and Appearance open with a hero. It's a plain section holding a picture (the mascot, a demo, or the panel preview), a `.title3` name and one sentence, then the main control as a row.
+- **Native controls:** Finish Setup uses `.glassProminent`, demo Replay buttons use circular `.glass`, switcher keys are checkboxes, and statuses are a colored SF Symbol with a secondary label.
 
 | Page | Contents |
 | --- | --- |
-| General | Status hero (mascot, state, status pill, **Finish Setup…** when needed, **Pause DogBar** strip), Startup, Permissions (Allowed / Not allowed pills, **Allow…** when missing), Updates, Privacy, Recovery |
-| Features | Dock & Desktops, Previews, Switcher. Each opens with a hero: its demo in a small Mac bezel, a sentence, and its main switch or mode control in the strip |
+| General | Status hero (mascot, state, **Finish Setup…** when needed, **Pause DogBar**), Startup, Permissions (Allowed / Not allowed, **Allow…** when missing), Updates, Privacy, Recovery |
+| Features | Dock & Desktops, Previews, Switcher. Each opens with a hero: its demo in a small Mac bezel, a sentence, and its main switch or mode control |
 | Appearance | Hero with the live panel preview and the Theme segmented control; Style; Motion |
 | Advanced | New window rules (with an empty state), Diagnostics (Private API availability collapsed), Window detection |
 
-While Features is selected, the sidebar lists its three subsections. Clicking one scrolls the page to it. The subsection under the top of the page is shown in the accent color while scrolling. Command-1 to Command-4 select pages, Command-F focuses search, Command-W closes and Command-Q quits.
+Command-1 to Command-4 select pages, Command-F focuses search, Command-W closes and Command-Q quits.
 
 The window keeps one hosting view per page after first use and switches by hiding the others. Pages build one per main-queue turn after Settings opens.
 
@@ -34,13 +52,13 @@ Every previous control remains, bound to the same `AppSettings` key. Moves:
 
 | Setting | Was | Now |
 | --- | --- | --- |
-| Pause DogBar (`isPaused`) | General › Session | General › status hero strip |
+| Pause DogBar (`isPaused`) | General › Session | General › status hero hero |
 | Launch at login, menu bar icon | General › Startup | same |
 | Show DogBar in the Dock (`showDogBarInDock`) | Dock › Dock mode | General › Startup |
 | Permissions, Show Setup, Relaunch | General › Permissions | same. Show Setup and Relaunch fold into **Setup and relaunch** once both permissions are allowed |
 | Updates, usage data | General | same. The full usage-data explanation is under **What's shared** |
 | Restore Native Dock, Reset | General › Session | General › Recovery |
-| Use DogBar Dock | Dock › Dock mode | Features › Dock & Desktops (hero strip) |
+| Use DogBar Dock | Dock › Dock mode | Features › Dock & Desktops (hero) |
 | Desktop scope, display scope, other-desktop apps, hide windowless | Dock › Display and desktop filtering | Features › Dock & Desktops › Apps in each Dock |
 | Include minimized, windowless apps on last desktop | same group | that group's More options |
 | Re-import pins (per desktop) | Advanced › Diagnostics | Features › Dock & Desktops › Apps in each Dock › Pinned apps (**Copy from Apple’s Dock…**) |
@@ -48,15 +66,15 @@ Every previous control remains, bound to the same `AppSettings` key. Moves:
 | Indicator style, max dots, labels, active-app click, scroll cycling, Trash | Dock › Window indicators / Interaction | Features › Dock & Desktops › Icons and window dots. Max dots shows with one dot per window |
 | Count minimized, running state, custom dot color and color | Dock › Window indicators | that group's More options |
 | Bounce on launch (`bounceOnLaunch`) | not shown | Features › Dock & Desktops › Icons and window dots |
-| Previews on/off | Dock Previews | Features › Previews (hero strip) |
+| Previews on/off | Dock Previews | Features › Previews (hero) |
 | Hover delay, scope, height, titles, controls, New Window tile, minimized | Dock Previews | Features › Previews › Previews |
 | Empty-app previews, CPU, RAM, pointer arrow, refresh interval | Dock Previews | Features › Previews › More options |
-| Switcher mode | Switcher › Activation | Features › Switcher (hero strip, segmented) |
+| Switcher mode | Switcher › Activation | Features › Switcher (hero, segmented) |
 | Shortcut, same-app toggle and shortcut | Switcher › Shortcuts | Features › Switcher › Shortcuts |
 | Windows scope, displays, minimized, hidden, windowless | Switcher › Windows / Applications | Features › Switcher › Windows or Apps |
 | Appearance delay | Switcher › Layout | Features › Switcher › Panel |
 | Thumbnail width and height, tiles per row | Switcher › Layout | Panel › More options |
-| W, M, H, Q | Switcher › Keyboard actions | Features › Switcher › Panel › Keys while switching (keycap toggles) |
+| W, M, H, Q | Switcher › Keyboard actions | Features › Switcher › Panel › Keys while switching (checkboxes) |
 | Theme | Appearance | Appearance hero strip (segmented) |
 | Selection color, corner radius, reduce animations | Appearance | Appearance › Style and Motion. The color well shows while a custom color is on |
 | Background material | Appearance | Appearance › More options, labelled as the fallback where Liquid Glass is unavailable |
@@ -77,11 +95,11 @@ Each take plays once; the corner button replays it. A scene plays only when all 
 
 ## Search
 
-`SettingsSearchIndex` lists every row with its anchor, keywords, the group that hides it and a note when it exists only in some modes. Every word must match the title, page path or keywords; title matches rank first. Results replace the page list; arrows move, Return opens, Escape clears. Opening a result selects its page, opens its More options group, scrolls to the row and briefly highlights it. A row hidden by the current mode falls back to its subsection. With no matches, the sidebar shows the curious dog, the query and three suggested searches.
+`SettingsSearchIndex` lists every row with its anchor, keywords, the group that hides it and a note when it exists only in some modes. Every word must match the title, page path or keywords; title matches rank first. Results replace the page list; arrows move, Return opens, Escape clears. Opening a result selects its page, opens its More options group, scrolls to the row and briefly highlights it. A row hidden by the current mode falls back to its subsection. With no matches the sidebar shows the system search empty state.
 
 ## Resources
 
-`Resources/Settings/Mascot/guide.png` and `search.png` (640 px RGBA, see that folder's README). `Scripts/onboarding_resources.py` copies and verifies them into `Contents/Resources/Settings` before signing, alongside the onboarding art, for `build-app.sh`, `build-preview.py` and `release.py`. `SettingsAssets.requiredFiles` lists the same files. Missing art collapses to nothing.
+`Resources/Settings/Mascot/guide.png` and `search.png` (640 px RGBA, see that folder's README). `Scripts/onboarding_resources.py` copies and verifies them into `Contents/Resources/Settings` before signing, alongside the onboarding art, for `build-app.sh`, `build-preview.py` and `release.py`. `SettingsAssets.requiredFiles` lists the same files. Only `guide.png` is shown (General hero); search uses the system empty state. Missing art collapses to nothing.
 
 ## Verification
 

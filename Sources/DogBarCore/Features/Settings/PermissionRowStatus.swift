@@ -8,6 +8,6 @@ enum PermissionRowStatus: Equatable {
         switch self { case .checking: return "Checking…"; case .granted: return "Allowed"; case .missing: return "Not allowed" }
     }
     var symbol: String {
-        switch self { case .checking: return "clock"; case .granted: return "checkmark"; case .missing: return "exclamationmark" }
+        switch self { case .checking: return "clock"; case .granted: return "checkmark.circle.fill"; case .missing: return "exclamationmark.triangle.fill" }
     }
 }

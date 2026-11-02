@@ -106,20 +106,16 @@ import SwiftUI
         case .checking: ("Checking permissions…", "This only takes a moment.", .neutral)
         }
         return SettingsHero(title: title, text: detail) {
-            SettingsMascot(pose: .guide, size: 132)
-                .frame(width: 168, height: 124)
-                .background(alignment: .bottom) {
-                    Ellipse().fill(Color(hex: 0x2B0A74).opacity(0.12)).frame(width: 110, height: 14).blur(radius: 5).offset(y: -2)
-                }
-                .padding(.vertical, -6)
+            SettingsMascot(pose: .guide, size: 112)
+                .frame(width: 140, height: 104)
         } detail: {
             HStack(spacing: 10) {
                 SettingsStatusPill(text: statusWord, symbol: statusSymbol, tone: tone)
                 if status == .setup {
-                    Button("Finish Setup…", action: onShowPermissions).buttonStyle(SettingsPrimaryButtonStyle())
+                    Button("Finish Setup…", action: onShowPermissions).buttonStyle(.glassProminent)
                 }
             }
-            .padding(.top, 4)
+            .padding(.top, 3)
         } control: {
             Toggle("Pause DogBar", isOn: $settings.isPaused)
                 .settingsDescription("Brings Apple’s Dock back and stops DogBar until you resume.")
@@ -129,9 +125,9 @@ import SwiftUI
     }
     private var statusSymbol: String? {
         switch status {
-        case .running: return "checkmark"
-        case .paused: return "pause.fill"
-        case .setup: return "exclamationmark"
+        case .running: return "checkmark.circle.fill"
+        case .paused: return "pause.circle.fill"
+        case .setup: return "exclamationmark.triangle.fill"
         case .checking: return nil
         }
     }

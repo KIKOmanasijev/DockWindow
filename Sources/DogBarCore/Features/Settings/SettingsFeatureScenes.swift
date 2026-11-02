@@ -99,14 +99,10 @@ private struct DemoFrame<Content: View>: View {
                 if canReplay {
                     Button(action: onReplay) {
                         Image(systemName: "arrow.counterclockwise").font(.system(size: 10, weight: .bold))
-                            .foregroundStyle(OnboardingPalette.ink.opacity(0.85))
-                            .frame(width: 24, height: 24)
-                            .background(Circle().fill(.white.opacity(0.86)))
-                            .overlay(Circle().strokeBorder(LinearGradient(colors: [.white, .white.opacity(0.4)], startPoint: .top, endPoint: .bottom), lineWidth: 0.75))
-                            .shadow(color: .black.opacity(0.22), radius: 3, y: 1)
-                            .contentShape(Circle())
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.glass)
+                    .buttonBorderShape(.circle)
+                    .controlSize(.small)
                     .padding(DemoMetrics.bezel + 6)
                     .help("Replay")
                     .accessibilityLabel("Replay demo")

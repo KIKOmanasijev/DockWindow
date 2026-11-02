@@ -3,13 +3,14 @@ import Combine
 import SwiftUI
 
 /// Owns the focusable settings window and preserves the application's visible Dock identity.
-@MainActor public final class SettingsWindowController: NSWindowController, NSWindowDelegate {
+@MainActor public final class SettingsWindowController: NSWindowController, NSWindowDelegate, NSToolbarDelegate {
     let visibility: SettingsVisibility
     let navigation: SettingsNavigation
     let search: SettingsSearch
     let reveal: SettingsReveal
     private let settings: AppSettings
     private let content: SettingsContentController
+    private var titleSubscription: AnyCancellable?
 
     public init(settings: AppSettings, permissions: PermissionsService, pinnedApps: PinnedAppsStore,
                 updates: UpdatePreferences, onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
@@ -38,18 +39,18 @@ import SwiftUI
             SettingsSidebar(navigation: navigation, outline: outline, search: search, reveal: reveal)))
         sidebar.minimumThickness = 210; sidebar.maximumThickness = 260; sidebar.canCollapse = false
         let detail = NSSplitViewItem(viewController: content)
-        detail.titlebarSeparatorStyle = .none
         split.splitViewItems = [sidebar, detail]
         split.view.frame = NSRect(x: 0, y: 0, width: 940, height: 700)
 
         let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 940, height: 700),
                                     styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                                     backing: .buffered, defer: false)
-        window.title = "DogBar Settings"
-        window.titleVisibility = .hidden
-        window.titlebarAppearsTransparent = true
-        window.titlebarSeparatorStyle = .none
-        window.backgroundColor = SettingsPalette.windowBackground
+        // The standard unified toolbar: the page's name as the title, over the page column.
+        window.title = SettingsPane.general.rawValue
+        let toolbar = NSToolbar(identifier: "DogBar.Settings")
+        toolbar.displayMode = .iconOnly
+        window.toolbar = toolbar
+        window.toolbarStyle = .unified
         window.identifier = NSUserInterfaceItemIdentifier("DogBar.Settings")
         window.isReleasedWhenClosed = false
         window.contentViewController = split
@@ -62,11 +63,19 @@ import SwiftUI
             navigation.pane = SettingsPane.allCases[index]
         }
         super.init(window: window)
+        toolbar.delegate = self
+        toolbar.insertItem(withItemIdentifier: .sidebarTrackingSeparator, at: 0)
         window.delegate = self
+        titleSubscription = navigation.$pane.sink { [weak window] pane in window?.title = pane.rawValue }
         if !window.setFrameUsingName("DogBar.Settings") { window.center() }
         window.setFrameAutosaveName("DogBar.Settings")
     }
     required init?(coder: NSCoder) { nil }
+
+    public func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { [.sidebarTrackingSeparator] }
+    public func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] { [.sidebarTrackingSeparator] }
+    public func toolbar(_ toolbar: NSToolbar, itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
+                        willBeInsertedIntoToolbar flag: Bool) -> NSToolbarItem? { nil }
 
     /// Brings Settings forward, including when DogBar is running as a menu bar app.
     public func show() {
@@ -171,34 +180,22 @@ import SwiftUI
     var body: some View {
         ScrollViewReader { proxy in
             ScrollView {
-                VStack(alignment: .leading, spacing: 28) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(pane.rawValue).font(.system(size: 26, weight: .bold)).tracking(-0.6)
-                            .foregroundStyle(SettingsPalette.text)
-                            .accessibilityAddTraits(.isHeader)
-                        Text(pane.detail).font(.system(size: 13)).foregroundStyle(SettingsPalette.muted)
-                    }
-                    .padding(.leading, 2)
-                    .id("pane.top")
+                VStack(alignment: .leading, spacing: 24) {
+                    // The page's name is the window title; this only marks the top for scrolling.
+                    Color.clear.frame(height: 0).id("pane.top")
                     content
                 }
-                .padding(.horizontal, 30).padding(.top, 10).padding(.bottom, 44)
+                .padding(.horizontal, 28).padding(.top, 4).padding(.bottom, 36)
                 .frame(maxWidth: 720, alignment: .leading)
                 .frame(maxWidth: .infinity)
             }
-            .scrollIndicators(.automatic)
+            #if compiler(>=6.2)
+            // Built with the macOS 26 SDK: content softly fades under the glass toolbar.
+            .scrollEdgeEffectStyle(.soft, for: .top)
+            #endif
             .onReceive(reveal.$request) { request in follow(request, proxy: proxy) }
         }
         .background(SettingsPalette.canvas.ignoresSafeArea())
-        // Content scrolling under the transparent titlebar fades out instead of meeting a hard edge.
-        .overlay(alignment: .top) {
-            LinearGradient(stops: [.init(color: SettingsPalette.canvas, location: 0), .init(color: SettingsPalette.canvas, location: 0.55),
-                                   .init(color: SettingsPalette.canvas.opacity(0), location: 1)], startPoint: .top, endPoint: .bottom)
-                .frame(height: 22)
-                .ignoresSafeArea(edges: .top)
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
-        }
         .toggleStyle(SettingsToggleStyle())
         .tint(SettingsPalette.tint)
         .controlSize(.regular)
