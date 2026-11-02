@@ -68,6 +68,8 @@ import ApplicationServices
     // LaunchServices announces a launch only at check-in; spawned processes appear first.
     private let launchMonitor = LaunchProcessMonitor()
     private var checkedInLaunches: Set<pid_t> = []
+    /// PIDs LaunchServices has announced while running. Spawn reports for these are stale.
+    private var announcedLaunches: Set<pid_t> = []
     private var removedRunning: Set<String> = []
     private var runningOrder: [String] = []
     private var pinDesktopKey: String?
@@ -132,8 +134,10 @@ import ApplicationServices
                     guard let self, self.started,
                           let app = notification.userInfo?[NSWorkspace.applicationUserInfoKey] as? NSRunningApplication else { return }
                     if notification.name == NSWorkspace.didTerminateApplicationNotification {
+                        self.announcedLaunches.remove(app.processIdentifier)
                         self.clearPendingLaunch(pid: app.processIdentifier)
                     } else {
+                        self.announcedLaunches.insert(app.processIdentifier)
                         self.trackPendingLaunch(app)
                     }
                     self.reload()
@@ -196,7 +200,7 @@ import ApplicationServices
         localMonitor = nil; globalMonitor = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }; screenObserver = nil
         for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }; workspaceObservers = []
-        launchMonitor.stop(); checkedInLaunches.removeAll()
+        launchMonitor.stop(); checkedInLaunches.removeAll(); announcedLaunches.removeAll()
         for task in pendingLaunchTasks.values { task.cancel() }; pendingLaunchTasks.removeAll(); pendingLaunches.removeAll()
         subscriptions.removeAll(); view.launching = []; view.stopTracking(); panel.orderOut(nil); panel.ignoresMouseEvents = true
         launching.removeAll(); removedRunning.removeAll(); hoverItem = nil; hidden = false; previewVisible = false; scrollState = nil
@@ -307,13 +311,11 @@ import ApplicationServices
     /// check-in; until then only process exit or a bounded deadline can retire it.
     private func trackSpawnedLaunch(_ candidate: LaunchCandidate) -> Bool {
         let pid = candidate.pid
-        guard pendingLaunches[pid] == nil else { return false }
-        // The scan can trail a fast check-in. LaunchServices' answer (policy, windows) then wins.
-        if let announced = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == pid }) {
-            trackPendingLaunch(announced)
-            return pendingLaunches[pid] != nil
-        }
-        guard !tracker.snapshot.apps.contains(where: { $0.pid == pid }),
+        // The scan can trail a fast check-in, whose answer (policy, windows, handoff) already
+        // applied. Do not query runningApplications here: each element costs a synchronous
+        // LaunchServices round trip on the main thread.
+        guard pendingLaunches[pid] == nil, !announcedLaunches.contains(pid),
+              !tracker.snapshot.apps.contains(where: { $0.pid == pid }),
               !tracker.snapshot.windows.contains(where: { $0.pid == pid }) else { return false }
         pendingLaunches[pid] = TrackedApp(pid: pid, bundleIdentifier: candidate.bundleIdentifier, name: candidate.name,
                                           bundleURL: candidate.bundleURL, lastActiveSpaceIDs: launchSpaceIDs)
