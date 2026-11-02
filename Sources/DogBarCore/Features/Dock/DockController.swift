@@ -493,7 +493,7 @@ import ApplicationServices
         }
         view.images = view.images.filter { key, _ in items.contains { $0.id == key } }
         // External launches (Spotlight/Finder) deserve the same launch feedback as clicks.
-        view.launching = launching.union(visibleLaunches.values.map { $0.bundleIdentifier ?? "pid:\($0.pid)" }); view.render()
+        view.launching = launching.union(visibleLaunches.values.filter { NSRunningApplication(processIdentifier: $0.pid)?.isFinishedLaunching != true }.map { $0.bundleIdentifier ?? "pid:\($0.pid)" }); view.render()
         keepMaximizedWindowsClear(snapshot: snapshot, screen: nextScreen)
         if !panel.isVisible {
             if !hidden && !Theme.reducesMotion(settings) {
@@ -672,7 +672,7 @@ import ApplicationServices
         guard let url = item.pinnedApp?.url ?? item.app?.bundleURL else { report("This application's location is unavailable. Pin it again from Finder."); return }
         guard !launching.contains(item.id) else { return }
         launching.insert(item.id)
-        view.launching = launching.union(pendingLaunches.values.map { $0.bundleIdentifier ?? "pid:\($0.pid)" }); view.render()
+        view.launching = launching.union(pendingLaunches.values.filter { NSRunningApplication(processIdentifier: $0.pid)?.isFinishedLaunching != true }.map { $0.bundleIdentifier ?? "pid:\($0.pid)" }); view.render()
         let token = lifecycleGeneration
         let configuration = NSWorkspace.OpenConfiguration(); configuration.activates = true
         NSWorkspace.shared.openApplication(at: url, configuration: configuration) { [weak self] _, error in
