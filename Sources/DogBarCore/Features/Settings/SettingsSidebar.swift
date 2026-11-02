@@ -18,7 +18,7 @@ import SwiftUI
     var body: some View {
         VStack(spacing: 0) {
             SidebarSearchField(text: $search.text, focusRequest: search.focusRequest, onMove: move, onSubmit: { open(selectedIndex) })
-                .padding(.horizontal, 10).padding(.top, 2).padding(.bottom, 8)
+                .padding(.horizontal, 12).padding(.top, 4).padding(.bottom, 10)
             if searching { resultList } else { pageList }
         }
         .tint(SettingsPalette.tint)
@@ -27,9 +27,12 @@ import SwiftUI
 
     // MARK: Pages
 
+    /// Native sidebar rows at the large size: taller rows, larger icons and more padding. While
+    /// Features is open the selection is its current subsection, so the highlight follows clicks
+    /// and scrolling.
     private var pageList: some View {
         List(selection: Binding<Item?>(
-            get: { .pane(navigation.pane) },
+            get: { navigation.pane == .features ? .section(outline.section) : .pane(navigation.pane) },
             set: { item in
                 switch item {
                 case let .pane(pane)?: if navigation.pane != pane { navigation.pane = pane }
@@ -42,23 +45,21 @@ import SwiftUI
                     .tag(Item.pane(pane))
                 if pane == .features && navigation.pane == .features {
                     ForEach(FeatureSection.allCases) { section in
-                        Text(section.title)
-                            .foregroundStyle(outline.section == section ? SettingsPalette.text : SettingsPalette.muted)
-                            .fontWeight(outline.section == section ? .medium : .regular)
-                            .padding(.leading, 28)
+                        // An empty icon slot lines the title up with the page names above.
+                        Label { Text(section.title) } icon: { Color.clear.frame(width: SettingsIconTile.size, height: 1) }
                             .tag(Item.section(section))
                             .accessibilityLabel("\(section.title), in Features")
-                            .accessibilityAddTraits(outline.section == section ? .isSelected : [])
                     }
                 }
             }
         }
         .listStyle(.sidebar)
+        .environment(\.sidebarRowSize, .large)
     }
 
     private func jump(to section: FeatureSection) {
         navigation.pane = .features
-        outline.section = section
+        outline.jump(to: section)
         reveal.scroll(to: section.anchor, in: .features, alignTop: true)
     }
 
@@ -76,7 +77,7 @@ import SwiftUI
         let entry = results[index]
         selectedResult = index
         navigation.pane = entry.pane
-        if let section = entry.section { outline.section = section }
+        if let section = entry.section { outline.jump(to: section) }
         reveal.scroll(to: entry.anchor, in: entry.pane, fallback: entry.section?.anchor,
                       expanding: entry.group.map { [$0] } ?? [], highlight: true)
     }
@@ -111,14 +112,16 @@ import SwiftUI
 
 /// A white symbol on a colored rounded square, as System Settings draws its panes.
 struct SettingsIconTile: View {
+    /// Sized for large sidebar rows.
+    static let size: CGFloat = 24
     let symbol: String
     let color: Color
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 11, weight: .semibold))
+            .font(.system(size: 13, weight: .semibold))
             .foregroundStyle(.white)
-            .frame(width: 20, height: 20)
-            .background(color.gradient, in: RoundedRectangle(cornerRadius: 5, style: .continuous))
+            .frame(width: Self.size, height: Self.size)
+            .background(color.gradient, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
             .accessibilityHidden(true)
     }
 }

@@ -34,7 +34,7 @@ import SwiftUI
             return .init(top: (bounds.minY / 4).rounded() * 4, bottom: (bounds.maxY / 4).rounded() * 4, height: (proxy.size.height / 4).rounded() * 4)
         } action: { viewport in
             let section = tops.section(in: viewport)
-            if outline.section != section { outline.section = section }
+            outline.track(section)
         }
     }
 

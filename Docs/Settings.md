@@ -24,7 +24,8 @@ The window uses an `NSSplitViewController` with a sidebar item (210–260 pt) an
 
 The sidebar has an AppKit `NSSearchField` at large size, then a SwiftUI `List` in `.sidebar` style, so selection, hover and keyboard behavior are native.
 - **Pages:** each shows a System Settings–style tile (a white SF Symbol on a colored rounded square).
-- **Features subsections:** these list as indented rows while Features is selected. The one under the top of the page is in primary text, and clicking one scrolls to it.
+- **Features subsections:** these list under Features while it is open, aligned with the page names. The selection is the current subsection: clicking one selects it and scrolls there, and sections passed during that scroll are ignored, so the highlight never flickers. Scrolling the page moves the selection.
+- **Row size:** rows use `sidebarRowSize(.large)`, with 24 pt tiles.
 - **Search results:** these use the same list. With no matches it shows `ContentUnavailableView.search`.
 
 ## Layout

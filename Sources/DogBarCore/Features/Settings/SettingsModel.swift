@@ -53,7 +53,20 @@ enum FeatureSection: String, CaseIterable, Identifiable {
 /// Which Features subsection is under the top of the page. Only the sidebar observes it, so
 /// scrolling never re-renders the page itself.
 @MainActor final class SettingsOutline: ObservableObject {
-    @Published var section: FeatureSection = .dock
+    @Published private(set) var section: FeatureSection = .dock
+    /// While a jump scrolls the page, sections passed on the way are not reported.
+    private var heldUntil = Date.distantPast
+    /// A deliberate move (sidebar click or search result): mark it now and hold it while the
+    /// page scrolls there.
+    func jump(to section: FeatureSection) {
+        heldUntil = Date().addingTimeInterval(0.8)
+        if self.section != section { self.section = section }
+    }
+    /// The section under the top of the page, reported while scrolling.
+    func track(_ section: FeatureSection) {
+        guard Date() >= heldUntil, self.section != section else { return }
+        self.section = section
+    }
 }
 
 @MainActor final class SettingsSearch: ObservableObject {
