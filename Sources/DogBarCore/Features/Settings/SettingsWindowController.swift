@@ -32,11 +32,16 @@ import SwiftUI
             case .advanced: AnyView(AdvancedSettingsPane(settings: settings))
             }
         }
-        // Two plain columns on one window background. An AppKit sidebar item would bring its own
-        // gray behind-window material, which fought the purple sidebar and the paper pages.
-        let root = SettingsRootController(
-            sidebar: NSHostingView(rootView: SettingsSidebar(navigation: navigation, outline: outline, search: search, reveal: reveal)),
-            content: content)
+        let split = NSSplitViewController()
+        // A native sidebar item: AppKit's resizing, divider and titlebar handling. The sidebar
+        // paints the page canvas over its material so both columns read as one surface.
+        let sidebar = NSSplitViewItem(sidebarWithViewController: NSHostingController(rootView:
+            SettingsSidebar(navigation: navigation, outline: outline, search: search, reveal: reveal)))
+        sidebar.minimumThickness = 210; sidebar.maximumThickness = 260; sidebar.canCollapse = false
+        let detail = NSSplitViewItem(viewController: content)
+        detail.titlebarSeparatorStyle = .none
+        split.splitViewItems = [sidebar, detail]
+        split.view.frame = NSRect(x: 0, y: 0, width: 940, height: 700)
 
         let window = SettingsWindow(contentRect: NSRect(x: 0, y: 0, width: 940, height: 700),
                                     styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
@@ -48,7 +53,7 @@ import SwiftUI
         window.backgroundColor = SettingsPalette.windowBackground
         window.identifier = NSUserInterfaceItemIdentifier("DogBar.Settings")
         window.isReleasedWhenClosed = false
-        window.contentViewController = root
+        window.contentViewController = split
         window.minSize = NSSize(width: 820, height: 580)
         window.setContentSize(NSSize(width: 940, height: 700))
         window.onFind = { search.requestFocus() }
@@ -87,39 +92,6 @@ import SwiftUI
         guard let window else { return }
         let visible = window.isVisible && !window.isMiniaturized && window.occlusionState.contains(.visible)
         if visibility.isVisible != visible { visibility.isVisible = visible }
-    }
-}
-
-/// The sidebar at a fixed width beside the page area. Both draw their own backgrounds edge to
-/// edge, under the transparent titlebar, so the window reads as one surface.
-@MainActor final class SettingsRootController: NSViewController {
-    private let sidebar: NSView
-    private let content: NSViewController
-    init(sidebar: NSView, content: NSViewController) {
-        self.sidebar = sidebar; self.content = content
-        super.init(nibName: nil, bundle: nil)
-    }
-    required init?(coder: NSCoder) { nil }
-    override func loadView() {
-        let view = NSView(frame: NSRect(x: 0, y: 0, width: 940, height: 700))
-        addChild(content)
-        let pages = content.view
-        for subview in [sidebar, pages] {
-            subview.translatesAutoresizingMaskIntoConstraints = false
-            view.addSubview(subview)
-        }
-        if let host = sidebar as? NSHostingView<SettingsSidebar> { host.sizingOptions = [] }
-        NSLayoutConstraint.activate([
-            sidebar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            sidebar.topAnchor.constraint(equalTo: view.topAnchor),
-            sidebar.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            sidebar.widthAnchor.constraint(equalToConstant: SettingsMetrics.sidebarWidth),
-            pages.leadingAnchor.constraint(equalTo: sidebar.trailingAnchor),
-            pages.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            pages.topAnchor.constraint(equalTo: view.topAnchor),
-            pages.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-        ])
-        self.view = view
     }
 }
 

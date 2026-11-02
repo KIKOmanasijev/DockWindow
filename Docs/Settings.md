@@ -1,12 +1,17 @@
 # Settings
 
-DogBar Settings uses onboarding's look with one color system for the whole window. The sidebar uses the welcome screen's purple gradient, with frosted icon tiles, a white chip for the selected page and the yellow step capsule for the current Features subsection. The page area is paper in light mode and a near-neutral ink in dark mode, with white or raised surfaces, so content never sits purple on purple. The lavender-to-blush scene backdrop appears only behind each page's hero. Yellow is kept for the single most important action (**Finish Setup…** while permissions are missing).
+DogBar Settings uses onboarding's look with one color system for the whole window. The sidebar and pages share one canvas: paper in light mode, near-neutral ink in dark mode. Surfaces are white or raised, with one purple accent. Onboarding's lavender-to-blush scene backdrop appears only behind each page's hero. Yellow is kept for the single most important action (**Finish Setup…** while permissions are missing).
 
 Sources live in `Sources/DogBarCore/Features/Settings`. `Docs/SettingsIntegration.md` covers the coordinator API, which is unchanged.
 
 ## Window and color
 
-`SettingsRootController` places the sidebar (224 pt) next to the page area. The window has a transparent titlebar, a full-size content view and a background matching the page canvas. There is no `NSSplitViewItem` sidebar, because its gray behind-window material clashed with the purple. Content scrolling under the titlebar fades into the canvas. `SettingsPalette` holds every color, including light and dark values for the sidebar, the page area and the hero backdrop. `SettingsMetrics` holds the shared measures.
+The window uses a native `NSSplitViewController` with a sidebar item (210–260 pt), so resizing, the divider and the titlebar behave like AppKit. The sidebar's SwiftUI content paints the page canvas edge to edge, over AppKit's sidebar material, so no gray shows. The titlebar is transparent over a full-size content view, and the window background matches the canvas. Content scrolling under the titlebar fades into the canvas. `SettingsPalette` holds every color; `SettingsMetrics` holds the shared measures.
+
+The sidebar is deliberately plain:
+- A search field on a surface with a hairline border.
+- One SF Symbol and name per page, with a light accent fill on the selected page.
+- The Features subsections as indented text, shown while Features is selected, with the current one in the accent color.
 
 ## Layout
 
@@ -19,7 +24,7 @@ Each page has a 26 pt title and a one-line summary. General, Features (once per 
 | Appearance | Hero with the live panel preview and the Theme segmented control; Style; Motion |
 | Advanced | New window rules (with an empty state), Diagnostics (Private API availability collapsed), Window detection |
 
-The sidebar lists the three Features subsections under Features. Clicking one scrolls the page to it; the subsection under the top of the page gets the yellow capsule while scrolling. Command-1 to Command-4 select pages, Command-F focuses search, Command-W closes and Command-Q quits.
+While Features is selected, the sidebar lists its three subsections. Clicking one scrolls the page to it. The subsection under the top of the page is shown in the accent color while scrolling. Command-1 to Command-4 select pages, Command-F focuses search, Command-W closes and Command-Q quits.
 
 The window keeps one hosting view per page after first use and switches by hiding the others. Pages build one per main-queue turn after Settings opens.
 
@@ -72,7 +77,7 @@ Each take plays once; the corner button replays it. A scene plays only when all 
 
 ## Search
 
-`SettingsSearchIndex` lists every row with its anchor, keywords, the group that hides it and a note when it exists only in some modes. Every word must match the title, page path or keywords; title matches rank first. Results replace the page list; arrows move, Return opens, Escape clears. Opening a result selects its page, opens its More options group, scrolls to the row and briefly highlights it. A row hidden by the current mode falls back to its subsection. With no matches, the sidebar shows the curious dog, the query and three suggested searches as chips.
+`SettingsSearchIndex` lists every row with its anchor, keywords, the group that hides it and a note when it exists only in some modes. Every word must match the title, page path or keywords; title matches rank first. Results replace the page list; arrows move, Return opens, Escape clears. Opening a result selects its page, opens its More options group, scrolls to the row and briefly highlights it. A row hidden by the current mode falls back to its subsection. With no matches, the sidebar shows the curious dog, the query and three suggested searches.
 
 ## Resources
 
@@ -84,7 +89,7 @@ Compile with `swift build --build-tests`. Rendered offscreen at 820 × 580 and 9
 
 Manual checks still needed in the live app:
 - Accent colors in the key window.
-- Traffic-light placement over the sidebar.
+- Traffic-light placement over the sidebar, and sidebar resizing.
 - Titlebar dragging over both columns.
 - Hover states.
 - Demo pacing at real frame rates.

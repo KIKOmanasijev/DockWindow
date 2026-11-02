@@ -110,10 +110,9 @@ enum FeatureSection: String, CaseIterable, Identifiable {
     }
 }
 
-/// One color system for the whole Settings window, taken from onboarding. The sidebar is the
-/// welcome screen's purple, so the brand sits in navigation, not behind every control. The work
-/// area is paper (light) or a near-neutral ink (dark) with white or raised surfaces, so content
-/// never reads as purple on purple. Feature stages use onboarding's lavender-to-blush backdrop.
+/// One color system for the whole Settings window, taken from onboarding. Sidebar and pages share
+/// one canvas: paper (light) or a near-neutral ink (dark), with white or raised surfaces and one
+/// purple accent. Onboarding's lavender-to-blush backdrop appears only behind page heroes.
 enum SettingsPalette {
     // Work area
     static let canvas = Color.dynamic(light: 0xF7F5FB, dark: 0x14121B)
@@ -127,12 +126,6 @@ enum SettingsPalette {
     static let tint = Color.dynamic(light: 0x6E24E6, dark: 0x9C6BFF)
     static let success = OnboardingPalette.success
     static let caution = OnboardingPalette.caution
-    static let yellow = OnboardingPalette.yellow
-
-    // Sidebar: onboarding's welcome gradient, deeper in Dark Mode.
-    static let railTop = Color.dynamic(light: 0x7B3FF2, dark: 0x4A1DB4)
-    static let railMid = Color.dynamic(light: 0x5A1FD0, dark: 0x33128A)
-    static let railBottom = Color.dynamic(light: 0x3A0F99, dark: 0x1D0A52)
 
     // Feature stages: onboarding's scene backdrop.
     static let stageStart = Color.dynamic(light: 0xE3D6FF, dark: 0x2A1C58)
@@ -154,7 +147,6 @@ enum SettingsMetrics {
     static let controlColumn: CGFloat = 196
     /// Descriptions wrap before this width so they stay readable on wide windows.
     static let textMeasure: CGFloat = 380
-    static let sidebarWidth: CGFloat = 224
     static let radius: CGFloat = 12
 }
 
