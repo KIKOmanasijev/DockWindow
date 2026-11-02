@@ -1,59 +1,43 @@
 import SwiftUI
 
-/// Every DogBar feature on one page: Dock & Desktops, Previews and Switcher. Each subsection
-/// opens with a small demo, a one-line explanation and its main switch, then its options. Rare
-/// options sit behind "More options"; search opens them.
+/// One feature's page: Dock & Desktops, Previews or Switcher. Each opens with a small demo, a
+/// one-line explanation and its main switch, then its options. Rare options sit behind "More
+/// options"; search opens them.
 @MainActor struct FeaturesSettingsPane: View {
     @ObservedObject var settings: AppSettings
     let pinnedApps: PinnedAppsStore
+    let pane: SettingsPane
     @ObservedObject var navigation: SettingsNavigation
     @ObservedObject var visibility: SettingsVisibility
-    let outline: SettingsOutline
     @Environment(\.accessibilityReduceMotion) private var systemReduceMotion
-    /// Demos at least mostly in view. Only the topmost of them may play.
-    @State private var scenesInView: Set<FeatureSection> = []
-    @State private var tops = SectionTops()
+    /// Whether the demo is at least mostly in view.
+    @State private var sceneInView = false
 
     private var reduceMotion: Bool { systemReduceMotion || settings.reduceAnimations }
-    private func isActive(_ section: FeatureSection) -> Bool {
-        navigation.pane == .features && visibility.isVisible
-            && FeatureSection.allCases.first(where: scenesInView.contains) == section
-    }
+    /// The demo plays only on its own visible page while it is in view. Cached pages are hidden,
+    /// not removed, so this gate is explicit.
+    private var isActive: Bool { navigation.pane == pane && visibility.isVisible && sceneInView }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 52) {
-            dockSection.tracked(.dock, tops: tops)
-            previewsSection.tracked(.previews, tops: tops)
-            switcherSection.tracked(.switcher, tops: tops)
-        }
-        .coordinateSpace(.named(SectionTops.space))
-        // Marks the subsection under the top of the page in the sidebar. The transform runs while
-        // scrolling; the action only when the rounded viewport changes.
-        .onGeometryChange(for: SectionTops.Viewport.self) { proxy in
-            let bounds = proxy.bounds(of: .scrollView) ?? .zero
-            return .init(top: (bounds.minY / 4).rounded() * 4, bottom: (bounds.maxY / 4).rounded() * 4, height: (proxy.size.height / 4).rounded() * 4)
-        } action: { viewport in
-            let section = tops.section(in: viewport)
-            outline.track(section)
+        switch pane {
+        case .previews: previewsSection
+        case .switcher: switcherSection
+        default: dockSection
         }
     }
 
-    private func sceneVisibility(_ section: FeatureSection) -> (Bool) -> Void {
-        { visible in
-            if visible { scenesInView.insert(section) } else { scenesInView.remove(section) }
-        }
-    }
+    private func sceneVisibility(_ visible: Bool) { sceneInView = visible }
 
     // MARK: Dock & Desktops
 
     private var dockSection: some View {
         VStack(alignment: .leading, spacing: 24) {
-            SettingsHero(title: FeatureSection.dock.title,
-                         text: "Every desktop gets its own Dock, with only the apps open there.") {
+            SettingsHero(title: "A Dock for every desktop",
+                         text: "Each desktop’s Dock shows only the apps open there, with its own pins.") {
                 DockDemoScene(enabled: settings.useDogBarDock, scope: settings.dockScope, otherApps: settings.otherDesktopApps,
                               singleDot: settings.indicatorStyle == .single, showTrash: settings.showTrash,
-                              active: isActive(.dock), session: visibility.session, reduceMotion: reduceMotion)
-                    .onScrollVisibilityChange(threshold: 0.7, sceneVisibility(.dock))
+                              active: isActive, session: visibility.session, reduceMotion: reduceMotion)
+                    .onScrollVisibilityChange(threshold: 0.7, sceneVisibility)
             } control: {
                 Toggle("Use DogBar’s Dock", isOn: $settings.useDogBarDock)
                     .settingsDescription(settings.useDogBarDock ? "Replaces Apple’s Dock while DogBar runs."
@@ -154,13 +138,13 @@ import SwiftUI
 
     private var previewsSection: some View {
         VStack(alignment: .leading, spacing: 24) {
-            SettingsHero(title: FeatureSection.previews.title,
+            SettingsHero(title: "Hover to see every window",
                          text: "Hover an app in the Dock to see its windows. Click one to bring just that window forward.") {
                 PreviewsDemoScene(enabled: settings.previewsEnabled, hoverDelay: settings.previewHoverDelay,
                                   showTitles: settings.previewShowWindowTitles, showNewWindowTile: settings.previewShowNewWindowTile,
                                   showCPU: settings.previewShowCPUUsage, showMemory: settings.previewShowMemoryUsage,
-                                  active: isActive(.previews), session: visibility.session, reduceMotion: reduceMotion)
-                    .onScrollVisibilityChange(threshold: 0.7, sceneVisibility(.previews))
+                                  active: isActive, session: visibility.session, reduceMotion: reduceMotion)
+                    .onScrollVisibilityChange(threshold: 0.7, sceneVisibility)
             } control: {
                 Toggle("Dock previews", isOn: $settings.previewsEnabled)
                     .settingsDescription("Work with DogBar’s Dock and Apple’s.")
@@ -181,7 +165,7 @@ import SwiftUI
                     .settingsDescription("Close, minimize and full screen on each preview.")
                     .settingsAnchor("previews.trafficLights")
                 Toggle("Show New Window tile", isOn: $settings.previewShowNewWindowTile)
-                    .settingsDescription("A + after an app’s windows. Per-app rules are in Advanced.")
+                    .settingsDescription("A + after an app’s windows. Per-app rules are in New Windows.")
                     .settingsAnchor("previews.newWindow")
                 Toggle("Include minimized windows", isOn: $settings.previewIncludeMinimized)
                     .settingsAnchor("previews.minimized")
@@ -212,11 +196,11 @@ import SwiftUI
     private var switcherSection: some View {
         let mode = settings.switcherMode
         return VStack(alignment: .leading, spacing: 24) {
-            SettingsHero(title: FeatureSection.switcher.title, text: switcherText) {
+            SettingsHero(title: "Switch windows, not apps", text: switcherText) {
                 SwitcherDemoScene(mode: mode, shortcut: settings.switcherShortcut, appearanceDelay: settings.switcherAppearanceDelay,
                                   selectionColor: Theme.selection(settings),
-                                  active: isActive(.switcher), session: visibility.session, reduceMotion: reduceMotion)
-                    .onScrollVisibilityChange(threshold: 0.7, sceneVisibility(.switcher))
+                                  active: isActive, session: visibility.session, reduceMotion: reduceMotion)
+                    .onScrollVisibilityChange(threshold: 0.7, sceneVisibility)
             } control: {
                 SettingsRow("Switch between", description: mode == .native ? "DogBar’s Dock and previews keep working." : nil) {
                     Picker("Switcher mode", selection: $settings.switcherMode) {
@@ -349,29 +333,5 @@ private struct PinnedAppsRow: View {
                 if pinnedApps.activeDesktopKey == desktopKey { pinnedApps.reimportNativeDock() }
             }
         } message: { Text("This desktop’s pinned apps become the ones in Apple’s Dock. Other desktops are unchanged.") }
-    }
-}
-
-/// Section tops in page coordinates, measured on layout (not while scrolling), and the rule that
-/// picks the subsection under the top of the visible page.
-@MainActor final class SectionTops {
-    nonisolated static let space = "settings.features.page"
-    struct Viewport: Equatable { var top: CGFloat; var bottom: CGFloat; var height: CGFloat }
-    var values: [FeatureSection: CGFloat] = [:]
-    func section(in viewport: Viewport) -> FeatureSection {
-        let probe = viewport.top + 120
-        var current = FeatureSection.dock
-        for section in FeatureSection.allCases where (values[section] ?? .infinity) <= probe { current = section }
-        // At the bottom, a last subsection whose top is in view counts even if it is short.
-        if viewport.bottom >= viewport.height - 8, let last = FeatureSection.allCases.last,
-           let top = values[last], top >= viewport.top { current = last }
-        return current
-    }
-}
-
-private extension View {
-    func tracked(_ section: FeatureSection, tops: SectionTops) -> some View {
-        id(section.anchor)
-            .onGeometryChange(for: CGFloat.self) { $0.frame(in: .named(SectionTops.space)).minY } action: { tops.values[section] = $0 }
     }
 }

@@ -137,7 +137,7 @@ Scripts/build-app.sh
 
 ### Set up permissions
 
-The first launch opens a short tour that ends with both permissions (see [Docs/Onboarding.md](Docs/Onboarding.md)). Replay it any time from the paw menu → **Welcome Tour…**. You can also use **Settings > General** to request:
+The first launch opens a short tour that ends with both permissions (see [Docs/Onboarding.md](Docs/Onboarding.md)). Replay it any time from the paw menu → **Welcome Tour…**. You can also use **Settings > Permissions** to request:
 
 - **Accessibility:** window focus, window controls and keyboard shortcuts.
 - **Screen Recording:** window thumbnails and hover previews.

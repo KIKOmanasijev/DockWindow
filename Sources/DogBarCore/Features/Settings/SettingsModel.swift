@@ -2,71 +2,55 @@ import AppKit
 import Combine
 import SwiftUI
 
-/// The four Settings pages. Every feature lives together on Features, split into subsections.
+/// The Settings pages, in sidebar order. Each feature has its own page; the sidebar groups
+/// them under labels.
 enum SettingsPane: String, CaseIterable, Identifiable {
-    case general = "General", features = "Features", appearance = "Appearance", advanced = "Advanced"
+    case general = "General", permissions = "Permissions"
+    case dock = "Dock & Desktops", previews = "Previews", switcher = "Switcher", appearance = "Appearance"
+    case newWindows = "New Windows", diagnostics = "Diagnostics"
     var id: String { rawValue }
+
+    /// Sidebar groups. The first has no label.
+    enum Group: String, CaseIterable, Identifiable {
+        case app = "", features = "Features", advanced = "Advanced"
+        var id: String { rawValue }
+        var panes: [SettingsPane] { SettingsPane.allCases.filter { $0.group == self } }
+    }
+    var group: Group {
+        switch self {
+        case .general, .permissions: return .app
+        case .dock, .previews, .switcher, .appearance: return .features
+        case .newWindows, .diagnostics: return .advanced
+        }
+    }
     var symbol: String {
         switch self {
         case .general: return "gearshape.fill"
-        case .features: return "dock.rectangle"
+        case .permissions: return "hand.raised.fill"
+        case .dock: return "dock.rectangle"
+        case .previews: return "rectangle.on.rectangle"
+        case .switcher: return "square.stack.3d.forward.dottedline.fill"
         case .appearance: return "paintbrush.fill"
-        case .advanced: return "wrench.and.screwdriver.fill"
+        case .newWindows: return "plus.rectangle.on.rectangle"
+        case .diagnostics: return "stethoscope"
         }
     }
     /// The sidebar icon tile's color, as System Settings colors its panes.
     var tileColor: Color {
         switch self {
-        case .general, .advanced: return Color(nsColor: .systemGray)
-        case .features: return Color(hex: 0x7B3FF2)
-        case .appearance: return Color(nsColor: .systemBlue)
+        case .general, .diagnostics: return Color(nsColor: .systemGray)
+        case .permissions: return Color(nsColor: .systemBlue)
+        case .dock: return Color(hex: 0x7B3FF2)
+        case .previews: return Color(nsColor: .systemOrange)
+        case .switcher: return Color(nsColor: .systemIndigo)
+        case .appearance: return Color(nsColor: .systemPink)
+        case .newWindows: return Color(nsColor: .systemGreen)
         }
     }
-}
-
-/// Subsections of the Features page, each with a demo, its main switch and its options.
-enum FeatureSection: String, CaseIterable, Identifiable {
-    case dock, previews, switcher
-    var id: String { rawValue }
-    var title: String {
-        switch self {
-        case .dock: return "Dock & Desktops"
-        case .previews: return "Previews"
-        case .switcher: return "Switcher"
-        }
-    }
-    var symbol: String {
-        switch self {
-        case .dock: return "menubar.dock.rectangle"
-        case .previews: return "rectangle.stack"
-        case .switcher: return "rectangle.on.rectangle"
-        }
-    }
-    /// Scroll anchor of the subsection's top.
-    var anchor: String { "features.\(rawValue)" }
 }
 
 @MainActor final class SettingsNavigation: ObservableObject {
     @Published var pane: SettingsPane = .general
-}
-
-/// Which Features subsection is under the top of the page. Only the sidebar observes it, so
-/// scrolling never re-renders the page itself.
-@MainActor final class SettingsOutline: ObservableObject {
-    @Published private(set) var section: FeatureSection = .dock
-    /// While a jump scrolls the page, sections passed on the way are not reported.
-    private var heldUntil = Date.distantPast
-    /// A deliberate move (sidebar click or search result): mark it now and hold it while the
-    /// page scrolls there.
-    func jump(to section: FeatureSection) {
-        heldUntil = Date().addingTimeInterval(0.8)
-        if self.section != section { self.section = section }
-    }
-    /// The section under the top of the page, reported while scrolling.
-    func track(_ section: FeatureSection) {
-        guard Date() >= heldUntil, self.section != section else { return }
-        self.section = section
-    }
 }
 
 @MainActor final class SettingsSearch: ObservableObject {

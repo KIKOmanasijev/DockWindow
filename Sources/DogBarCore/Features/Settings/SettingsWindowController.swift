@@ -23,7 +23,6 @@ import SwiftUI
                 updates: UpdatePreferences, onRestoreNativeDock: @escaping () -> Void, onShowPermissions: @escaping () -> Void) {
         self.settings = settings
         let navigation = SettingsNavigation()
-        let outline = SettingsOutline()
         let search = SettingsSearch()
         let reveal = SettingsReveal()
         let visibility = SettingsVisibility()
@@ -33,17 +32,20 @@ import SwiftUI
             case .general:
                 AnyView(GeneralSettingsPane(settings: settings, permissions: permissions, updates: updates, visibility: visibility,
                                             onRestoreNativeDock: onRestoreNativeDock, onShowPermissions: onShowPermissions))
-            case .features:
-                AnyView(FeaturesSettingsPane(settings: settings, pinnedApps: pinnedApps, navigation: navigation,
-                                             visibility: visibility, outline: outline))
+            case .permissions:
+                AnyView(PermissionsSettingsPane(permissions: permissions, visibility: visibility, onShowPermissions: onShowPermissions))
+            case .dock, .previews, .switcher:
+                AnyView(FeaturesSettingsPane(settings: settings, pinnedApps: pinnedApps, pane: pane,
+                                             navigation: navigation, visibility: visibility))
             case .appearance: AnyView(AppearanceSettingsPane(settings: settings))
-            case .advanced: AnyView(AdvancedSettingsPane(settings: settings))
+            case .newWindows: AnyView(NewWindowsSettingsPane(settings: settings))
+            case .diagnostics: AnyView(DiagnosticsSettingsPane(settings: settings))
             }
         }
         let split = NSSplitViewController()
         // A native sidebar item: AppKit's glass material, resizing, divider and titlebar handling.
         let sidebar = NSSplitViewItem(sidebarWithViewController: NSHostingController(rootView:
-            SettingsSidebar(navigation: navigation, outline: outline, search: search, reveal: reveal)))
+            SettingsSidebar(navigation: navigation, search: search, reveal: reveal)))
         sidebar.minimumThickness = 210; sidebar.maximumThickness = 260; sidebar.canCollapse = false
         let detail = NSSplitViewItem(viewController: content)
         split.splitViewItems = [sidebar, detail]
@@ -239,7 +241,7 @@ import SwiftUI
         case "w": performClose(nil); return true
         case "q": NSApp.terminate(nil); return true
         case "f": onFind?(); return true
-        case let key? where key.count == 1 && "1234".contains(key):
+        case let key? where key.count == 1 && "123456789".contains(key):
             onSelectPane?(Int(key)! - 1); return true
         default: return super.performKeyEquivalent(with: event)
         }

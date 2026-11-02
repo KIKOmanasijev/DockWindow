@@ -1,16 +1,24 @@
 import SwiftUI
 
-@MainActor struct AdvancedSettingsPane: View {
+/// How DogBar opens another window for each app.
+@MainActor struct NewWindowsSettingsPane: View {
+    @ObservedObject var settings: AppSettings
+    var body: some View {
+        SettingsSection("Rules", footer: "How DogBar opens another window for an app, from previews, the Dock menu and the switcher. Automatic tries the app’s menu, then its shortcut, then reopening it.") {
+            NewWindowRulesEditor(settings: settings)
+        }
+        .settingsAnchor("advanced.rules")
+    }
+}
+
+/// Logging, private API availability and which accessibility subroles count as windows.
+@MainActor struct DiagnosticsSettingsPane: View {
     @ObservedObject var settings: AppSettings
     @State private var subrolesText = ""
 
     var body: some View {
         Group {
-            SettingsSection("New window rules", footer: "How DogBar opens another window for an app. Automatic tries the app’s menu, then its shortcut, then reopening it.") {
-                NewWindowRulesEditor(settings: settings)
-            }
-            .settingsAnchor("advanced.rules")
-            SettingsSection("Diagnostics") {
+            SettingsSection("Logging") {
                 Toggle("Debug logging", isOn: Binding(get: { settings.debugLogging }, set: { settings.debugLogging = $0; DiagnosticsService.setDebugLogging($0) }))
                     .settingsDescription("Write extra detail to the local log file.")
                     .settingsAnchor("advanced.debug")

@@ -36,7 +36,6 @@ import SwiftUI
                     .settingsDescription("DogBar’s own icon, in either Dock.")
                     .settingsAnchor("general.dockicon")
             }
-            permissionsSection
             SettingsSection("Updates") {
                 Toggle("Check for updates automatically", isOn: $updates.automaticChecks)
                     .settingsDescription("About once a day. Nothing installs until you choose Install and Relaunch.")
@@ -140,63 +139,6 @@ import SwiftUI
         }
     }
 
-    // MARK: Permissions
-
-    private var permissionsSection: some View {
-        SettingsSection("Permissions") {
-            permissionRow("Accessibility", granted: permissions.accessibility,
-                          description: "Focus, close and minimize single windows, and use shortcuts.", action: permissions.openAccessibility)
-                .settingsAnchor("general.accessibility")
-            permissionRow("Screen Recording", granted: permissions.screenRecording,
-                          description: "Real window thumbnails. May need a relaunch after allowing.", action: permissions.openScreenRecording)
-                .settingsAnchor("general.screenrecording")
-            // Shown in full while something is missing; tucked away once everything is allowed.
-            if permissions.hasCheckedPermissions && !permissions.isGranted {
-                setupRow
-                relaunchRow
-            } else {
-                SettingsMore("general.permissions.more", title: "Setup and relaunch") {
-                    setupRow
-                    relaunchRow
-                }
-            }
-            if permissions.usesAdHocSigning {
-                SettingsDescriptionText("This build is ad-hoc signed, so rebuilds can lose permissions. Create a DockWindow Dev code-signing certificate in Keychain Access, then rebuild.")
-            }
-        }
-    }
-    private var setupRow: some View {
-        SettingsRow("Guided setup", description: "Walk through permissions again.") {
-            Button("Show Setup", action: onShowPermissions)
-        }
-        .settingsAnchor("general.setup")
-    }
-    private var relaunchRow: some View {
-        SettingsRow("Relaunch", description: "After permission changes. Apple’s Dock is restored first.") {
-            Button("Relaunch DogBar") {
-                do { try AppRelauncher.relaunch() } catch { errorMessage = error.localizedDescription }
-            }
-        }
-        .settingsAnchor("general.relaunch")
-    }
-
-    private func permissionRow(_ title: String, granted: Bool, description: String, action: @escaping () -> Void) -> some View {
-        let state = PermissionRowStatus(hasChecked: permissions.hasCheckedPermissions, granted: granted)
-        return SettingsRow(title, description: description) {
-            HStack(spacing: 10) {
-                SettingsStatusPill(text: state.label, symbol: state == .checking ? nil : state.symbol,
-                                   tone: state == .checking ? .neutral : granted ? .good : .warning)
-                Group {
-                    if state == .missing {
-                        Button("Allow…", action: action).buttonStyle(.borderedProminent)
-                    } else {
-                        Button("Open Settings", action: action)
-                    }
-                }
-                .disabled(!permissions.hasCheckedPermissions || permissions.isChecking)
-            }
-        }
-    }
     private var loginDescription: String {
         if loginStatusChecking { return "Start DogBar when you sign in. Checking status…" }
         switch loginStatus {

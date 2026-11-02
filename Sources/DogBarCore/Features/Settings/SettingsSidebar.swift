@@ -1,17 +1,15 @@
 import AppKit
 import SwiftUI
 
-/// The native sidebar: a search field, then a sidebar list of the four pages. While Features is
-/// selected its subsections list under it. With a query it lists matching settings instead.
+/// The native sidebar: a search field, then the pages in labeled groups. With a query it lists
+/// matching settings instead.
 /// The split view item supplies the glass material; nothing here draws a background.
 @MainActor struct SettingsSidebar: View {
     @ObservedObject var navigation: SettingsNavigation
-    @ObservedObject var outline: SettingsOutline
     @ObservedObject var search: SettingsSearch
     let reveal: SettingsReveal
     @State private var selectedResult = 0
 
-    private enum Item: Hashable { case pane(SettingsPane), section(FeatureSection) }
     private var results: [SettingsSearchEntry] { SettingsSearchIndex.results(for: search.text) }
     private var searching: Bool { !search.text.trimmingCharacters(in: .whitespaces).isEmpty }
 
@@ -27,29 +25,17 @@ import SwiftUI
 
     // MARK: Pages
 
-    /// Native sidebar rows at the large size: taller rows, larger icons and more padding. While
-    /// Features is open the selection is its current subsection, so the highlight follows clicks
-    /// and scrolling.
+    /// Native sidebar rows at the large size (taller rows, larger icons, more padding), grouped
+    /// under the system's sidebar section headers.
     private var pageList: some View {
-        List(selection: Binding<Item?>(
-            get: { navigation.pane == .features ? .section(outline.section) : .pane(navigation.pane) },
-            set: { item in
-                switch item {
-                case let .pane(pane)?: if navigation.pane != pane { navigation.pane = pane }
-                case let .section(section)?: jump(to: section)
-                case nil: break
-                }
-            })) {
-            ForEach(SettingsPane.allCases) { pane in
-                Label { Text(pane.rawValue) } icon: { SettingsIconTile(symbol: pane.symbol, color: pane.tileColor) }
-                    .tag(Item.pane(pane))
-                if pane == .features && navigation.pane == .features {
-                    ForEach(FeatureSection.allCases) { section in
-                        // An empty icon slot lines the title up with the page names above.
-                        Label { Text(section.title) } icon: { Color.clear.frame(width: SettingsIconTile.size, height: 1) }
-                            .tag(Item.section(section))
-                            .accessibilityLabel("\(section.title), in Features")
-                    }
+        List(selection: Binding<SettingsPane?>(
+            get: { navigation.pane },
+            set: { pane in if let pane, navigation.pane != pane { navigation.pane = pane } })) {
+            ForEach(SettingsPane.Group.allCases) { group in
+                if group.rawValue.isEmpty {
+                    rows(group.panes)
+                } else {
+                    Section(group.rawValue) { rows(group.panes) }
                 }
             }
         }
@@ -57,10 +43,11 @@ import SwiftUI
         .environment(\.sidebarRowSize, .large)
     }
 
-    private func jump(to section: FeatureSection) {
-        navigation.pane = .features
-        outline.jump(to: section)
-        reveal.scroll(to: section.anchor, in: .features, alignTop: true)
+    private func rows(_ panes: [SettingsPane]) -> some View {
+        ForEach(panes) { pane in
+            Label { Text(pane.rawValue) } icon: { SettingsIconTile(symbol: pane.symbol, color: pane.tileColor) }
+                .tag(pane)
+        }
     }
 
     // MARK: Search
@@ -77,8 +64,7 @@ import SwiftUI
         let entry = results[index]
         selectedResult = index
         navigation.pane = entry.pane
-        if let section = entry.section { outline.jump(to: section) }
-        reveal.scroll(to: entry.anchor, in: entry.pane, fallback: entry.section?.anchor,
+        reveal.scroll(to: entry.anchor, in: entry.pane, fallback: "pane.top",
                       expanding: entry.group.map { [$0] } ?? [], highlight: true)
     }
 
