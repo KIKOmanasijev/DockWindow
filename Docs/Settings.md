@@ -22,7 +22,7 @@ The window uses an `NSSplitViewController` with a sidebar item (210–260 pt) an
 
 ## Sidebar
 
-The sidebar has an AppKit `NSSearchField` at large size, then a SwiftUI `List` in `.sidebar` style at `sidebarRowSize(.large)`. Selection, hover and keyboard behavior are native. Each page shows a System Settings–style tile (a white SF Symbol on a colored rounded square). The pages sit in three groups under the system's sidebar section headers:
+The sidebar has an AppKit `NSSearchField` at large size, then a SwiftUI `List` in `.sidebar` style at the standard `sidebarRowSize(.medium)` (13 pt text) with a little extra row height and 22 pt tiles. Selection, hover and keyboard behavior are native. Each page shows a System Settings–style tile (a white SF Symbol on a colored rounded square). The pages sit in three groups under the system's sidebar section headers:
 
 | Group | Pages |
 | --- | --- |

@@ -25,8 +25,8 @@ import SwiftUI
 
     // MARK: Pages
 
-    /// Native sidebar rows at the large size (taller rows, larger icons, more padding), grouped
-    /// under the system's sidebar section headers.
+    /// Native sidebar rows at the standard size (13 pt text), with a little extra height for
+    /// breathing room, grouped under the system's sidebar section headers.
     private var pageList: some View {
         List(selection: Binding<SettingsPane?>(
             get: { navigation.pane },
@@ -40,12 +40,13 @@ import SwiftUI
             }
         }
         .listStyle(.sidebar)
-        .environment(\.sidebarRowSize, .large)
+        .environment(\.sidebarRowSize, .medium)
     }
 
     private func rows(_ panes: [SettingsPane]) -> some View {
         ForEach(panes) { pane in
             Label { Text(pane.rawValue) } icon: { SettingsIconTile(symbol: pane.symbol, color: pane.tileColor) }
+                .padding(.vertical, 3)
                 .tag(pane)
         }
     }
@@ -98,13 +99,13 @@ import SwiftUI
 
 /// A white symbol on a colored rounded square, as System Settings draws its panes.
 struct SettingsIconTile: View {
-    /// Sized for large sidebar rows.
-    static let size: CGFloat = 24
+    /// Sized for standard sidebar rows, as in System Settings.
+    static let size: CGFloat = 22
     let symbol: String
     let color: Color
     var body: some View {
         Image(systemName: symbol)
-            .font(.system(size: 13, weight: .semibold))
+            .font(.system(size: 12, weight: .semibold))
             .foregroundStyle(.white)
             .frame(width: Self.size, height: Self.size)
             .background(color.gradient, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
