@@ -53,10 +53,10 @@ import SwiftUI
                 .buttonStyle(.plain).accessibilityLabel("Clear search")
             }
         }
-        .padding(.horizontal, 8).frame(height: 28)
-        .background(SettingsPalette.surface, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 7, style: .continuous)
-            .strokeBorder(searchFocused ? SettingsPalette.tint.opacity(0.55) : SettingsPalette.line, lineWidth: 1))
+        .padding(.horizontal, 9).frame(height: 30)
+        // Neutral and translucent, so it sits on the glass like a native sidebar search field.
+        .background(Color.primary.opacity(searchFocused ? 0.09 : 0.06), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Color.primary.opacity(0.08), lineWidth: 0.5))
     }
 
     private var selectedIndex: Int { min(selectedResult, max(0, results.count - 1)) }
@@ -132,7 +132,7 @@ import SwiftUI
     }
 }
 
-/// A page: its symbol and name. The selected page gets a quiet accent fill.
+/// A page: its symbol and name. The selected page gets a neutral fill, as in native sidebars.
 private struct SidebarPageRow: View {
     let pane: SettingsPane
     let selected: Bool
@@ -152,7 +152,7 @@ private struct SidebarPageRow: View {
         .padding(.horizontal, 8).frame(height: 30)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(RoundedRectangle(cornerRadius: 7, style: .continuous)
-            .fill(selected ? SettingsPalette.tint.opacity(0.12) : hovering ? SettingsPalette.line.opacity(0.6) : .clear))
+            .fill(Color.primary.opacity(selected ? 0.09 : hovering ? 0.05 : 0)))
         .contentShape(Rectangle())
         .onHover { hovering = $0 }
         // Select on mouse-down, as AppKit sidebars do, instead of waiting for mouse-up.
@@ -203,7 +203,7 @@ private struct SidebarResultRow: View {
             .padding(.horizontal, 8).padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: 7, style: .continuous)
-                .fill(selected ? SettingsPalette.tint.opacity(0.12) : hovering ? SettingsPalette.line.opacity(0.6) : .clear))
+                .fill(Color.primary.opacity(selected ? 0.09 : hovering ? 0.05 : 0)))
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

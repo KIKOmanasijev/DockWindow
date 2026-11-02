@@ -110,16 +110,16 @@ enum FeatureSection: String, CaseIterable, Identifiable {
     }
 }
 
-/// One color system for the whole Settings window, taken from onboarding. Sidebar and pages share
-/// one canvas: paper (light) or a near-neutral ink (dark), with white or raised surfaces and one
-/// purple accent. Onboarding's lavender-to-blush backdrop appears only behind page heroes.
+/// One color system for the whole Settings window. Pages use neutral grays close to the native
+/// glass sidebar's tone, so the two columns read as one window; purple is only the accent.
+/// Onboarding's lavender-to-blush backdrop appears only behind page heroes, subdued in Dark Mode.
 enum SettingsPalette {
     // Work area
-    static let canvas = Color.dynamic(light: 0xF7F5FB, dark: 0x14121B)
-    static let surface = Color.dynamic(light: 0xFFFFFF, dark: 0x1D1A26)
-    static let line = Color.dynamic(light: 0xE9E4F2, dark: 0x2C2838)
-    static let text = Color.dynamic(light: 0x1A1033, dark: 0xF3F0FA)
-    static let muted = Color.dynamic(light: 0x645B7D, dark: 0xA59FB6)
+    static let canvas = Color.dynamic(light: 0xF5F5F7, dark: 0x1D1D1F)
+    static let surface = Color.dynamic(light: 0xFFFFFF, dark: 0x262628)
+    static let line = Color.dynamic(light: 0xE3E3E8, dark: 0x343437)
+    static let text = Color.dynamic(light: 0x1D1D1F, dark: 0xF5F5F7)
+    static let muted = Color.dynamic(light: 0x6E6E76, dark: 0xA1A1A8)
     /// Purple for text and small marks, lightened in Dark Mode to keep contrast.
     static let accent = OnboardingPalette.accent
     /// Switches, sliders and selection marks.
@@ -127,17 +127,17 @@ enum SettingsPalette {
     static let success = OnboardingPalette.success
     static let caution = OnboardingPalette.caution
 
-    // Feature stages: onboarding's scene backdrop.
-    static let stageStart = Color.dynamic(light: 0xE3D6FF, dark: 0x2A1C58)
-    static let stageMid = Color.dynamic(light: 0xF2ECFF, dark: 0x1E1739)
-    static let stageEnd = Color.dynamic(light: 0xFFE4EE, dark: 0x2E1731)
+    // Hero backdrops: onboarding's scene colors in light, a quiet violet glow on gray in dark.
+    static let stageStart = Color.dynamic(light: 0xE6DCFF, dark: 0x2A2731)
+    static let stageMid = Color.dynamic(light: 0xF3EEFF, dark: 0x252428)
+    static let stageEnd = Color.dynamic(light: 0xFFE8F0, dark: 0x2A262B)
     static let stageGlow = Color.dynamic(light: 0xFFFFFF, dark: 0x8A63FF)
 
     /// The window background behind the titlebar and both columns.
     static let windowBackground = NSColor(name: nil) { appearance in
         appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
-            ? NSColor(srgbRed: 0x14 / 255, green: 0x12 / 255, blue: 0x1B / 255, alpha: 1)
-            : NSColor(srgbRed: 0xF7 / 255, green: 0xF5 / 255, blue: 0xFB / 255, alpha: 1)
+            ? NSColor(srgbRed: 0x1D / 255, green: 0x1D / 255, blue: 0x1F / 255, alpha: 1)
+            : NSColor(srgbRed: 0xF5 / 255, green: 0xF5 / 255, blue: 0xF7 / 255, alpha: 1)
     }
 }
 

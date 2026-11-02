@@ -1,6 +1,6 @@
 # Settings
 
-DogBar Settings uses onboarding's look. The sidebar is the native glass sidebar. The pages use one canvas: paper in light mode, near-neutral ink in dark mode. Surfaces are white or raised, with one purple accent. Onboarding's lavender-to-blush scene backdrop appears only behind each page's hero. Yellow is kept for the single most important action (**Finish Setup…** while permissions are missing).
+DogBar Settings uses onboarding's look on a native base. The sidebar is the native glass sidebar. The pages use neutral grays close to the glass's tone (`#F5F5F7` light, `#1D1D1F` dark), with white or slightly raised surfaces, so the two columns read as one window. Purple is only the accent. Onboarding's lavender-to-blush scene backdrop appears behind each page's hero, subdued to a faint violet glow in Dark Mode. Yellow is kept for the single most important action (**Finish Setup…** while permissions are missing). In the sidebar, search and selection are neutral translucent fills, as in native sidebars.
 
 Sources live in `Sources/DogBarCore/Features/Settings`. `Docs/SettingsIntegration.md` covers the coordinator API, which is unchanged.
 
@@ -9,8 +9,8 @@ Sources live in `Sources/DogBarCore/Features/Settings`. `Docs/SettingsIntegratio
 The window uses a native `NSSplitViewController` with a sidebar item (210–260 pt), so resizing, the divider and the titlebar behave like AppKit. The sidebar's SwiftUI content draws no background, so AppKit's glass sidebar material shows through. The titlebar is transparent over a full-size content view, and the window background matches the canvas. Content scrolling under the titlebar fades into the canvas. `SettingsPalette` holds every color; `SettingsMetrics` holds the shared measures.
 
 The sidebar is deliberately plain:
-- A search field on a surface with a hairline border.
-- One SF Symbol and name per page, with a light accent fill on the selected page.
+- A neutral, translucent search field.
+- One SF Symbol and name per page, with a neutral fill on the selected page.
 - The Features subsections as indented text, shown while Features is selected, with the current one in the accent color.
 
 ## Layout

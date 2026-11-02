@@ -351,7 +351,7 @@ struct SettingsStatusPill: View {
         }
         .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(SettingsPalette.line, lineWidth: 1))
-        .shadow(color: Color(hex: 0x2B0A74).opacity(0.06), radius: 14, y: 6)
+        .shadow(color: .black.opacity(0.05), radius: 12, y: 5)
     }
 }
 
@@ -369,7 +369,7 @@ struct SettingsStageBackdrop: View {
         ZStack(alignment: .top) {
             LinearGradient(colors: [SettingsPalette.stageStart, SettingsPalette.stageMid, SettingsPalette.stageEnd],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
-            RadialGradient(colors: [SettingsPalette.stageGlow.opacity(colorScheme == .dark ? 0.16 : 0.75), .clear],
+            RadialGradient(colors: [SettingsPalette.stageGlow.opacity(colorScheme == .dark ? 0.12 : 0.75), .clear],
                            center: UnitPoint(x: 0.12, y: 0.1), startRadius: 4, endRadius: 300)
             LinearGradient(colors: [.clear, .white.opacity(colorScheme == .dark ? 0.16 : 0.9), .clear], startPoint: .leading, endPoint: .trailing)
                 .frame(height: 1)
