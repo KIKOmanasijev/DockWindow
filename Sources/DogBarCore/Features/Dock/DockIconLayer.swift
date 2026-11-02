@@ -1,4 +1,5 @@
 import AppKit
+import CoreText
 
 /// One icon with separately animated window indicators and native-style badge.
 @MainActor final class DockIconLayer: CALayer {
@@ -8,7 +9,7 @@ import AppKit
     private let shadeMask = CALayer()
     let dots = CAShapeLayer()
     let badge = CALayer()
-    private let badgeTextLayer = CATextLayer()
+    private let badgeTextLayer = DockBadgeTextLayer()
     private let badgeFont = NSFont.systemFont(ofSize: 11)
     private var cachedImage: NSImage?
     private var cachedPixelSize = CGSize.zero
@@ -25,8 +26,6 @@ import AppKit
         shade.mask = shadeMask; shade.isHidden = true
         shadeMask.contentsGravity = .center
         badge.addSublayer(badgeTextLayer)
-        badgeTextLayer.font = badgeFont; badgeTextLayer.fontSize = badgeFont.pointSize
-        badgeTextLayer.alignmentMode = .center; badgeTextLayer.foregroundColor = NSColor.white.cgColor
         badge.backgroundColor = NSColor.systemRed.cgColor; badge.cornerRadius = 9
     }
     override init(layer: Any) { super.init(layer: layer) }
@@ -49,11 +48,11 @@ import AppKit
         badge.isHidden = text.isEmpty; badgeTextLayer.string = text
         let width = max(18, (text as NSString).size(withAttributes: [.font: badgeFont]).width + 10)
         badge.frame = CGRect(x: bounds.maxX - width + 2, y: bounds.maxY - 17, width: width, height: 18)
-        // CATextLayer aligns text to the top of its bounds. Center its line box
-        // within the badge instead of letting the full badge height determine the baseline.
-        let lineHeight = ceil(badgeFont.ascender - badgeFont.descender + badgeFont.leading)
-        badgeTextLayer.frame = CGRect(x: 0, y: (18 - lineHeight) / 2, width: width, height: lineHeight)
-        badgeTextLayer.contentsScale = scale
+        badgeTextLayer.frame = badge.bounds
+        if badgeTextLayer.contentsScale != scale {
+            badgeTextLayer.contentsScale = scale
+            badgeTextLayer.setNeedsDisplay()
+        }
         let path = CGMutablePath()
         let diameter = max(2, min(5, bounds.width / 12))
         let stride = diameter + 3
@@ -121,6 +120,34 @@ import AppKit
         imageLayer.add(animation, forKey: "launch")
     }
 
+}
+
+/// Center the actual glyph outlines, rather than font line metrics/side bearings.
+/// CATextLayer's line box can look low and left even when its frame is centered.
+@MainActor private final class DockBadgeTextLayer: CALayer {
+    var string = "" {
+        didSet { if string != oldValue { setNeedsDisplay() } }
+    }
+    override init() {
+        super.init()
+        needsDisplayOnBoundsChange = true
+    }
+    override init(layer: Any) { super.init(layer: layer) }
+    required init?(coder: NSCoder) { nil }
+
+    override func draw(in context: CGContext) {
+        guard !string.isEmpty else { return }
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: string, attributes: [
+            .font: NSFont.systemFont(ofSize: 11), .foregroundColor: NSColor.white
+        ]))
+        let ink = CTLineGetBoundsWithOptions(line, .useGlyphPathBounds)
+        guard !ink.isEmpty else { return }
+        context.saveGState()
+        defer { context.restoreGState() }
+        context.textMatrix = .identity
+        context.textPosition = CGPoint(x: bounds.midX - ink.midX, y: bounds.midY - ink.midY)
+        CTLineDraw(line, context)
+    }
 }
 
 /// Draws the best NSImage representation at the actual display pixel size, including Retina.
