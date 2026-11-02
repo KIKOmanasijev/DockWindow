@@ -65,6 +65,9 @@ import ApplicationServices
     // Keep only that short gap visible; this is not a second running-app inventory.
     private var pendingLaunches: [pid_t: TrackedApp] = [:]
     private var pendingLaunchTasks: [pid_t: Task<Void, Never>] = [:]
+    // LaunchServices announces a launch only at check-in; spawned processes appear first.
+    private let launchMonitor = LaunchProcessMonitor()
+    private var checkedInLaunches: Set<pid_t> = []
     private var removedRunning: Set<String> = []
     private var runningOrder: [String] = []
     private var pinDesktopKey: String?
@@ -137,6 +140,15 @@ import ApplicationServices
                 }
             })
         }
+        launchMonitor.onSpawn = { [weak self] candidate in
+            guard let self, self.started else { return }
+            if self.trackSpawnedLaunch(candidate) { self.reload() }
+        }
+        launchMonitor.onExit = { [weak self] pid in
+            guard let self, self.started, self.pendingLaunches[pid] != nil else { return }
+            self.clearPendingLaunch(pid: pid); self.reload()
+        }
+        launchMonitor.start()
         for name in [NSWorkspace.willSleepNotification, NSWorkspace.didWakeNotification, NSWorkspace.accessibilityDisplayOptionsDidChangeNotification] {
             workspaceObservers.append(NSWorkspace.shared.notificationCenter.addObserver(forName: name, object: nil, queue: .main) { [weak self] notification in
                 MainActor.assumeIsolated {
@@ -184,6 +196,7 @@ import ApplicationServices
         localMonitor = nil; globalMonitor = nil
         if let screenObserver { NotificationCenter.default.removeObserver(screenObserver) }; screenObserver = nil
         for observer in workspaceObservers { NSWorkspace.shared.notificationCenter.removeObserver(observer) }; workspaceObservers = []
+        launchMonitor.stop(); checkedInLaunches.removeAll()
         for task in pendingLaunchTasks.values { task.cancel() }; pendingLaunchTasks.removeAll(); pendingLaunches.removeAll()
         subscriptions.removeAll(); view.launching = []; view.stopTracking(); panel.orderOut(nil); panel.ignoresMouseEvents = true
         launching.removeAll(); removedRunning.removeAll(); hoverItem = nil; hidden = false; previewVisible = false; scrollState = nil
@@ -287,15 +300,56 @@ import ApplicationServices
             }
         })
     }
+    private var launchSpaceIDs: [UInt64] {
+        Array(SpacePolicy.currentSpaceIDs(snapshot: tracker.snapshot, displayID: screen.flatMap(Self.displayUUID), separateSpaces: NSScreen.screensHaveSeparateSpaces))
+    }
+    /// A spawned app process that has not checked in. Workspace notifications take over at
+    /// check-in; until then only process exit or a bounded deadline can retire it.
+    private func trackSpawnedLaunch(_ candidate: LaunchCandidate) -> Bool {
+        let pid = candidate.pid
+        guard pendingLaunches[pid] == nil else { return false }
+        // The scan can trail a fast check-in. LaunchServices' answer (policy, windows) then wins.
+        if let announced = NSWorkspace.shared.runningApplications.first(where: { $0.processIdentifier == pid }) {
+            trackPendingLaunch(announced)
+            return pendingLaunches[pid] != nil
+        }
+        guard !tracker.snapshot.apps.contains(where: { $0.pid == pid }),
+              !tracker.snapshot.windows.contains(where: { $0.pid == pid }) else { return false }
+        pendingLaunches[pid] = TrackedApp(pid: pid, bundleIdentifier: candidate.bundleIdentifier, name: candidate.name,
+                                          bundleURL: candidate.bundleURL, lastActiveSpaceIDs: launchSpaceIDs)
+        pendingLaunchTasks[pid] = Task { @MainActor [weak self] in
+            // Cold starts and launch-time code verification can take many seconds before check-in.
+            do { try await Task.sleep(for: .seconds(60)) } catch { return }
+            guard let self, self.started, !self.checkedInLaunches.contains(pid) else { return }
+            self.clearPendingLaunch(pid: pid)
+            self.reload()
+        }
+        return true
+    }
     private func trackPendingLaunch(_ app: NSRunningApplication) {
         let pid = app.processIdentifier
-        guard pid > 0, app.activationPolicy == .regular, !app.isTerminated,
-              pendingLaunches[pid] == nil,
-              !tracker.snapshot.windows.contains(where: { $0.pid == pid }) else { return }
-        let spaces = Array(SpacePolicy.currentSpaceIDs(snapshot: tracker.snapshot, displayID: screen.flatMap(Self.displayUUID), separateSpaces: NSScreen.screensHaveSeparateSpaces))
-        pendingLaunches[pid] = TrackedApp(pid: pid, bundleIdentifier: app.bundleIdentifier,
-            name: app.localizedName ?? "Application", bundleURL: app.bundleURL,
-            isHidden: app.isHidden, isFrontmost: app.isActive, lastActiveSpaceIDs: spaces)
+        guard pid > 0 else { return }
+        let spawned = pendingLaunches[pid] != nil && !checkedInLaunches.contains(pid)
+        // Check-in is authoritative: an agent or a process that already died is not a Dock launch.
+        guard app.activationPolicy == .regular, !app.isTerminated else {
+            if spawned { clearPendingLaunch(pid: pid) }
+            return
+        }
+        guard !checkedInLaunches.contains(pid) else { return }
+        if let existing = pendingLaunches[pid] {
+            // Same item identity as the spawn placeholder, so its layer is kept rather than replaced.
+            pendingLaunches[pid] = TrackedApp(pid: pid, bundleIdentifier: existing.bundleIdentifier ?? app.bundleIdentifier,
+                name: app.localizedName ?? existing.name, bundleURL: app.bundleURL ?? existing.bundleURL,
+                isHidden: app.isHidden, isFrontmost: app.isActive, lastActiveSpaceIDs: existing.lastActiveSpaceIDs)
+        } else {
+            guard !tracker.snapshot.windows.contains(where: { $0.pid == pid }) else { return }
+            pendingLaunches[pid] = TrackedApp(pid: pid, bundleIdentifier: app.bundleIdentifier,
+                name: app.localizedName ?? "Application", bundleURL: app.bundleURL,
+                isHidden: app.isHidden, isFrontmost: app.isActive, lastActiveSpaceIDs: launchSpaceIDs)
+        }
+        checkedInLaunches.insert(pid)
+        launchMonitor.forget(pid: pid)
+        pendingLaunchTasks.removeValue(forKey: pid)?.cancel()
         // A one-shot deadline also handles apps that finish launching without a window.
         // Do not extend it on didLaunch after willLaunch, or poll while waiting for AX.
         pendingLaunchTasks[pid] = Task { @MainActor [weak self] in
@@ -315,6 +369,8 @@ import ApplicationServices
     private func clearPendingLaunch(pid: pid_t) {
         pendingLaunchTasks.removeValue(forKey: pid)?.cancel()
         pendingLaunches.removeValue(forKey: pid)
+        checkedInLaunches.remove(pid)
+        launchMonitor.forget(pid: pid)
     }
     private func reload(snapshot incoming: WindowSnapshot? = nil) {
         // @Published delivers before the property changes. Render its supplied value synchronously.
@@ -358,7 +414,11 @@ import ApplicationServices
                                               includeMinimized: settings.includeMinimizedInDock,
                                               showWindowlessAppsOnLastActiveDesktop: settings.showWindowlessAppsOnLastActiveDesktop, showTrash: settings.showTrash, displayFrame: windowDisplayFrame)
         var items = DockCompositionPolicy.items(snapshot: snapshot, pinned: pins.apps, options: options)
-        for app in pendingLaunches.values.sorted(by: { $0.pid < $1.pid }) {
+        // A launch belongs to the desktop it started on until its windows have membership.
+        let visibleLaunches = pendingLaunches.filter {
+            DockLaunchHandoffPolicy.isVisible($0.value, scope: settings.dockScope, currentSpaceIDs: spaces)
+        }
+        for app in visibleLaunches.values.sorted(by: { $0.pid < $1.pid }) {
             let id = app.bundleIdentifier ?? "pid:\(app.pid)"
             if let index = items.firstIndex(where: { $0.id == id }) {
                 if items[index].app == nil { items[index].app = app }
@@ -398,7 +458,7 @@ import ApplicationServices
             // Permanent pins stay launchable even when their app has no windows.
             guard !item.isPinned, settings.hideWindowlessApps else { return false }
             guard let pid = item.app?.pid else { return true }
-            if pendingLaunches[pid] != nil { return false }
+            if visibleLaunches[pid] != nil { return false }
             return !snapshot.windows.contains { $0.pid == pid }
         }
         // Do not leave a leading or duplicate divider after filtering apps.
@@ -431,7 +491,7 @@ import ApplicationServices
         }
         view.images = view.images.filter { key, _ in items.contains { $0.id == key } }
         // External launches (Spotlight/Finder) deserve the same launch feedback as clicks.
-        view.launching = launching.union(pendingLaunches.values.map { $0.bundleIdentifier ?? "pid:\($0.pid)" }); view.render()
+        view.launching = launching.union(visibleLaunches.values.map { $0.bundleIdentifier ?? "pid:\($0.pid)" }); view.render()
         keepMaximizedWindowsClear(snapshot: snapshot, screen: nextScreen)
         if !panel.isVisible {
             if !hidden && !Theme.reducesMotion(settings) {

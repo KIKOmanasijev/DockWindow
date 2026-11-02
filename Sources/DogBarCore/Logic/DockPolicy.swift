@@ -96,4 +96,10 @@ internal enum DockLaunchHandoffPolicy {
             $0.isMinimized || !SpacePolicy.membership(of: $0).isEmpty
         }
     }
+    /// A placeholder has no windows yet, so its launch desktop stands in for membership.
+    /// Unknown topology on either side shows it rather than hiding a real launch.
+    static func isVisible(_ launch: TrackedApp, scope: WindowScope, currentSpaceIDs: Set<UInt64>) -> Bool {
+        scope == .allDesktops || currentSpaceIDs.isEmpty || launch.lastActiveSpaceIDs.isEmpty
+            || !currentSpaceIDs.isDisjoint(with: launch.lastActiveSpaceIDs)
+    }
 }
