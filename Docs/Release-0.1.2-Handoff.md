@@ -1,8 +1,12 @@
 # DogBar 0.1.2 — signing and OTA handoff
 
-> **Superseded by [0.1.3](Release-0.1.3-Handoff.md). Do not build or sign 0.1.2.** Its draft was never signed and predates the free commercial-mode build guard.
-
 **Version: 0.1.2 · build: 9 · Apple team: DD94BC69WN.** Previous stable release is 0.1.1/build 8. Confirm no newer build has been published before starting. The GitHub release is a private draft; do not publish it yet.
+
+## Free-build update — 5 November 2026
+
+The draft was re-pinned to newer source that adds the free build guard. Every build is stamped `DogBarCommercialMode = free` and no licensing code runs (see [CommercialMode.md](CommercialMode.md)). **Do not set `DOGBAR_LICENSE_CONFIG`.** A free build refuses it and stops before compiling; ignore earlier licensing notes that said to set it. After `verify`, check that `/usr/libexec/PlistBuddy -c "Print :DogBarCommercialMode" dist/DogBar-0.1.2-arm64/image/DogBar.app/Contents/Info.plist` prints `free`. Uncommitted local Dock work (callout menu, login items) is not included.
+
+Validation on the preparation Mac (Xcode 27.2), from a clean `git archive` of the source: `swift build -c release --product DogBar --triple arm64-apple-macosx26.0` passed. `license_packaging.fields('stable')` returns free, and `Scripts/check_commercial_policy.py` passes. No test suites were run for this update; the results below are from 2 November.
 
 ## Refreshed candidate — 2 November 2026
 
@@ -29,6 +33,7 @@ git fetch origin main
 gh release view v0.1.2 --json targetCommitish --jq .targetCommitish
 git switch --detach "$(gh release view v0.1.2 --json targetCommitish --jq .targetCommitish)"
 git status --short
+unset DOGBAR_LICENSE_CONFIG DOGBAR_COMMERCIAL_MODE
 xcodebuild -version
 python3 Scripts/release.py preflight --team-id DD94BC69WN --keychain-profile dogbar-notary
 python3 Scripts/release.py build --team-id DD94BC69WN --keychain-profile dogbar-notary --version 0.1.2 --build 9
