@@ -1,8 +1,8 @@
 {
   "available": true,
-  "version": "0.1.1",
-  "url": "/downloads/DogBar-0.1.1-arm64.dmg",
-  "sha256": "497cae0bcc2ba01fc4d4779158815ba20168d5715179a7cf1091bfa423c9fa32",
+  "version": "0.1.2",
+  "url": "/downloads/DogBar-0.1.2-arm64.dmg",
+  "sha256": "9482410ecb12e5c50cffc84d444654de58e887858f1091296a416de609b72a6c",
   "architecture": "arm64",
   "minimumMacOS": "26.0",
   "notarized": true

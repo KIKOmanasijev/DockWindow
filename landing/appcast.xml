@@ -1,8 +1,57 @@
-<?xml version="1.0" standalone="yes"?><!-- sparkle-sign-warning:
+<?xml version="1.0" standalone="yes"?>
+<!-- sparkle-sign-warning:
 IMPORTANT: This file was signed by Sparkle. Any modifications to this file requires re-signing this file with generate_appcast or sign_update! The signed signature will be embedded at the end of this file.
---><rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
+-->
+<rss xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle" version="2.0">
     <channel>
         <title>DogBar</title>
+        <item>
+            <title>0.1.2</title>
+            <pubDate>Thu, 05 Nov 2026 18:13:14 +0100</pubDate>
+            <link>https://dogbar.hristijan.dev/</link>
+            <sparkle:version>9</sparkle:version>
+            <sparkle:shortVersionString>0.1.2</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>26.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <description sparkle:format="markdown"><![CDATA[# DogBar 0.1.2
+
+## New Settings experience
+
+- Redesigned Settings with a native macOS 26 sidebar, toolbar, glass buttons and grouped controls.
+- Dedicated pages for General, Permissions, Dock & Desktops, Previews, Switcher, Appearance, New Windows, Diagnostics and Beta.
+- Animated feature demos, clearer descriptions and search that jumps to individual settings.
+- DogBar appears in the Dock while Settings is open, then returns to your saved visibility preference when Settings closes.
+
+## Agent Activity (Beta)
+
+- Optional Claude Code and Codex session activity at the top of your screen, with a small animated dog for each session. Enable it in **Settings › Beta**; it is off by default.
+- Hover to see session details, grouped tool calls and the last response. Switch sessions using the dots, arrows or Command-1 through Command-9 while hovering the open island.
+- Attention badges distinguish sessions that need you, failed turns and unseen finished responses. Optional sounds announce important changes.
+- One-click hook installation, update and removal preserve other settings and create a backup. Review and trust Codex hooks with `/hooks`; start a new Claude Code session after installing or updating its hooks.
+- Open the app hosting a session, or send Claude Code a follow-up note after a finished turn. Notes are background hook notifications, not user-message bubbles or permission approvals. Codex does not support sending notes.
+- A configurable idle island, a simulated demo, scrollable responses and reduced-motion support.
+- Session activity is passed locally to DogBar. This includes a short prompt excerpt and the final response; the agents still use their own services.
+
+## Fixes and improvements
+
+- Apps launched through Spotlight and Finder appear in the Dock earlier during startup, with launch bouncing restored.
+- Command-Tab can be captured when recording a new shortcut.
+- Notification badge counts are centered using the digits' actual outlines.
+- Background presentation updates are deferred while native menus are open to reduce interference with hover highlighting.
+- Fixed a crash when focusing DogBar's own Settings window from its Dock icon by performing its window actions on the main thread.
+- Settings dropdowns use neutral control colours while switches retain the accent colour.
+- Refined Dock glass, rim, icon spacing, separators and window indicators. Spacing scales with icon size and Dock position.
+
+Requires Apple Silicon and macOS 26 or later.
+
+## Updating
+
+From 0.1.1, choose **Check for Updates…** once this release is published, then **Install and Relaunch**. Your settings are retained.
+
+Version 0.1.0 and public previews through preview 5 need one manual installation because they do not contain the in-app updater: quit DogBar, replace the app in Applications, eject the disk image and reopen DogBar.
+]]></description>
+            <enclosure url="https://dogbar.hristijan.dev/downloads/DogBar-0.1.2-arm64.dmg" length="14762534" type="application/octet-stream" sparkle:edSignature="Pzz1lLmmbmJs19RNygBKEiqkI5TOHYi4nT0EbhPEnQcUClx9a/S1cL+DYCCNjVBbPnFwa6YZ7A0HN+TxH47kAg=="/>
+        </item>
         <item>
             <title>0.1.1</title>
             <pubDate>Sun, 01 Nov 2026 22:29:59 +0100</pubDate>
@@ -28,10 +77,11 @@ DogBar 0.1.0 and public previews through preview 5 do not include Sparkle. Insta
 
 If macOS asks again for Accessibility or Screen Recording, enable DogBar and choose Quit & Reopen. Existing settings are retained.
 ]]></description>
-            <enclosure url="https://dogbar.hristijan.dev/downloads/DogBar-0.1.1-arm64.dmg" length="13012894" type="application/octet-stream" sparkle:edSignature="BCV2hzJMRnSnYNypx9IP2cua/RMT2G3++7bQiDAOxYL1gvYsXyXc33h1Xnvs16P9EVPVZrlv5uX0aPmrVIkCDw=="></enclosure>
+            <enclosure url="https://dogbar.hristijan.dev/downloads/DogBar-0.1.1-arm64.dmg" length="13012894" type="application/octet-stream" sparkle:edSignature="BCV2hzJMRnSnYNypx9IP2cua/RMT2G3++7bQiDAOxYL1gvYsXyXc33h1Xnvs16P9EVPVZrlv5uX0aPmrVIkCDw=="/>
         </item>
     </channel>
-</rss><!-- sparkle-signatures:
-edSignature: scbg60w1zA3XFwbezYDVTx0RLKSNPuFdfhOrdRYz1v9CNxuwnDUr7srEj63n1kpc9phSQq1tliEHXl+hJpKoCg==
-length: 2308
+</rss>
+<!-- sparkle-signatures:
+edSignature: gyiOFMg/nyNaObzsOegn3a2KEH4jXYiMrhf7jceLauh6FEx3az/vjvQ/dh/9LmcoYv9ITwEToQJT81vtGYIyCA==
+length: 5953
 -->
