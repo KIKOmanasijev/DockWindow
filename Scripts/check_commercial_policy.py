@@ -58,7 +58,8 @@ def check():
         problems.append('index.html structured data must offer DogBar at price "0" USD')
     if len(re.findall(r'<a class="btn btn-download" data-download\b', html)) != 2:
         problems.append('index.html needs the hero and banner Download buttons')
-    if json.loads((LANDING / 'checkout.json').read_text()).get('enabled') is not False:
+    checkout = LANDING / 'checkout.json'
+    if checkout.exists() and json.loads(checkout.read_text()).get('enabled') is not False:
         problems.append('landing/checkout.json must stay disabled in free mode')
     return problems
 
