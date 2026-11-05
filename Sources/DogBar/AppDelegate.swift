@@ -167,6 +167,12 @@ import Combine
             .sink { [weak self] _ in self?.updatePermissions() }.store(in: &subscriptions)
         updatePermissions()
         updater.start()
+        // Free builds have no license manager, so this never fires and access never changes.
+        AppAccess.shared.objectWillChange.receive(on: RunLoop.main).sink { [weak self] _ in
+            self?.updateFeatureState()
+        }.store(in: &subscriptions)
+        AppAccess.shared.start()
+        if !AppAccess.shared.allowsFeatures { settingsWindow.show(pageNamed: "License") }
         Log.system.info("DogBar launched")
     }
     private func startPermissionTimer() {
@@ -215,7 +221,7 @@ import Combine
         DiagnosticsService.setDebugLogging(settings.debugLogging)
         let tooltip = !permissions.hasCheckedPermissions ? "DogBar: checking permissions" : permissions.isGranted ? "DogBar" : "DogBar: permissions needed. Click the paw and choose Finish Setup."
         if statusItem?.button?.toolTip != tooltip { statusItem?.button?.toolTip = tooltip }
-        let enabled = permissions.isGranted && !settings.isPaused && !terminating && !onboardingHoldsFeatures
+        let enabled = permissions.isGranted && !settings.isPaused && !terminating && !onboardingHoldsFeatures && AppAccess.shared.allowsFeatures
         previews.enabled = enabled && settings.previewsEnabled
         switcher.enabled = enabled && settings.switcherEnabled && !SettingsShortcutRecording.isRecording
         var configuration = HotkeyConfiguration()
@@ -235,7 +241,7 @@ import Combine
         if !settings.switcherEnabled || SettingsShortcutRecording.isRecording { hotkey.stop() }
         if enabled { nativeReader.start() } else { nativeReader.stop() }
         // Agent Activity needs no permission to observe hooks; it follows the opt-in and Pause.
-        agentIsland.setFeatureEnabled(settings.agentActivityEnabled && !settings.isPaused && !terminating && !onboardingHoldsFeatures)
+        agentIsland.setFeatureEnabled(settings.agentActivityEnabled && !settings.isPaused && !terminating && !onboardingHoldsFeatures && AppAccess.shared.allowsFeatures)
         reconcileDock()
         if let item = statusItem?.menu?.items.first(where: { $0.action == #selector(togglePause) }) {
             let title = settings.isPaused ? "Resume DogBar" : "Pause DogBar"
@@ -244,7 +250,7 @@ import Combine
     }
     /// The first tour and recovery flows finish before the Dock, previews or switcher start, so nothing changes under the reader.
     private var onboardingHoldsFeatures: Bool { launchOnboardingDecided && onboarding.holdsFeatures }
-    private var wantsReplacement: Bool { permissions.isGranted && !settings.isPaused && settings.useDogBarDock && !terminating && !onboardingHoldsFeatures }
+    private var wantsReplacement: Bool { permissions.isGranted && !settings.isPaused && settings.useDogBarDock && !terminating && !onboardingHoldsFeatures && AppAccess.shared.allowsFeatures }
     /// Once the first permission check answers, show recovery or the usage-data question when needed.
     /// `--onboarding-tour` replays the tour on launch without changing any saved state.
     private func presentLaunchOnboardingIfNeeded() {
@@ -329,7 +335,7 @@ import Combine
     }
     @objc func checkForUpdates() { updater.check() }
     @objc func togglePause() { settings.isPaused.toggle() }
-    func applicationWillTerminate(_ notification: Notification) { agentIsland.setFeatureEnabled(false); agentActivity.stopDemo(); permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); previews.dismiss(); nativeReader.stop(); dock.stop(); tracker.stop() }
+    func applicationWillTerminate(_ notification: Notification) { AppAccess.shared.stop(); agentIsland.setFeatureEnabled(false); agentActivity.stopDemo(); permissionTimer?.invalidate(); hotkey.stop(); switcher.dismiss(); previews.dismiss(); nativeReader.stop(); dock.stop(); tracker.stop() }
     @objc func quit() { NSApp.terminate(nil) }
     @objc func showSettings() { settingsWindow.show() }
     /// The whole tour again. Saved progress, permissions and choices are untouched.

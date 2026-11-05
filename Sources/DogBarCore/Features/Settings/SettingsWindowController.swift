@@ -34,6 +34,9 @@ import SwiftUI
                                             onRestoreNativeDock: onRestoreNativeDock, onShowPermissions: onShowPermissions))
             case .permissions:
                 AnyView(PermissionsSettingsPane(permissions: permissions, visibility: visibility, onShowPermissions: onShowPermissions))
+            case .license:
+                // Only listed in paid builds (see `SettingsPane.isAvailable`).
+                if let license = AppAccess.shared.license { AnyView(LicenseSettingsPane(license: license)) } else { AnyView(EmptyView()) }
             case .dock, .previews, .switcher:
                 AnyView(FeaturesSettingsPane(settings: settings, pinnedApps: pinnedApps, pane: pane,
                                              navigation: navigation, visibility: visibility))
@@ -68,9 +71,9 @@ import SwiftUI
         window.setContentSize(NSSize(width: 940, height: 700))
         window.onFind = { search.requestFocus() }
         window.onSelectPane = { index in
-            guard SettingsPane.allCases.indices.contains(index) else { return }
+            guard SettingsPane.available.indices.contains(index) else { return }
             search.text = ""
-            navigation.pane = SettingsPane.allCases[index]
+            navigation.pane = SettingsPane.available[index]
         }
         super.init(window: window)
         toolbar.delegate = self
@@ -89,7 +92,7 @@ import SwiftUI
 
     /// Opens Settings on a given page by its sidebar title, for example "Beta".
     public func show(pageNamed name: String) {
-        if let pane = SettingsPane(rawValue: name) { search.text = ""; navigation.pane = pane }
+        if let pane = SettingsPane(rawValue: name), pane.isAvailable { search.text = ""; navigation.pane = pane }
         show()
     }
     /// Brings Settings forward, including when DogBar is running as a menu bar app.
@@ -178,7 +181,7 @@ import SwiftUI
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             guard self.view.window?.isVisible == true,
-                  let next = SettingsPane.allCases.first(where: { self.hosts[$0] == nil }) else { self.prewarming = false; return }
+                  let next = SettingsPane.available.first(where: { self.hosts[$0] == nil }) else { self.prewarming = false; return }
             self.host(for: next).layoutSubtreeIfNeeded()
             self.buildNextPane()
         }

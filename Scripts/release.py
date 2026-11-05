@@ -18,6 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'Scripts'))
 import sparkle_packaging as sparkle  # noqa: E402
 import onboarding_resources as onboarding  # noqa: E402
+import license_packaging as licensing  # noqa: E402
 
 MINIMUM_MACOS = '26.0'
 EMPTY = dict(available=False, version=None, url=None, sha256=None,
@@ -216,6 +217,7 @@ def verify_dmg(dmg, team, v, build, sha=None):
 def build_release(args):
     v, b = version(args.version), build_number(args.build)
     selected = preflight(args.team_id, args.keychain_profile, args.identity)
+    licensing.fields('stable')  # Commercial mode problems stop the build before anything is compiled or signed.
     out = ROOT / 'dist' / f'DogBar-{v}-arm64'
     require(not out.exists() and not out.is_symlink(), 'Release version output already exists; never overwrite it')
     out.parent.mkdir(exist_ok=True)
@@ -242,6 +244,7 @@ def build_release(args):
     onboarding.copy(app)
     info = plistlib.loads((ROOT / 'Resources/Info.plist').read_bytes())
     info.update(CFBundleIdentifier='dev.hristijan.dogbar', CFBundleExecutable='DogBar', CFBundleName='DogBar', CFBundleDisplayName='DogBar', CFBundleShortVersionString=v, CFBundleVersion=b, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='release', DogBarUpdateChannel='stable')
+    licensing.apply(info, 'stable')
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps(info))
     # Never sign --deep. Sparkle's helpers and framework are signed inside out first, with a secure timestamp.
     sparkle.embed(app, sparkle.artifact(scratch), selected, timestamp=True)

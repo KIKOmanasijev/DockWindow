@@ -7,6 +7,7 @@ import SwiftUI
     @ObservedObject var permissions: PermissionsService
     @ObservedObject var updates: UpdatePreferences
     @ObservedObject var visibility: SettingsVisibility
+    @ObservedObject private var access = AppAccess.shared
     let onRestoreNativeDock: () -> Void
     let onShowPermissions: () -> Void
     @State private var resetConfirmation = false
@@ -88,9 +89,10 @@ import SwiftUI
 
     // MARK: Status
 
-    private enum Status { case running, paused, setup, checking }
+    private enum Status { case running, paused, setup, checking, activation }
     private var status: Status {
         if settings.isPaused { return .paused }
+        if !access.allowsFeatures { return .activation }
         if !permissions.hasCheckedPermissions { return .checking }
         return permissions.isGranted ? .running : .setup
     }
@@ -103,6 +105,7 @@ import SwiftUI
         case .paused: ("DogBar is paused", "Apple’s Dock is back. Everything resumes when you turn this off.", .warning)
         case .setup: ("Setup isn’t finished", "DogBar starts by itself once both permissions are allowed.", .warning)
         case .checking: ("Checking permissions…", "This only takes a moment.", .neutral)
+        case .activation: ("Activate this Mac", "Open License in the sidebar and enter your license key. Apple’s Dock stays available until activation.", .warning)
         }
         return SettingsHero(title: title, text: detail) {
             SettingsMascot(pose: .guide, size: 112)
@@ -128,6 +131,7 @@ import SwiftUI
         case .paused: return "pause.circle.fill"
         case .setup: return "exclamationmark.triangle.fill"
         case .checking: return nil
+        case .activation: return "key.fill"
         }
     }
     private var statusWord: String {
@@ -136,6 +140,7 @@ import SwiftUI
         case .paused: return "Paused"
         case .setup: return "Needs permissions"
         case .checking: return "Checking"
+        case .activation: return "Activation needed"
         }
     }
 

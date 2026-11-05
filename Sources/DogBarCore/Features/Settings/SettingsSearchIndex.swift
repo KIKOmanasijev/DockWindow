@@ -36,6 +36,8 @@ enum SettingsSearchIndex {
             E(title: "Restore Apple’s Dock", pane: .general, anchor: "general.restore", keywords: "native dock recover recovery"),
             E(title: "Reset all settings", pane: .general, anchor: "general.reset", keywords: "defaults factory clear"),
 
+            E(title: "Activate a license", pane: .license, anchor: "license.activation", keywords: "license licence key purchase activate devices Macs"),
+
             // Dock & Desktops
             E(title: "Use DogBar’s Dock", pane: .dock, anchor: "dock.enabled", keywords: "replace native apple dock enable"),
             E(title: "Desktops a Dock shows apps from", pane: .dock, anchor: "dock.desktops", keywords: "spaces per desktop current all isolation scope"),
@@ -114,7 +116,7 @@ enum SettingsSearchIndex {
             E(title: "Agent Activity demo", pane: .beta, anchor: "beta.demo", keywords: "preview simulated try play"),
             E(title: "Claude Code hooks", pane: .beta, anchor: "beta.claude", keywords: "settings.json setup install remove uninstall configuration copy agent"),
             E(title: "Codex hooks", pane: .beta, anchor: "beta.codex", keywords: "hooks.json setup install remove uninstall configuration copy trust agent"),
-        ]
+        ].filter { $0.pane.isAvailable }
     }()
 
     /// Every word must appear in the title, path or keywords. Title matches rank first.

@@ -17,6 +17,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'Scripts'))
 import sparkle_packaging as sparkle  # noqa: E402
 import onboarding_resources as onboarding  # noqa: E402
+import license_packaging as licensing  # noqa: E402
 
 DEVELOPMENT_IDENTITY = 'F6525801B1C563EA82693EBE71D63C6CA41538C6'
 # Self-signed code has no Team ID, so library validation would reject the embedded
@@ -185,13 +186,14 @@ def build_preview(args):
     out = parent / f'DogBar-{value}-arm64'
     require(not out.exists() and not out.is_symlink(), 'Preview version output already exists; choose a new version')
     prerequisites()
+    licensing.fields('preview')  # Commercial mode problems stop the build before anything is compiled or signed.
     # Valid-only identity lookup excludes this deliberately self-signed local certificate.
     select_identity(run('security', 'find-identity', '-p', 'codesigning'), identity)
     entitlements = ROOT / ENTITLEMENTS_FILE
     require(plistlib.loads(entitlements.read_bytes()) == ENTITLEMENTS, 'Review changed entitlements before packaging')
     sparkle.pinned()
     # A published preview must be reproducible from its tagged commit.
-    require(not run('git', 'status', '--porcelain', '--', 'Package.swift', 'Package.resolved', 'Sources', 'Resources', 'Scripts').strip(),
+    require(not run('git', 'status', '--porcelain', '--', 'Package.swift', 'Package.resolved', 'Sources', 'Resources', 'Scripts', 'Config').strip(),
             'Commit source, resource and script changes before building a preview')
     revision = run('git', 'rev-parse', '--short=12', 'HEAD').strip()
     require(re.fullmatch(r'[0-9a-f]{12}', revision), 'Cannot read the source revision')
@@ -218,6 +220,7 @@ def build_preview(args):
                 CFBundleShortVersionString=value.split('-')[0], DogBarPreviewVersion=value,
                 CFBundleVersion=build, LSMinimumSystemVersion=MINIMUM_MACOS, DogBarBuildChannel='preview',
                 DogBarUpdateChannel='preview', DogBarBuildRevision=revision)
+    licensing.apply(info, 'preview')
     (app / 'Contents/Info.plist').write_bytes(plistlib.dumps(info))
     # Nested Sparkle code is signed inside out first; the app is never signed with --deep.
     sparkle.embed(app, sparkle.artifact(scratch), identity)

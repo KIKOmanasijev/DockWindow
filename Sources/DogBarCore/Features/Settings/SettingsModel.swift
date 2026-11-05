@@ -8,17 +8,21 @@ enum SettingsPane: String, CaseIterable, Identifiable {
     case general = "General", permissions = "Permissions"
     case dock = "Dock & Desktops", previews = "Previews", switcher = "Switcher", appearance = "Appearance"
     case newWindows = "New Windows", diagnostics = "Diagnostics", beta = "Beta"
+    case license = "License"
     var id: String { rawValue }
+    /// License exists only in paid builds; free builds never show it.
+    var isAvailable: Bool { self != .license || CommercialPolicy.current.isPaid }
+    static let available = allCases.filter(\.isAvailable)
 
     /// Sidebar groups. The first has no label.
     enum Group: String, CaseIterable, Identifiable {
         case app = "", features = "Features", advanced = "Advanced"
         var id: String { rawValue }
-        var panes: [SettingsPane] { SettingsPane.allCases.filter { $0.group == self } }
+        var panes: [SettingsPane] { SettingsPane.available.filter { $0.group == self } }
     }
     var group: Group {
         switch self {
-        case .general, .permissions: return .app
+        case .general, .permissions, .license: return .app
         case .dock, .previews, .switcher, .appearance: return .features
         case .newWindows, .diagnostics, .beta: return .advanced
         }
@@ -27,6 +31,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .general: return "gearshape.fill"
         case .permissions: return "hand.raised.fill"
+        case .license: return "key.fill"
         case .dock: return "dock.rectangle"
         case .previews: return "rectangle.on.rectangle"
         case .switcher: return "square.stack.3d.forward.dottedline.fill"
@@ -41,6 +46,7 @@ enum SettingsPane: String, CaseIterable, Identifiable {
         switch self {
         case .general, .diagnostics: return Color(nsColor: .systemGray)
         case .permissions: return Color(nsColor: .systemBlue)
+        case .license: return Color(nsColor: .systemOrange)
         case .dock: return Color(hex: 0x7B3FF2)
         case .previews: return Color(nsColor: .systemOrange)
         case .switcher: return Color(nsColor: .systemIndigo)

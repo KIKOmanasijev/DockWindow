@@ -14,6 +14,7 @@ cp Resources/AppIcon.icns "$staging/DogBar.app/Contents/Resources/"
 # Onboarding and Settings art go in before signing, so the signature covers them.
 /usr/bin/python3 Scripts/onboarding_resources.py copy --app "$staging/DogBar.app"
 cp Resources/Info.plist "$staging/DogBar.app/Contents/"
+/usr/bin/python3 Scripts/license_packaging.py --plist "$staging/DogBar.app/Contents/Info.plist" --channel development
 /usr/libexec/PlistBuddy -c "Add :DogBarBuildRevision string $(git rev-parse --short HEAD)" "$staging/DogBar.app/Contents/Info.plist"
 # Telemetry tags events with this, so local installs can be filtered out of real usage.
 /usr/libexec/PlistBuddy -c "Add :DogBarBuildChannel string development" "$staging/DogBar.app/Contents/Info.plist"

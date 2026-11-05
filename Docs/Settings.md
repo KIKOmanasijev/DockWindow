@@ -26,11 +26,15 @@ The sidebar has an AppKit `NSSearchField` at large size, then a SwiftUI `List` i
 
 | Group | Pages |
 | --- | --- |
-| (none) | General, Permissions |
+| (none) | General, Permissions (License appears here only in paid builds) |
 | Features | Dock & Desktops, Previews, Switcher, Appearance |
 | Advanced | New Windows, Diagnostics, Beta |
 
 Search results use the same list. With no matches it shows `ContentUnavailableView.search`.
+
+## License
+
+Paid builds only. Free builds (the default, see [CommercialMode.md](CommercialMode.md)) never list this page or create a license manager. In a paid build, License accepts a key, activates this Mac, and stores only the device token and signed offline entitlement in Keychain; the key is cleared from the field after activation and is not persisted. Check Now recovers online after expiry, Deactivate releases this Mac, and Manage License opens the email-based portal. Sandbox builds identify themselves and link to the sandbox checkout. The License page is appended to the pane enum, so keyboard shortcuts including Beta's ⌘9 stay the same.
 
 ## Layout
 

@@ -1,0 +1,10 @@
+{
+  "mode": "free",
+  "paid": {
+    "currency": "USD",
+    "priceCents": 399,
+    "billing": "one-time",
+    "checkoutURL": null,
+    "freeUserTransition": null
+  }
+}
