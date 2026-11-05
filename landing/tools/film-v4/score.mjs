@@ -120,19 +120,19 @@ function swell(t, dur, vel = .4) { const s0 = Math.round(t * RATE); const hp = b
   if (r.status) throw Error('music decode failed: ' + r.stderr);
   const pcm = new Float32Array(r.stdout.buffer, r.stdout.byteOffset, r.stdout.length / 4), len = pcm.length / 2;
   const P0 = 60 / BPM, beat = (n) => MUSIC.first + n * P0;
-  const tA = beat(MUSIC.startBeat), tC = beat(MUSIC.cutFrom), tD = beat(MUSIC.cutTo);
-  const XF = Math.round(.012 * RATE);                       // 12 ms equal-power crossfade at the cut
-  const filmCut = Math.round((tC - tA) * RATE);
+  const XF = Math.round(.012 * RATE);                       // 12 ms equal-power crossfade at each join
   const src = (i) => i >= 0 && i < len ? [pcm[2 * i], pcm[2 * i + 1]] : [0, 0];
-  // duck the bed a little under DogBar's own cue and under typing so they read
+  // film sample → [track sample] per segment; joins at film beats where the previous segment ends
+  const segs = []; let f0 = 0;
+  for (const [a, e] of MUSIC.segments) { const ta = Math.round(beat(a) * RATE), te = e === null ? len : Math.round(beat(e) * RATE); segs.push({ f0, ta, n: te - ta }); f0 += te - ta; }
+  const at = (i) => { for (let k = segs.length - 1; k >= 0; k--) if (i >= segs[k].f0) return src(segs[k].ta + (i - segs[k].f0)); return [0, 0]; };
   const duck = (t) => { let g = 0; const near = (a, b, d) => { if (t > a - .15 && t < b + .4) g = Math.min(g, d * Math.min(1, (t - a + .15) / .15, (b + .4 - t) / .4)); };
     near(T.finished, T.finished + .9, -6); near(T.typing[0], T.send + .3, -3); return db(g); };
   for (let i = 0; i < N; i++) {
-    let L, Rr;
-    if (i < filmCut - XF / 2) [L, Rr] = src(Math.round(tA * RATE) + i);
-    else if (i >= filmCut + XF / 2) [L, Rr] = src(Math.round(tD * RATE) + (i - filmCut));
-    else { const p = (i - filmCut + XF / 2) / XF, a = Math.cos(p * Math.PI / 2), b = Math.sin(p * Math.PI / 2);
-      const [l1, r1] = src(Math.round(tA * RATE) + i), [l2, r2] = src(Math.round(tD * RATE) + (i - filmCut)); L = l1 * a + l2 * b; Rr = r1 * a + r2 * b; }
+    let L, Rr; const join = segs.slice(1).find((s) => Math.abs(i - s.f0) < XF / 2);
+    if (!join) [L, Rr] = at(i);
+    else { const k = segs.indexOf(join), prev = segs[k - 1], p = (i - join.f0 + XF / 2) / XF, a = Math.cos(p * Math.PI / 2), c = Math.sin(p * Math.PI / 2);
+      const [l1, r1] = src(prev.ta + (i - prev.f0)), [l2, r2] = src(join.ta + (i - join.f0)); L = l1 * a + l2 * c; Rr = r1 * a + r2 * c; }
     const g = duck(i / RATE) * .9; bus.track[0][i] = L * g; bus.track[1][i] = Rr * g;
   }
 }

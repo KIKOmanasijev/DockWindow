@@ -1,11 +1,9 @@
 // DogBar product film v4: one clock for picture and sound, locked to the licensed music edit.
 //
 // Music: "New Bass 01" (Mixkit #720, Mixkit Stock Music Free License; downloaded at build time, never committed).
-// Measured: 126.05 BPM, first beat at 0.056 s. The film starts on track beat 36, and one 4-bar phrase (track
-// beats 128–143) is cut at a phrase boundary, so film beat k is exactly k·P. Landmarks in film time:
-//   film beat 12  (bar 4)   the drop          → Option-Tab opens the switcher
-//   film beat 76  (bar 20)  groove change     → preview cards lift
-//   film beat 116 (bar 30)  the ending hit    → DogBar lockup; the track rings out under the end card
+// Measured: 126.05 BPM, first beat at 0.056 s. The film starts one bar before the drop and the track is edited on
+// its own bar lines (MUSIC.segments): the drop opens the switcher, the groove change lifts the preview cards, the
+// ending hit lands the tagline, and the track rings out under the end card.
 //
 // Order (one benefit per act): switcher → Agent Activity (reply from the notch) → window counts and previews →
 // a separate Dock per desktop → the Dock folds into the app icon.
@@ -17,68 +15,75 @@ export const BEAT = P;
 export const BAR = 4 * P;
 export const B = (bar, beat = 1, sixteenths = 0) => +(((bar - 1) * 4 + (beat - 1) + sixteenths / 4) * P).toFixed(6);
 export const MUSIC = { id: 720, title: 'New Bass 01', url: 'https://assets.mixkit.co/music/720/720.mp3', license: 'Mixkit Stock Music Free License (https://mixkit.co/license/#musicFree)',
-  first: 0.056, startBeat: 36, cutFrom: 128, cutTo: 144 };
-export const DURATION = 59.6;
+  first: 0.056,
+  // track beat ranges played back to back (end null = to the end of the track); every join is on a bar line,
+  // and each section is entered at its own first beat, so the joins read as phrase changes
+  segments: [[44, 88], [112, 136], [168, null]] };
+// Film beat k is exactly k·P. Landmarks: film beat 4 = the drop (track 48), film beat 44 = the groove change
+// (track 112), film beat 68 = the ending hit (track 168).
+const b = (beats) => +(beats * P).toFixed(6);
+export const DURATION = +(b(68) + 4.0).toFixed(3);
 
+// Holds are kept only where there is something to read (~1.5 s after a headline lands); actions follow each
+// other a beat apart.
 export const T = {
-  // ---- Act 1 · context: a real Mac ----
-  fadeIn: [0, 0.6],
-  settle: [0, B(2, 3)],                    // tilted Mac drifts flat while pushing in
-  // ---- Act 2 · Option-Tab (the drop) ----
-  optDown: B(3, 4),                        // anticipation: ⌥ goes down a beat before the drop
-  open: B(4),                              // 5.71 first Tab: the switcher opens
-  tabs: [B(4), B(4, 3), B(5), B(5, 3)],    // 4 Tabs over the MRU list → Cursor
-  typeSw: B(4, 2),
-  release: B(7),                           // 11.42
-  ringGrow: [B(7), B(7, 3)],
-  // ---- light (from and into the notch) ----
-  paper2: [B(8), B(8, 3)],
-  type2a: B(8, 3),
-  type2b: B(9),
-  toNotch: [B(9, 4), B(10, 2)],
-  // ---- Act 3 · Agent Activity beta ----
-  finished: B(10, 3),                      // collapsed island turns to "finished"; DogBar's cue
-  type5: B(10, 4),
-  cursorToIsland: [B(11, 1), B(11, 3)],
-  expand: B(11, 3) + 0.1,                  // + the app's 100 ms hover intent
-  clickClaude: B(12, 2),
-  cursorToField: [B(12, 3), B(13, 1) - 0.05],
-  focusField: B(13),                       // click into the reply field
-  typing: [B(13, 2), B(14, 3) - 0.2],      // 13 captured prefixes
-  type6: B(13, 3),                         // "Reply without switching apps."
-  send: B(14, 3),                          // Return: "Reply sent"
-  replied: B(15, 1),                       // Claude Code picks it up (Working)
-  leave: B(15, 4),
-  collapse: B(15, 4) + 0.24,               // + the app's 240 ms exit grace
-  // ---- Act 4 · counts and previews ----
-  toDots: [B(16, 2), B(17, 1)],            // the camera travels from the notch down to the Dock
-  dotsCount: [B(17, 2), B(17, 2, 2), B(17, 3)],
-  typeDots: B(17, 1),
-  cursorIn: [B(18, 2), B(19, 1)],
-  hover: B(19, 1),
-  preview: B(19, 1) + 0.25,                // DogBar's 0.25 s hover delay
-  toPreviewFrame: [B(18, 4), B(19, 3)],
-  lift: [B(20), B(20, 2, 2)],              // the groove change: cards lift (pointer still)
-  typePv: B(20),
-  land: [B(21), B(21, 2, 2)],
-  cardMoves: [B(21, 3), B(22), B(22, 2, 2)],
-  click: B(22, 3),
-  grow: [B(22, 3) + 0.06, B(23, 2)],
-  // ---- Act 5 · a separate Dock on every desktop ----
-  detach: [B(23, 3), B(24, 2)],
-  plane2In: [B(23, 4), B(24, 3)],
-  labelsIn: B(24, 2),
-  typeStage: B(24, 1),
-  slide1: B(24, 3),                        // stage → Desktop 2
-  slide2: B(25, 3),                        // stage → Desktop 1
-  toFlat: [B(26, 2), B(27)],               // the planes flatten into the real screen
-  swipeReal: B(27, 2),                     // real swipe → Desktop 2, Dock fixed, icons swap in place
+  fadeIn: [0, 0.35],
+  settle: [0, b(3)],                       // the Mac settles flat (1.4 s of context)
+  // ---- Option-Tab on the drop ----
+  optDown: b(3),
+  open: b(4),
+  tabs: [b(4), b(5.5), b(7), b(8.5)],      // → Cursor
+  typeSw: b(4.5),
+  release: b(10.5),
+  ringGrow: [b(10.5), b(12)],
+  // ---- light, from and into the notch ----
+  paper2: [b(12), b(13.5)],
+  type2a: b(13.5),
+  type2b: b(14.5),
+  toNotch: [b(17.5), b(19)],
+  // ---- Agent Activity beta ----
+  finished: b(19.5),
+  type5: b(20),
+  cursorToIsland: [b(20.5), b(21.5)],
+  expand: b(21.5) + 0.1,
+  clickClaude: b(23),
+  cursorToField: [b(23.5), b(24.5) - 0.05],
+  focusField: b(24.5),
+  type6: b(25.5),
+  typing: [b(25.5), b(30)],
+  send: b(30.5),
+  replied: b(31.5),
+  leave: b(33.5),
+  collapse: b(33.5) + 0.24,
+  // ---- counts and previews ----
+  toDots: [b(34), b(36)],
+  typeDots: b(35.5),
+  dotsCount: [b(36.5), b(36.75), b(37)],
+  cursorIn: [b(38.5), b(40)],
+  hover: b(40),
+  preview: b(40) + 0.25,
+  toPreviewFrame: [b(39.5), b(41.5)],
+  lift: [b(44), b(45.5)],                  // the groove change
+  typePv: b(44),
+  land: [b(46.5), b(47.5)],
+  cardMoves: [b(48), b(48.75), b(49.5)],
+  click: b(50),
+  grow: [b(50) + 0.06, b(51.5)],
+  // ---- a separate Dock per desktop ----
+  detach: [b(52), b(53.5)],
+  plane2In: [b(52.5), b(54)],
+  labelsIn: b(53.5),
+  typeStage: b(52.5),
+  slide1: b(54.5),
+  slide2: b(57),
+  toFlat: [b(58), b(59.5)],
+  swipeReal: b(60),
   // ---- end ----
-  lift2: [B(28), B(28, 3)],
-  fold: [B(28, 3), B(29, 2)],              // the Dock folds into the app icon
-  lockup: B(29, 3),
-  endHit: B(30),                           // 55.22 the track's ending hit: tagline + URL
-  fadeOut: [58.4, 59.55],
+  lift2: [b(62), b(63.5)],
+  fold: [b(63.5), b(65.5)],
+  lockup: b(66.5),
+  endHit: b(68),
+  fadeOut: [+(b(68) + 2.9).toFixed(3), +(b(68) + 3.95).toFixed(3)],
 };
 
 export const TYPE = {

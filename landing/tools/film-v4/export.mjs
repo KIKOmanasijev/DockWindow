@@ -220,8 +220,8 @@ async function renderFilm(ra = 0, rb = DURATION) {
   await writeFile(join(out, 'cue-sheet.csv'), rows.map((r) => r.map((x) => /[,"]/.test(String(x)) ? `"${String(x).replace(/"/g, '""')}"` : x).join(',')).join('\n') + '\n');
   // ---------- sheets ----------
   spawnSync(FFMPEG, ['-hide_banner', '-loglevel', 'error', '-y', '-i', final, '-vf', 'fps=1/1.5,scale=384:-1,tile=6x5:padding=6:color=black', '-frames:v', '1', '-q:v', '3', base + '-contact.jpg']);
-  const dense = [['open-switcher', 0, 7.0], ['switcher-release', 6.8, 13.6], ['paper-notch', 13.0, 19.4], ['agent-reply', 19.4, 27.4], ['notch-to-dock', 27.2, 33.6],
-    ['preview-lift', 33.6, 40.0], ['grow-detach', 40.0, 46.4], ['stage-proof', 46.0, 52.0], ['fold-lockup', 51.4, 59.6]];
+  const dense = [['open-switcher', 0, T.release], ['release-paper-notch', T.release - .3, T.finished + .5], ['agent-reply', T.finished - .3, T.collapse + .3],
+    ['dots-preview', T.toDots[0], T.lift[1]], ['lift-grow', T.lift[0], T.grow[1] + .4], ['stage-proof', T.detach[0] - .2, T.lift2[0] + .3], ['fold-lockup', T.lift2[0], DURATION]];
   for (const [name, a, b] of dense) {
     const n = 24, step = (b - a) / n;
     const rs = spawnSync(FFMPEG, ['-hide_banner', '-loglevel', 'error', '-y', '-ss', String(a), '-t', String(b - a + .01), '-i', final, '-vf', `fps=1/${step.toFixed(4)},scale=480:-1,tile=6x4:padding=4:color=black`, '-frames:v', '1', '-q:v', '3', `${base}-motion-${name}.jpg`], { encoding: 'utf8' });

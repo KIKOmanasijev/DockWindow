@@ -13,12 +13,16 @@ v3 (`landing/tools/film-v3/`, `dist/social/product-film-v3/`) is kept for compar
 | Talk about benefits, not mechanics | Every act now leads with the benefit: "Every open window, one shortcut away." / "Find the right window. Not just the app." / "Know when your agent is done." / "Reply without switching apps." / "How many windows are open? See it at a glance." / "Preview windows before you switch." / "Keep work and personal apart. Every desktop gets its own Dock." |
 | Send a reply through the notch | Pick the session, click the reply field, type "Also cover an expired coupon, please." (native island captures, one per 3 characters, caret placed like the field), Return → "Reply sent. Claude Code is picking it up." → Working. The pointer hides while typing, as on macOS. |
 
-## Music landmarks (film time)
+## Revision 2: no dead time (36.4 s)
 
-- 0–5.7 s: intro; the Mac settles and ⌥ goes down a beat early.
-- 5.71 s: the drop; the first Tab opens the switcher.
-- 36.18 s: the groove change; preview cards lift.
-- 55.22 s: the ending hit; the tagline and address land; the track rings out under the end card.
+Review: idle holds lost viewers (the Mac sat still from 2.5 s to 6 s; after picking Cursor nothing happened for ~2 s).
+Every hold without something to read is gone; actions follow a beat apart, and each headline keeps ~1.5 s of
+reading time. The music edit follows the picture on the track's own bar lines (`MUSIC.segments`: track beats
+44–88, 112–136, 168–end), so the landmarks still land on actions:
+
+- 1.90 s: the drop; the first Tab opens the switcher (the Mac has settled by 1.4 s).
+- 20.94 s: the groove change; the preview cards lift.
+- 32.37 s: the ending hit; the tagline and address land; the track rings out to 36.4 s.
 
 ## Accuracy rules (unchanged from v3)
 

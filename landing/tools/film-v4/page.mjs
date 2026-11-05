@@ -515,7 +515,7 @@ function dockScreenRect(t){const p=dockPose(t),sh=dockShape(t);return {x:p.x-sh.
 function renderPaper(t){paper.style.display='none';
  if(t>=T.paper2[0]&&t<T.toNotch[1]){const D=deviceAt(T.paper2[0]);const n0=map(D,756-94,0),nr={x:n0.x,y:n0.y,w:188*D.k,h:32*D.k};
   const Dn=DS.notch,i0=map(Dn,ICX-COL[0]/2,0),ir={x:i0.x,y:i0.y,w:COL[0]*Dn.k,h:BAR*Dn.k};paper.style.display='block';paper.style.opacity=1;
-  if(t<T.toNotch[0]){const p=seg(t,T.paper2[0],T.paper2[1],expoIO);const rr=mixR(nr,FULL,p);rectCss(paper,rr,'0 0 '+lerp(12*D.k,0,p)+'px '+lerp(12*D.k,0,p)+'px');ink.style.opacity=1-clamp((rr.h-nr.h)/(H*.35));return 'paper';}
+  if(t<T.toNotch[0]){const p=seg(t,T.paper2[0],T.paper2[1],expoIO);const rr=mixR(nr,FULL,p);rectCss(paper,rr,'0 0 '+lerp(12*D.k,0,p)+'px '+lerp(12*D.k,0,p)+'px');ink.style.opacity=1-easeIO(clamp((rr.h-nr.h)/(H*.55)));return 'paper';}
   const p=seg(t,T.toNotch[0],T.toNotch[1],expoIO);rectCss(paper,mixR(FULL,ir,p),'0 0 '+lerp(0,12*Dn.k,p)+'px '+lerp(0,12*Dn.k,p)+'px');ink.style.opacity=clamp((p-.45)/.4);
   paper.style.opacity=t>T.toNotch[1]-.1?1-(t-T.toNotch[1]+.1)/.1:1;return 'toNotch';}
  return null;}
